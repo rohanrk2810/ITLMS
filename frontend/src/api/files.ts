@@ -18,3 +18,20 @@ export async function uploadFile(file: File, category: string): Promise<FileResp
   const { data } = await apiClient.post<FileResponse>('/api/files', form, { params: { category } })
   return data
 }
+
+/**
+ * Downloads a file and triggers a save-as, for the many places a plain `<a
+ * href>` won't do because the download needs a bearer token (Doc S12: no
+ * file-service download is anonymous).
+ */
+export async function downloadFile(fileId: number | string, filename: string): Promise<void> {
+  const { data } = await apiClient.get<ArrayBuffer>(`/api/files/${fileId}/download`, {
+    responseType: 'arraybuffer',
+  })
+  const url = URL.createObjectURL(new Blob([data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 30_000)
+}

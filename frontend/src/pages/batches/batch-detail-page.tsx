@@ -4,6 +4,7 @@ import { CalendarPlus, CheckCircle2, ChevronLeft, ClipboardList } from 'lucide-r
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { getBatchAssignments } from '@/api/assignments'
 import { type CreateSessionInput, createSession, getBatch, getBatchSessions, getRoster } from '@/api/batches'
 import { apiErrorMessage } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
@@ -35,6 +36,11 @@ export function BatchDetailPage() {
   const sessionsQuery = useQuery({
     queryKey: ['batches', batchId, 'sessions'],
     queryFn: () => getBatchSessions(batchId!),
+    enabled: !!batchId,
+  })
+  const assignmentsQuery = useQuery({
+    queryKey: ['batches', batchId, 'assignments'],
+    queryFn: () => getBatchAssignments(batchId!),
     enabled: !!batchId,
   })
 
@@ -117,6 +123,45 @@ export function BatchDetailPage() {
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No sessions scheduled yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Assignments</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Due</TableHead>
+              <TableHead>Submitted</TableHead>
+              <TableHead>Evaluated</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {assignmentsQuery.data?.content.map((assignment) => (
+              <TableRow key={assignment.id}>
+                <TableCell>
+                  <Link to={`/app/assessments/assignments/${assignment.id}`} className="font-medium hover:underline">
+                    {assignment.title}
+                  </Link>
+                </TableCell>
+                <TableCell>{formatDate(assignment.dueAt)}</TableCell>
+                <TableCell>{assignment.submissionCount ?? 0}</TableCell>
+                <TableCell>{assignment.evaluatedCount ?? 0}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{assignment.status}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+            {assignmentsQuery.isSuccess && assignmentsQuery.data.content.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  No assignments set for this batch yet.
                 </TableCell>
               </TableRow>
             )}

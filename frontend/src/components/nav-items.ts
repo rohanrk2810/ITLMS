@@ -8,6 +8,7 @@ import {
   FileText,
   LayoutDashboard,
   Megaphone,
+  ShieldCheck,
   UserPlus,
   Users,
   Video,
@@ -48,9 +49,22 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ClipboardList,
     roles: ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT'],
   },
-  { label: 'Finance', to: '/app/finance', icon: Banknote, roles: ['ADMIN', 'COORDINATOR', 'FINANCE'] },
+  {
+    label: 'Finance',
+    to: '/app/finance',
+    icon: Banknote,
+    // A student's own fees, or the finance desk for everyone who runs it (Doc S6.12).
+    roles: ['ADMIN', 'COORDINATOR', 'FINANCE', 'STUDENT'],
+  },
   { label: 'Certificates', to: '/app/certificates', icon: Award, roles: ['ADMIN', 'COORDINATOR', 'STUDENT'] },
   { label: 'Placements', to: '/app/placements', icon: Briefcase, roles: ['ADMIN', 'PLACEMENT', 'STUDENT'] },
   { label: 'Files', to: '/app/files', icon: FileText, roles: ALL_ROLES },
   { label: 'Announcements', to: '/app/announcements', icon: Megaphone, roles: ALL_ROLES },
+  {
+    label: 'Users',
+    to: '/app/users',
+    icon: ShieldCheck,
+    // List/get is Roles.STAFF; create, status and password-reset are ADMIN only (enforced in the page itself).
+    roles: ['ADMIN', 'COORDINATOR'],
+  },
 ]
