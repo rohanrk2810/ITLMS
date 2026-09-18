@@ -92,6 +92,19 @@ const UsersPage = lazy(() => import('@/pages/users/users-page').then((m) => ({ d
 
 const AuditLogsPage = lazy(() => import('@/pages/audit-logs-page').then((m) => ({ default: m.AuditLogsPage })))
 
+const PlacementsIndexPage = lazy(() =>
+  import('@/pages/placements/placements-index-page').then((m) => ({ default: m.PlacementsIndexPage })),
+)
+const JobDetailIndexPage = lazy(() =>
+  import('@/pages/placements/job-detail-index-page').then((m) => ({ default: m.JobDetailIndexPage })),
+)
+
+const FilesPage = lazy(() => import('@/pages/files/files-page').then((m) => ({ default: m.FilesPage })))
+
+const AnnouncementsPage = lazy(() =>
+  import('@/pages/announcements/announcements-page').then((m) => ({ default: m.AnnouncementsPage })),
+)
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -109,6 +122,7 @@ const ADMISSION_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 const STUDENT_RECORD_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 const BATCH_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 const USER_MANAGEMENT_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
+const PLACEMENT_ROLES: readonly Role[] = ['ADMIN', 'PLACEMENT', 'STUDENT']
 
 // Nav items with a real page below - excluded from the generic placeholder loop.
 const BUILT_PATHS = new Set([
@@ -121,6 +135,9 @@ const BUILT_PATHS = new Set([
   '/app/students',
   '/app/batches',
   '/app/users',
+  '/app/placements',
+  '/app/files',
+  '/app/announcements',
 ])
 
 function PageFallback() {
@@ -226,6 +243,17 @@ export default function App() {
                   <Route element={<ProtectedRoute roles={['ADMIN']} />}>
                     <Route path="/app/audit-logs" element={<AuditLogsPage />} />
                   </Route>
+
+                  <Route element={<ProtectedRoute roles={PLACEMENT_ROLES} />}>
+                    <Route path="/app/placements" element={<PlacementsIndexPage />} />
+                    <Route path="/app/placements/:jobId" element={<JobDetailIndexPage />} />
+                  </Route>
+
+                  {/* Files and announcements are open to every signed-in role; each page
+                      shows more (a staff directory, a "new announcement" button) by role
+                      internally, the same way the notification bell already does. */}
+                  <Route path="/app/files" element={<FilesPage />} />
+                  <Route path="/app/announcements" element={<AnnouncementsPage />} />
 
                   {NAV_ITEMS.filter((item) => item.to !== '/app' && !BUILT_PATHS.has(item.to)).map((item) => (
                     <Route key={item.to} element={<ProtectedRoute roles={item.roles} />}>

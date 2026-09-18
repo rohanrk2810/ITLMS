@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { PageResponse } from './types'
 
 export interface FileResponse {
   id: number
@@ -34,4 +35,23 @@ export async function downloadFile(fileId: number | string, filename: string): P
   link.download = filename
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 30_000)
+}
+
+export async function getFile(fileId: number | string): Promise<FileResponse> {
+  const { data } = await apiClient.get<FileResponse>(`/api/files/${fileId}`)
+  return data
+}
+
+export async function deleteFile(fileId: number | string): Promise<void> {
+  await apiClient.delete(`/api/files/${fileId}`)
+}
+
+/** ADMIN/COORDINATOR only (Doc S12) - everyone else only knows the files they uploaded this session. */
+export async function listFiles(params: {
+  ownerUserId?: number
+  category?: string
+  page?: number
+}): Promise<PageResponse<FileResponse>> {
+  const { data } = await apiClient.get<PageResponse<FileResponse>>('/api/files', { params })
+  return data
 }
