@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, Check, CheckCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import {
   listNotifications,
@@ -17,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
+import { mapActionUrl } from '@/lib/action-url'
 import { cn } from '@/lib/utils'
 
 const UNREAD_POLL_MS = 30_000
@@ -35,6 +37,7 @@ function timeAgo(iso: string): string {
 export function NotificationBell() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const unreadQuery = useQuery({
     queryKey: ['notifications', 'unread-count'],
@@ -50,9 +53,12 @@ export function NotificationBell() {
 
   const unread = unreadQuery.data ?? 0
 
-  async function handleMarkRead(id: number) {
-    await markNotificationRead(id)
-    await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+  function handleOpen(id: number, read: boolean, actionUrl: string | null) {
+    setOpen(false)
+    void navigate(mapActionUrl(actionUrl))
+    if (!read) {
+      void markNotificationRead(id).then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }))
+    }
   }
 
   async function handleMarkAllRead() {
@@ -98,7 +104,7 @@ export function NotificationBell() {
               {index > 0 && <Separator />}
               <button
                 type="button"
-                onClick={() => !notification.read && handleMarkRead(notification.id)}
+                onClick={() => handleOpen(notification.id, notification.read, notification.actionUrl)}
                 className={cn(
                   'flex w-full flex-col gap-0.5 px-3 py-2.5 text-left text-sm hover:bg-accent',
                   !notification.read && 'bg-accent/50',

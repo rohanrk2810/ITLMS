@@ -28,6 +28,13 @@ export function ProtectedRoute({ roles }: { roles?: readonly Role[] }) {
     return <Navigate to="/login" replace state={{ from: location }} />
   }
 
+  // A temporary password (admin-created account, or one just reset) must be
+  // changed before anything else is reachable. The backend does not enforce
+  // this - see change-password-page.tsx - so every route funnels through here.
+  if (user.mustChangePassword && location.pathname !== '/app/change-password') {
+    return <Navigate to="/app/change-password" replace state={{ from: location }} />
+  }
+
   if (roles && !hasRole(user.role, roles)) {
     return <Navigate to="/app/forbidden" replace />
   }
