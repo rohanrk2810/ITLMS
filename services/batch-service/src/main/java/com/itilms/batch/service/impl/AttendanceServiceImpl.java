@@ -303,7 +303,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     public AttendanceSummaryResponse studentSummary(Long studentId, Long batchId) {
         SecurityUtils.requireStudentOwnershipOrStaff(studentId);
 
-        Object[] totals = attendanceRepository.attendanceTotalsForBatch(studentId, batchId);
+        List<Object[]> rows = attendanceRepository.attendanceTotalsForBatch(studentId, batchId);
+        Object[] totals = rows.isEmpty() ? null : rows.get(0);
         int attended = toInt(totals, 0);
         int total = toInt(totals, 1);
 

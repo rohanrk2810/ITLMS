@@ -39,7 +39,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
               AND a.sessionId IN (SELECT s.id FROM ClassSession s
                                    WHERE s.batchId = :batchId AND s.status <> 'CANCELLED')
             """)
-    Object[] attendanceTotalsForBatch(@Param("studentId") Long studentId,
+    List<Object[]> attendanceTotalsForBatch(@Param("studentId") Long studentId,
                                       @Param("batchId") Long batchId);
 
     /**
