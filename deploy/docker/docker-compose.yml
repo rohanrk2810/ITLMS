@@ -506,4 +506,4 @@ services:
     healthcheck:
       <<: *health-timing
       start_period: 10s
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
