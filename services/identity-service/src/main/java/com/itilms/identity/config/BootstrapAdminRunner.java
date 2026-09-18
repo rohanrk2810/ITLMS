@@ -6,6 +6,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.itilms.common.event.EventPublisher;
+import com.itilms.common.event.KafkaTopics;
+import com.itilms.common.event.UserCreatedEvent;
 import com.itilms.identity.entity.User;
 import com.itilms.identity.entity.UserRole;
 import com.itilms.identity.entity.UserStatus;
@@ -40,6 +43,7 @@ public class BootstrapAdminRunner implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final IdentityProperties properties;
+    private final EventPublisher events;
 
     @Override
     @Transactional
@@ -75,6 +79,11 @@ public class BootstrapAdminRunner implements ApplicationRunner {
                 // account out of its own reset flow would be worse.
                 .mustChangePassword(false)
                 .build());
+
+        // Services that keep a directory of users (notification-service sends
+        // role-wide alerts from it) learn about the first administrator here.
+        events.publishAfterCommit(KafkaTopics.USER_CREATED, UserCreatedEvent.of(admin.getId(),
+                admin.getEmail(), admin.getPhone(), admin.fullName(), admin.getRole().name()));
 
         log.warn("Bootstrapped the first administrator: {} (id={}). "
                         + "Sign in and change this password now.",
