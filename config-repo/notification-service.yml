@@ -26,6 +26,10 @@ spring:
             enable: ${MAIL_SMTP_TLS:false}
         transport:
           protocol: smtp
+          # Without timeouts one hung mail server holds the outbox job forever.
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 itilms:
   docs:
@@ -43,6 +47,18 @@ itilms:
   notification:
     # In-app rows are kept for this long, then pruned. Without a retention
     # rule the table grows forever and the student's bell icon becomes a
-    # history of their entire course.
+    # history of their entire course. Sent emails are pruned on the same rule.
     retention-days: ${NOTIFICATION_RETENTION_DAYS:180}
-    digest-hour: 9
+    # Links in emails point here. Only the path travels in events; the host
+    # is decided once, in this service.
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+    # A failed email is retried with a growing delay, then given up on. The
+    # in-app notification is unaffected either way.
+    email-max-attempts: 5
+
+# Without this the health check reports DOWN whenever no mail server is
+# reachable, which is every environment where email is switched off.
+management:
+  health:
+    mail:
+      enabled: ${MAIL_ENABLED:false}

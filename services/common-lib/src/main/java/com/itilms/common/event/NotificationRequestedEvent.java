@@ -43,7 +43,6 @@ public record NotificationRequestedEvent(
                 userIds, null, null, type, title, message, actionUrl, true, Map.of());
     }
 
-    /** Addressed to everyone enrolled in a batch; the recipient list is resolved downstream. */
     /**
      * Addressed to everyone holding a role - "finance" rather than a list of
      * names, so a new accountant starts receiving overdue alerts without anyone
@@ -55,6 +54,7 @@ public record NotificationRequestedEvent(
                 List.of(), null, role, type, title, message, actionUrl, false, Map.of());
     }
 
+    /** Addressed to everyone enrolled in a batch; the recipient list is resolved downstream. */
     public static NotificationRequestedEvent toBatch(Long batchId, String type,
                                                      String title, String message, String actionUrl) {
         return new NotificationRequestedEvent(DomainEvent.newId(), Instant.now(),
