@@ -47,7 +47,7 @@ This is a departure from the source document, which specifies a single applicati
 | **finance** | Fee plans, installments, payments, receipts, overdue reminders | Yes |
 | **certificate** | Completion checks, issue, PDF, public verification | Yes |
 | **placement** | Companies, jobs, eligibility, applications, interview pipeline | Yes |
-| notification | In-app and email delivery, announcements | Pending |
+| **notification** | In-app notifications, announcements, email outbox | Yes |
 | file | Uploads, MIME and size rules, controlled download | Pending |
 | reporting | Dashboards, exports, and the audit log store | Pending |
 

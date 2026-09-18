@@ -80,6 +80,7 @@ These tables were added because the requirements cannot be met without them.
 | **A5** | `batch_trainers` | batch | §6.6 "trainer(s)". §10 `batches.trainer_id` allows only one trainer per batch. |
 | **A6** | `live_sessions`, `live_participants`, `live_participant_events` | liveclass | D3 |
 | **A7** | Copies of other services' data, such as `course_enrollments` in course-service | several | D2. Each copy is kept current from events. |
+| **A8** | `announcements`, `email_outbox`, and copies of users and enrolments (`recipients`, `batch_members`) | notification | §16. §10 has only `notifications`. Announcements need an audience; the outbox lets email fail and retry without losing the in-app notification; the copies let "everyone in batch 12" be expanded without calling other services. |
 
 ---
 
@@ -145,7 +146,7 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 
 ## 7. Defects found and fixed during this review
 
-Comparing the implementation against §12 and §14 turned up four defects. All four are fixed.
+Comparing the implementation against §12 and §14 turned up five defects. All five are fixed.
 
 | Defect | Effect before the fix | Fix |
 |---|---|---|
@@ -153,3 +154,4 @@ Comparing the implementation against §12 and §14 turned up four defects. All f
 | Self-registration was always open | Anyone on the internet could create a student account and a student profile (R5) | Off by default, behind a setting |
 | Internal service-to-service endpoints (`/internal/...`) were reachable through the gateway | A signed-in student could call lookups meant for other services, such as resolving batch or course ids in bulk | The gateway answers 404 for any `/internal/` path |
 | A LiveKit room closing early (unused before class, or everyone disconnected mid-class) was treated as the class ending | Attendance was published early, and every later join was refused with "this class has finished" | Only a room that was in use and closes near the scheduled end settles the class; any other closure lets the room be recreated on the next join |
+| The password-reset link, token included, was sent as the notification's link | The in-app notification would have stored a live reset token, so anyone able to read that table could take over the account | The token travels only as email data. notification-service builds the link inside the email and never stores or logs the token, or a temporary password |

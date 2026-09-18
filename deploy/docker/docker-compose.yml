@@ -403,6 +403,28 @@ services:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8088/actuator/health || exit 1"]
 
+  notification-service:
+    <<: *spring-service
+    build:
+      context: ../../services/notification-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/notification-service:dev
+    environment:
+      <<: *service-env
+      # Mailpit catches everything locally; point these at a real SMTP
+      # server in production.
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_TLS: ${MAIL_SMTP_TLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@itinstitute.local}
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8089/actuator/health || exit 1"]
+
   liveclass-service:
     <<: *spring-service
     build:
