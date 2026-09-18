@@ -48,7 +48,7 @@ This is a departure from the source document, which specifies a single applicati
 | **certificate** | Completion checks, issue, PDF, public verification | Yes |
 | **placement** | Companies, jobs, eligibility, applications, interview pipeline | Yes |
 | **notification** | In-app notifications, announcements, email outbox | Yes |
-| file | Uploads, MIME and size rules, controlled download | Pending |
+| **file** | Uploads, MIME and size rules, controlled download | Yes |
 | reporting | Dashboards, exports, and the audit log store | Pending |
 
 Supporting them: **api-gateway** (the only way in), **discovery-server** (Eureka), **config-server** (serves `config-repo/`), and **common-lib**, a library every service uses for security, error handling and events.
