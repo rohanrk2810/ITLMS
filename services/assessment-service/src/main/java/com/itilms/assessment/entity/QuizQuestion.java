@@ -62,7 +62,7 @@ public class QuizQuestion extends AuditableEntity {
     private String explanation;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "question_id")
+    @JoinColumn(name = "question_id", nullable = false)
     @OrderBy("sequenceNo ASC")
     @Builder.Default
     private List<QuizOption> options = new ArrayList<>();
