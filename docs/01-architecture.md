@@ -49,7 +49,7 @@ This is a departure from the source document, which specifies a single applicati
 | **placement** | Companies, jobs, eligibility, applications, interview pipeline | Yes |
 | **notification** | In-app notifications, announcements, email outbox | Yes |
 | **file** | Uploads, MIME and size rules, controlled download | Yes |
-| reporting | Dashboards, exports, and the audit log store | Pending |
+| **reporting** | Dashboards, exports, and the audit log store | Yes |
 
 Supporting them: **api-gateway** (the only way in), **discovery-server** (Eureka), **config-server** (serves `config-repo/`), and **common-lib**, a library every service uses for security, error handling and events.
 
@@ -96,7 +96,7 @@ Synchronous calls, over Feign, are kept few — they are the ones where the answ
 | `session-cancelled` | batch | liveclass | A called-off class does not leave an open room |
 | `live.attendance-computed` | liveclass | batch | An online class writes its own register |
 | `assignment-created`, `submission-evaluated`, `quiz-attempt-completed` | assessment | notification, reporting, certificate (to come) | Results reach dashboards and the completion check without anyone asking assessment-service |
-| `fee-plan-created`, `payment-recorded`, `installment-overdue` | finance | notification, reporting (to come) | Students hear about dues and receipts; the dashboard sees collections |
+| `fee-plan-created`, `payment-recorded`, `installment-overdue` | finance | notification, reporting | Students hear about dues and receipts; the dashboard sees collections |
 | `notification.requested` | any | notification | One way to reach people, from anywhere |
 | `audit.recorded` | any | reporting | One chronological audit log across twelve databases |
 

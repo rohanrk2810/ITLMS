@@ -2,7 +2,7 @@
 
 **Source:** `IT_Institute_LMS_Complete_Project_Documentation.pdf` (24 sections)
 **Reviewed against:** the implementation in this repository
-**Last updated:** 2026-09-18 (file-service)
+**Last updated:** 2026-09-18 (reporting-service)
 
 This document records every place where IT-ILMS, as built, differs from the source document, and why. Section numbers (§) refer to the source document.
 
@@ -82,6 +82,7 @@ These tables were added because the requirements cannot be met without them.
 | **A7** | Copies of other services' data, such as `course_enrollments` in course-service | several | D2. Each copy is kept current from events. |
 | **A8** | `announcements`, `email_outbox`, and copies of users and enrolments (`recipients`, `batch_members`) | notification | §16. §10 has only `notifications`. Announcements need an audience; the outbox lets email fail and retry without losing the in-app notification; the copies let "everyone in batch 12" be expanded without calling other services. |
 | **A9** | `files` | file | §10 has no table for uploaded bytes at all - `assignment_submissions.file_url` and admission's `student_documents` (A4) assume a file already lives somewhere. `files` is that store: storage key, MIME type, size and who may read it back, behind local disk or MinIO (Doc S17). Access is by category (§14's "restrict MIME type and size"), not by re-checking batch or course enrolment - the same simplification already recorded for L1/L2. |
+| **A10** | `audit_logs`, `activity_events`, `student_session_attendance` | reporting | §15 dashboards and the §12/§14 audit trail. §10 has nowhere to write either. `audit_logs` is the one chronological record `AuditRecordedEvent` is read back from; `activity_events` is one row per dashboard-relevant fact (admissions, enrolments, payments, results, certificates, placements), grouped by metric at read time rather than kept as running counters, so a redelivered Kafka message cannot inflate a total; `student_session_attendance` mirrors `AttendanceMarkedEvent` keyed by (student, session) so a correction (Doc S6.9) is applied by upserting the same row instead of double-counting. |
 
 ---
 
@@ -124,7 +125,7 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 | No passwords, tokens or payment data in logs | Refresh and reset tokens are stored only as SHA-256 hashes, so neither the database nor a log line built from it holds a usable token. A log review is part of the release checklist. | Partly done |
 | Secrets from the environment | The database password, JWT secret, first admin password and LiveKit secret have no defaults; startup fails if any is missing | Done |
 | Secure CORS and security headers | Allowed origins are configured at the gateway and in every service | Done |
-| Audit privileged actions | Services publish audit events; reporting-service stores them | Publishing done; storage pending (reporting-service) |
+| Audit privileged actions | Services publish audit events; reporting-service stores them (`audit_logs`) and exposes them to ADMIN as CSV/Excel/PDF | Done |
 | Rate-limit login and password reset | Gateway limiter backed by Redis on `/api/auth/**`: 5 requests per second, bursts of 10 | Done |
 
 ### §14 Validation and business rules
