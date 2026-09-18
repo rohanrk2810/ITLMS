@@ -29,6 +29,8 @@ public final class Roles {
     public static final String ACADEMIC = "hasAnyRole('ADMIN','COORDINATOR','TRAINER')";
     public static final String ADMIN_ONLY = "hasRole('ADMIN')";
     public static final String FINANCE_DESK = "hasAnyRole('ADMIN','FINANCE')";
+    /** May look at fee figures without changing them - coordinators chasing a student's dues. */
+    public static final String FINANCE_VIEW = "hasAnyRole('ADMIN','FINANCE','COORDINATOR')";
     public static final String PLACEMENT_DESK = "hasAnyRole('ADMIN','PLACEMENT')";
 
     public static String authority(String role) {

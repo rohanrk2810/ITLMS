@@ -87,6 +87,11 @@ public class EventPublisher {
                 NotificationRequestedEvent.toUsers(userIds, type, title, message, actionUrl));
     }
 
+    public void notifyRole(String role, String type, String title, String message, String actionUrl) {
+        publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED,
+                NotificationRequestedEvent.toRole(role, type, title, message, actionUrl));
+    }
+
     public void notifyBatch(Long batchId, String type, String title, String message, String actionUrl) {
         publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED,
                 NotificationRequestedEvent.toBatch(batchId, type, title, message, actionUrl));
