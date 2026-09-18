@@ -1,0 +1,107 @@
+package com.itilms.assessment.entity;
+
+import java.time.Instant;
+
+import com.itilms.common.entity.AuditableEntity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/** An MCQ test (Doc S6.11). */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "quizzes")
+public class Quiz extends AuditableEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "course_id", nullable = false)
+    private Long courseId;
+
+    /** Null means every batch studying the course can take it. */
+    @Column(name = "batch_id")
+    private Long batchId;
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Column(columnDefinition = "text")
+    private String instructions;
+
+    @Column(name = "duration_minutes", nullable = false)
+    private int durationMinutes;
+
+    @Column(name = "pass_percentage", nullable = false)
+    @Builder.Default
+    private int passPercentage = 40;
+
+    @Column(name = "attempts_allowed", nullable = false)
+    @Builder.Default
+    private int attemptsAllowed = 1;
+
+    @Column(name = "total_marks", nullable = false)
+    @Builder.Default
+    private int totalMarks = 0;
+
+    @Column(name = "available_from")
+    private Instant availableFrom;
+
+    @Column(name = "available_until")
+    private Instant availableUntil;
+
+    @Column(name = "shuffle_questions", nullable = false)
+    @Builder.Default
+    private boolean shuffleQuestions = true;
+
+    @Column(name = "show_result_immediately", nullable = false)
+    @Builder.Default
+    private boolean showResultImmediately = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean mandatory = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private QuizStatus status = QuizStatus.DRAFT;
+
+    @Column(name = "trainer_id")
+    private Long trainerId;
+
+    @Column(name = "published_at")
+    private Instant publishedAt;
+
+    /** Whether the test is open right now, quite apart from who is asking. */
+    public boolean isOpenAt(Instant at) {
+        return status.isOpenToStudents()
+                && (availableFrom == null || !at.isBefore(availableFrom))
+                && (availableUntil == null || !at.isAfter(availableUntil));
+    }
+
+    public boolean passed(int percentage) {
+        return percentage >= passPercentage;
+    }
+
+    public void publish(Instant at) {
+        this.status = QuizStatus.PUBLISHED;
+        this.publishedAt = at;
+    }
+}

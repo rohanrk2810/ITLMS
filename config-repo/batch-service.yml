@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------------
+# batch-service - Batches, enrolment, timetable and attendance
+# Owns database: itilms_batch (no other service connects to it)
+# ---------------------------------------------------------------------
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/itilms_batch
+    username: ${DB_USERNAME:itilms}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration
+
+itilms:
+  docs:
+    description: Batches, enrolment, timetable and attendance

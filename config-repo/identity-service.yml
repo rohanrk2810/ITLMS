@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------
+# identity-service - Authentication, JWT issuing and user accounts
+# Owns database: itilms_identity (no other service connects to it)
+# ---------------------------------------------------------------------
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/itilms_identity
+    username: ${DB_USERNAME:itilms}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration
+
+itilms:
+  docs:
+    description: Authentication, JWT issuing and user accounts
+
+  # Seeded on first start so the institute can log in at all. The password
+  # must be supplied through the environment; there is no built-in default,
+  # because a well-known default admin password is how systems get owned.
+  bootstrap:
+    admin-email: ${BOOTSTRAP_ADMIN_EMAIL:admin@itinstitute.local}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD}
+    admin-first-name: Institute
+    admin-last-name: Administrator
+    enabled: ${BOOTSTRAP_ENABLED:true}
+
+  security:
+    # Off unless the institute takes admissions online. When off, accounts are
+    # created by staff as part of the admission workflow (Doc S7.1).
+    self-registration-enabled: ${SELF_REGISTRATION_ENABLED:false}
+    # Repeated failures lock the account briefly. This blunts credential
+    # stuffing without giving an attacker a way to lock out a real user
+    # permanently - the window is short and self-clearing.
+    max-failed-attempts: 5
+    lockout-duration: 15m
+    password:
+      min-length: 8
+      require-digit: true
+      require-upper: true
+      require-lower: true
+      require-symbol: false

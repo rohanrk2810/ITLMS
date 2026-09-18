@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------
+# certificate-service - Completion rules, certificate issue and verification
+# Owns database: itilms_certificate (no other service connects to it)
+# ---------------------------------------------------------------------
+server:
+  port: 8087
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/itilms_certificate
+    username: ${DB_USERNAME:itilms}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration
+
+itilms:
+  docs:
+    description: Completion rules, certificate issue and verification
+
+  certificate:
+    # The four conditions from Doc S7.3. All are checked server-side before
+    # a certificate is issued - Doc S14 is explicit that this must not be
+    # something the browser can assert.
+    criteria:
+      require-all-mandatory-lessons: true
+      require-all-quizzes-passed: true
+      require-all-assignments-submitted: true
+      require-attendance: ${CERT_REQUIRE_ATTENDANCE:true}
+      minimum-attendance-percent: ${CERT_MIN_ATTENDANCE:75}
+      minimum-average-score-percent: ${CERT_MIN_SCORE:40}
+      require-fees-cleared: ${CERT_REQUIRE_FEES_CLEARED:true}
+    verification-base-url: ${CERT_VERIFY_URL:http://localhost:5173/verify}
+    institute-name: ${INSTITUTE_NAME:IT Training Institute}
+    signatory-name: ${CERT_SIGNATORY:Director}

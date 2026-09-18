@@ -1,0 +1,374 @@
+# ===========================================================================
+# IT-ILMS - local development stack
+#
+#   cd deploy/docker
+#   cp .env.example .env        # then fill in the secrets
+#   docker compose up -d --build     # after: mvn -DskipTests package
+#
+# Gateway:        http://localhost:8080   (Swagger UI: /swagger-ui.html)
+# Eureka:         http://localhost:8761
+# Mail catcher:   http://localhost:8025
+#
+# Build the jars first (mvn -DskipTests package, from the repository root);
+# the images package those jars rather than compiling inside Docker.
+#
+# Only services that are implemented are listed. The rest are added here as
+# each one is built.
+#
+# Every host port binds to 127.0.0.1 by default, so Postgres and Kafka are not
+# reachable from the rest of the network. Set BIND_ADDRESS=0.0.0.0 to test live
+# classes from another device on the LAN (and set LIVEKIT_NODE_IP to match).
+# ===========================================================================
+
+name: itilms
+
+# ---------------------------------------------------------------------------
+# Shared fragments
+# ---------------------------------------------------------------------------
+
+x-health-timing: &health-timing
+  interval: 10s
+  timeout: 5s
+  retries: 30
+  # Spring applications need most of this just to start; failed checks during
+  # the start period do not count against the retries.
+  start_period: 60s
+
+x-java-env: &java-env
+  TZ: ${INSTITUTE_TIMEZONE:-Asia/Kolkata}
+  JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=65 -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError}
+
+# What every business service needs to find its configuration, its database,
+# the message broker and its neighbours. Values here override the localhost
+# defaults written into config-repo, which suit running a service from an IDE.
+x-service-env: &service-env
+  <<: *java-env
+  CONFIG_SERVER_URL: http://config-server:8888
+  EUREKA_URL: http://discovery-server:8761/eureka/
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USERNAME: ${POSTGRES_USER:-itilms}
+  DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/docker/.env}
+  KAFKA_BROKERS: kafka:29092
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/docker/.env}
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+  GATEWAY_URL: http://localhost:${GATEWAY_HOST_PORT:-8080}
+  INSTITUTE_TIMEZONE: ${INSTITUTE_TIMEZONE:-Asia/Kolkata}
+  APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+
+x-spring-service: &spring-service
+  restart: unless-stopped
+  networks: [itilms]
+  depends_on:
+    postgres:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+    config-server:
+      condition: service_healthy
+    discovery-server:
+      condition: service_healthy
+  deploy:
+    resources:
+      limits:
+        memory: 512M
+
+networks:
+  itilms:
+    name: itilms
+
+volumes:
+  postgres-data:
+  kafka-data:
+
+services:
+
+  # =========================================================================
+  # Infrastructure
+  # =========================================================================
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    networks: [itilms]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-itilms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/docker/.env}
+      POSTGRES_DB: postgres
+      # Lets the health check below authenticate over TCP.
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # 5433 on the host, because a locally installed Postgres usually holds 5432.
+      - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_HOST_PORT:-5433}:5432"
+    healthcheck:
+      <<: *health-timing
+      start_period: 20s
+      # Over TCP and against the last database the init script creates. During
+      # first-time initialisation Postgres listens on a socket only, so this
+      # stays unhealthy until every database exists - services never start
+      # against a half-initialised server.
+      test: ["CMD-SHELL", "psql -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d itilms_reporting -tAc 'select 1' >/dev/null"]
+
+  kafka:
+    # The GraalVM native build of Apache Kafka: the same broker, a quarter of
+    # the download, a second to start and a fraction of the memory. Apache
+    # publishes it for development and testing; production deployments use the
+    # JVM image (apache/kafka) with the same settings.
+    image: apache/kafka-native:4.1.2
+    restart: unless-stopped
+    networks: [itilms]
+    environment:
+      # Single-node KRaft: this broker is also its own controller, no ZooKeeper.
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Two client listeners: INTERNAL for containers on this network, and
+      # EXTERNAL for a service started from an IDE on the host.
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:${KAFKA_HOST_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics are created by the services themselves (KafkaTopicsConfig in
+      # common-lib) with a chosen partition count. Auto-creation is off so a
+      # typo in a topic name fails loudly instead of creating a topic nobody reads.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /home/appuser/kraft-logs
+    volumes:
+      # Mounted over the broker user's home directory on purpose. The image
+      # runs as "appuser", and Docker gives a new named volume the ownership of
+      # the directory it is mounted over - but only if that directory already
+      # exists in the image. /home/appuser does; a path like /var/lib/kafka does
+      # not, and would come up owned by root and unwritable.
+      - kafka-data:/home/appuser
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${KAFKA_HOST_PORT:-9092}:9092"
+    healthcheck:
+      <<: *health-timing
+      start_period: 15s
+      test: ["CMD-SHELL", "nc -z localhost 29092"]
+
+  redis:
+    image: redis:8.2-alpine
+    restart: unless-stopped
+    networks: [itilms]
+    # Holds only the gateway's rate-limit counters, which are worthless after a
+    # restart - so no persistence to manage.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379"
+    healthcheck:
+      <<: *health-timing
+      start_period: 5s
+      test: ["CMD", "redis-cli", "ping"]
+
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    restart: unless-stopped
+    networks: [itilms]
+    environment:
+      # The whole server configuration, passed inline so the API key and secret
+      # come from .env like every other secret instead of a committed file.
+      LIVEKIT_CONFIG: |
+        port: 7880
+        bind_addresses: ["0.0.0.0"]
+        rtc:
+          tcp_port: 7881
+          # One UDP port for all media rather than a range. Docker Desktop
+          # handles a single forwarded UDP port well and thousands of them badly.
+          udp_port: 7882
+          use_external_ip: false
+          node_ip: ${LIVEKIT_NODE_IP:-127.0.0.1}
+        keys:
+          ${LIVEKIT_API_KEY:?Set LIVEKIT_API_KEY in deploy/docker/.env}: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in deploy/docker/.env}
+        webhook:
+          api_key: ${LIVEKIT_API_KEY}
+          urls:
+            - ${LIVEKIT_WEBHOOK_URL:-http://liveclass-service:8091/api/liveclass/webhook}
+        room:
+          # Rooms exist only because liveclass-service created them for a
+          # scheduled class. A valid token cannot conjure up a room of its own.
+          auto_create: false
+        logging:
+          level: info
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:7880:7880"
+      - "${BIND_ADDRESS:-127.0.0.1}:7881:7881"
+      - "${BIND_ADDRESS:-127.0.0.1}:7882:7882/udp"
+
+  mailpit:
+    image: axllent/mailpit:v1.31
+    restart: unless-stopped
+    networks: [itilms]
+    # Catches every email the system sends, so password resets and receipts
+    # can be read at http://localhost:8025 without a real mail account.
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:8025:8025"
+      - "${BIND_ADDRESS:-127.0.0.1}:1025:1025"
+
+  # =========================================================================
+  # Platform
+  # =========================================================================
+
+  discovery-server:
+    build:
+      context: ../../infrastructure/discovery-server
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/discovery-server:dev
+    restart: unless-stopped
+    networks: [itilms]
+    environment:
+      <<: *java-env
+      EUREKA_HOSTNAME: discovery-server
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:8761:8761"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8761/actuator/health || exit 1"]
+
+  config-server:
+    build:
+      context: ../../infrastructure/config-server
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/config-server:dev
+    restart: unless-stopped
+    networks: [itilms]
+    environment:
+      <<: *java-env
+      CONFIG_PROFILE: native
+      CONFIG_LOCATIONS: file:/config-repo/
+      EUREKA_URL: http://discovery-server:8761/eureka/
+    volumes:
+      # Mounted, not copied into the image: edit a file in config-repo, then
+      # POST /actuator/refresh on a service, without rebuilding anything.
+      - ../../config-repo:/config-repo:ro
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:8888:8888"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8888/actuator/health || exit 1"]
+
+  api-gateway:
+    build:
+      context: ../../infrastructure/api-gateway
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/api-gateway:dev
+    restart: unless-stopped
+    networks: [itilms]
+    environment:
+      <<: *java-env
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/docker/.env}
+      REDIS_HOST: redis
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_HOST_PORT:-8080}:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+
+  # =========================================================================
+  # Business services
+  #
+  # Service ports are not published to the host: everything is reached through
+  # the gateway, the same as in production. Each service's port is fixed in its
+  # config-repo file and repeated in its health check.
+  # =========================================================================
+
+  identity-service:
+    <<: *spring-service
+    build:
+      context: ../../services/identity-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/identity-service:dev
+    environment:
+      <<: *service-env
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@itinstitute.local}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in deploy/docker/.env}
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1"]
+
+  admission-service:
+    <<: *spring-service
+    build:
+      context: ../../services/admission-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/admission-service:dev
+    environment:
+      <<: *service-env
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8082/actuator/health || exit 1"]
+
+  course-service:
+    <<: *spring-service
+    build:
+      context: ../../services/course-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/course-service:dev
+    environment:
+      <<: *service-env
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8083/actuator/health || exit 1"]
+
+  batch-service:
+    <<: *spring-service
+    build:
+      context: ../../services/batch-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/batch-service:dev
+    environment:
+      <<: *service-env
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8084/actuator/health || exit 1"]
+
+  liveclass-service:
+    <<: *spring-service
+    build:
+      context: ../../services/liveclass-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/liveclass-service:dev
+    environment:
+      <<: *service-env
+      # Server to server, over the container network.
+      LIVEKIT_URL: http://livekit:7880
+      # Handed to browsers, so it must be an address the browser can reach.
+      LIVEKIT_WS_URL: ${LIVEKIT_WS_URL:-ws://localhost:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?Set LIVEKIT_API_KEY in deploy/docker/.env}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in deploy/docker/.env}
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8091/actuator/health || exit 1"]
