@@ -7,6 +7,7 @@ import {
   ClipboardList,
   FileText,
   LayoutDashboard,
+  Megaphone,
   UserPlus,
   Users,
   Video,
@@ -51,4 +52,5 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Certificates', to: '/app/certificates', icon: Award, roles: ['ADMIN', 'COORDINATOR', 'STUDENT'] },
   { label: 'Placements', to: '/app/placements', icon: Briefcase, roles: ['ADMIN', 'PLACEMENT', 'STUDENT'] },
   { label: 'Files', to: '/app/files', icon: FileText, roles: ALL_ROLES },
+  { label: 'Announcements', to: '/app/announcements', icon: Megaphone, roles: ALL_ROLES },
 ]
