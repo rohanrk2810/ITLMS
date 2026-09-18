@@ -84,7 +84,7 @@ public class Submission extends AuditableEntity {
     private Long evaluatedBy;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "submission_id")
+    @JoinColumn(name = "submission_id", nullable = false)
     @OrderBy("uploadedAt ASC")
     @Builder.Default
     private List<SubmissionFile> files = new ArrayList<>();
