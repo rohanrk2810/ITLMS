@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------
+# liveclass-service - LiveKit rooms, join tokens and live attendance
+# Owns database: itilms_liveclass (no other service connects to it)
+# ---------------------------------------------------------------------
+server:
+  port: 8091
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/itilms_liveclass
+    username: ${DB_USERNAME:itilms}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration
+
+itilms:
+  docs:
+    description: LiveKit rooms, join tokens and live attendance
+
+  livekit:
+    # The media server. Self-hosted, so class recordings and student video
+    # never leave the institute's infrastructure.
+    url: ${LIVEKIT_URL:http://localhost:7880}
+    ws-url: ${LIVEKIT_WS_URL:ws://localhost:7880}
+    api-key: ${LIVEKIT_API_KEY}
+    api-secret: ${LIVEKIT_API_SECRET}
+    # Join tokens are short-lived. A leaked token is then useful for
+    # minutes, not for the rest of the course.
+    token-ttl: 4h
+    webhook-api-key: ${LIVEKIT_API_KEY}
+
+  live-class:
+    # A student who was in the room for at least this share of the session
+    # is PRESENT; above the late threshold but below present is LATE.
+    # Percentages rather than fixed minutes, so a 1-hour and a 3-hour batch
+    # are judged on the same footing.
+    present-threshold-percent: ${LIVE_PRESENT_THRESHOLD:70}
+    late-threshold-percent: ${LIVE_LATE_THRESHOLD:40}
+    # How long before the scheduled start a student may enter. Early entry
+    # is allowed so people can sort out audio before the trainer arrives.
+    early-join-minutes: 15
+    # Rooms stay open this long after the last person leaves, so a trainer whose
+    # wifi dropped rejoins the same room rather than starting a new one.
+    departure-timeout-seconds: 300
+    # A room that closes within this many minutes of the scheduled end counts
+    # as the class finishing; earlier than that it is a dropped connection and
+    # the class stays open to rejoin.
+    finish-margin-minutes: 15
+    max-participants: ${LIVE_MAX_PARTICIPANTS:100}
+    recording-enabled: ${LIVE_RECORDING_ENABLED:false}
+    # Rooms stay reachable this long after the scheduled end, because classes
+    # overrun and cutting a lecture off mid-sentence helps nobody.
+    late-join-grace-minutes: 30
+    # If LiveKit never reports a room finishing (lost webhook, nobody opened
+    # it), the sweep settles attendance itself this long after the end.
+    settle-after-end-minutes: 45
+    # Rooms are created on LiveKit this far ahead of the start.
+    pre-provision-minutes: 30
+    sweep-interval-ms: 60000
+    # Session times are wall-clock times; this turns them into instants. Set
+    # explicitly so a container running in UTC does not shift every class.
+    zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}

@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: notification-service
+  config:
+    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        initial-interval: 2000
+        max-attempts: 20
+        max-interval: 10000

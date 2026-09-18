@@ -1,0 +1,57 @@
+package com.itilms.course.dto.request;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+/**
+ * Create or update a lesson (Doc S6.8).
+ *
+ * <p>Exactly one of {@code contentUrl}, {@code contentFileRef} or
+ * {@code textContent} must carry the material; the service rejects a lesson
+ * with none, so students never open an empty player.
+ */
+@Schema(description = "Learning material")
+public record LessonRequest(
+
+        @NotBlank(message = "Lesson title is required")
+        @Size(max = 160)
+        String title,
+
+        @Schema(example = "VIDEO", allowableValues = {"VIDEO", "PDF", "NOTE", "LINK", "TEXT"})
+        @NotBlank(message = "Lesson type is required")
+        String type,
+
+        @Schema(description = "Video source or external link")
+        @Size(max = 600)
+        String contentUrl,
+
+        @Schema(description = "file-service handle for uploaded material")
+        @Size(max = 64)
+        String contentFileRef,
+
+        @Schema(description = "Rich text written directly into the lesson")
+        String textContent,
+
+        @Min(value = 0, message = "Duration cannot be negative")
+        Integer durationMinutes,
+
+        @Min(value = 1, message = "Sequence starts at 1")
+        Integer sequenceNo,
+
+        @Schema(description = "Readable from the public catalog without enrolment")
+        Boolean preview,
+
+        @Schema(description = "Counts toward course completion. Default true.")
+        Boolean mandatory
+) {
+
+    public boolean previewOrDefault() {
+        return Boolean.TRUE.equals(preview);
+    }
+
+    public boolean mandatoryOrDefault() {
+        return mandatory == null || mandatory;
+    }
+}

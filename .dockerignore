@@ -1,0 +1,13 @@
+# The build context is the repository root, so the Maven reactor can see every
+# module. Keep it small: everything listed here is never sent to the daemon.
+**/target
+**/node_modules
+.git
+.github
+.idea
+.vscode
+docs
+storage
+*.pdf
+**/.env
+deploy/docker/.env

@@ -1,0 +1,51 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: discovery-server
+
+eureka:
+  instance:
+    hostname: ${EUREKA_HOSTNAME:localhost}
+    prefer-ip-address: false
+  client:
+    # The registry does not register with itself, and has no peer to fetch from
+    # in this single-node setup. See the "peer" profile below for HA.
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${EUREKA_HOSTNAME:localhost}:${server.port}/eureka/
+  server:
+    # Self-preservation stops Eureka from evicting every instance during a
+    # network blip. Disabled in dev so a stopped service disappears promptly
+    # instead of lingering as a phantom route for minutes.
+    enable-self-preservation: ${EUREKA_SELF_PRESERVATION:false}
+    eviction-interval-timer-in-ms: 15000
+    response-cache-update-interval-ms: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.netflix.eureka: WARN
+    com.netflix.discovery: WARN
+
+---
+# Production: turn self-preservation back on so a brief network partition does
+# not wipe the registry and take every route down with it.
+spring:
+  config:
+    activate:
+      on-profile: prod
+eureka:
+  server:
+    enable-self-preservation: true
+    eviction-interval-timer-in-ms: 60000

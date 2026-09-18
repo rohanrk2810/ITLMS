@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------------
+# placement-service - Companies, job openings and the interview pipeline
+# Owns database: itilms_placement (no other service connects to it)
+# ---------------------------------------------------------------------
+server:
+  port: 8088
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/itilms_placement
+    username: ${DB_USERNAME:itilms}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration
+
+itilms:
+  docs:
+    description: Companies, job openings and the interview pipeline

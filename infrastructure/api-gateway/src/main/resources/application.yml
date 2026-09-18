@@ -1,0 +1,303 @@
+server:
+  port: 8080
+  # The gateway sits behind Nginx in production; trust its forwarded headers so
+  # redirect URLs and the rate limiter see the real client, not the proxy.
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: api-gateway
+
+  config:
+    # Required, not optional: a gateway that silently started without its
+    # configuration would be a gateway with no JWT secret.
+    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        initial-interval: 2000
+        max-attempts: 20
+        max-interval: 10000
+
+    gateway:
+      discovery:
+        locator:
+          # Routes are declared explicitly below. Automatic discovery-based
+          # routes would expose every service under /SERVICE-NAME/**, including
+          # endpoints never meant to be public.
+          enabled: false
+
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 30s
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+
+      routes:
+        # ---------------------------------------------------------------
+        # Identity - login, tokens, user accounts
+        # Login and password reset are throttled: these are the endpoints a
+        # credential-stuffing script aims at (Doc S12).
+        # ---------------------------------------------------------------
+        - id: identity-auth
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@clientAddressKeyResolver}"
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+            - name: CircuitBreaker
+              args:
+                name: identityCircuitBreaker
+                fallbackUri: forward:/fallback/identity
+
+        - id: identity-users
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/users/**,/api/roles/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: identityCircuitBreaker
+                fallbackUri: forward:/fallback/identity
+
+        # ---------------------------------------------------------------
+        # A student's own attendance (Doc S11: GET /api/students/me/attendance)
+        #
+        # Declared before admission-service, and it must stay there. The first
+        # matching route wins, and admission's /api/students/** would otherwise
+        # swallow these paths: they belong to batch-service, which owns the
+        # register. Run deploy/scripts/check-gateway-routes.mjs after changing
+        # any route: it confirms every controller path reaches its own service.
+        # ---------------------------------------------------------------
+        - id: batch-student-attendance
+          uri: lb://batch-service
+          predicates:
+            - Path=/api/students/me/attendance,/api/students/me/attendance/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: batchCircuitBreaker
+                fallbackUri: forward:/fallback/batches
+
+        # ---------------------------------------------------------------
+        # Admission - leads, student and trainer profiles
+        # ---------------------------------------------------------------
+        - id: admission-service
+          uri: lb://admission-service
+          predicates:
+            - Path=/api/leads/**,/api/students/**,/api/trainers/**,/api/admissions/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: admissionCircuitBreaker
+                fallbackUri: forward:/fallback/admissions
+
+        # ---------------------------------------------------------------
+        # Course catalog and learning content
+        # ---------------------------------------------------------------
+        - id: course-service
+          uri: lb://course-service
+          predicates:
+            - Path=/api/courses/**,/api/modules/**,/api/lessons/**,/api/progress/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: courseCircuitBreaker
+                fallbackUri: forward:/fallback/courses
+
+        # ---------------------------------------------------------------
+        # Batches, timetable, attendance
+        # ---------------------------------------------------------------
+        - id: batch-service
+          uri: lb://batch-service
+          predicates:
+            - Path=/api/batches/**,/api/enrollments/**,/api/sessions/**,/api/timetable/**,/api/attendance/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: batchCircuitBreaker
+                fallbackUri: forward:/fallback/batches
+
+        # ---------------------------------------------------------------
+        # Assignments and tests
+        # ---------------------------------------------------------------
+        - id: assessment-service
+          uri: lb://assessment-service
+          predicates:
+            - Path=/api/assignments/**,/api/submissions/**,/api/quizzes/**,/api/quiz-attempts/**,/api/results/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: assessmentCircuitBreaker
+                fallbackUri: forward:/fallback/assessments
+
+        # ---------------------------------------------------------------
+        # Fees and payments
+        # ---------------------------------------------------------------
+        - id: finance-service
+          uri: lb://finance-service
+          predicates:
+            - Path=/api/fees/**,/api/fee-plans/**,/api/installments/**,/api/payments/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: financeCircuitBreaker
+                fallbackUri: forward:/fallback/fees
+
+        # ---------------------------------------------------------------
+        # Certificates (public verification included)
+        # ---------------------------------------------------------------
+        - id: certificate-service
+          uri: lb://certificate-service
+          predicates:
+            - Path=/api/certificates/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: certificateCircuitBreaker
+                fallbackUri: forward:/fallback/certificates
+
+        # ---------------------------------------------------------------
+        # Placements
+        # ---------------------------------------------------------------
+        - id: placement-service
+          uri: lb://placement-service
+          predicates:
+            - Path=/api/companies/**,/api/jobs/**,/api/applications/**,/api/placements/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: placementCircuitBreaker
+                fallbackUri: forward:/fallback/placements
+
+        # ---------------------------------------------------------------
+        # Notifications
+        # ---------------------------------------------------------------
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**,/api/announcements/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: notificationCircuitBreaker
+                fallbackUri: forward:/fallback/notifications
+
+        # ---------------------------------------------------------------
+        # Files. Uploads are large and slow, so this route gets a longer
+        # response timeout than the 30s default above.
+        # ---------------------------------------------------------------
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/api/files/**
+          metadata:
+            response-timeout: 180000
+            connect-timeout: 5000
+
+        # ---------------------------------------------------------------
+        # Live classes. The webhook path is anonymous (LiveKit signs its own
+        # payloads) and must not be rate limited - a busy room emits a burst
+        # of participant events and dropping them would corrupt attendance.
+        # ---------------------------------------------------------------
+        - id: liveclass-service
+          uri: lb://liveclass-service
+          predicates:
+            - Path=/api/liveclass/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: liveclassCircuitBreaker
+                fallbackUri: forward:/fallback/live-classes
+
+        # ---------------------------------------------------------------
+        # Dashboards, reports, audit trail
+        # Report generation is expensive, so it is limited per user rather
+        # than per address.
+        # ---------------------------------------------------------------
+        - id: reporting-service
+          uri: lb://reporting-service
+          predicates:
+            - Path=/api/dashboard/**,/api/reports/**,/api/audit-logs/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userKeyResolver}"
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 30
+            - name: CircuitBreaker
+              args:
+                name: reportingCircuitBreaker
+                fallbackUri: forward:/fallback/reports
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 5
+        slowCallDurationThreshold: 10s
+        slowCallRateThreshold: 60
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 30s
+
+# One Swagger page listing every service, so a reviewer does not have to know
+# the twelve port numbers (Doc S23, criterion 8).
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - { name: 1. Identity,      url: /api/auth/v3/api-docs }
+      - { name: 2. Admission,     url: /api/students/v3/api-docs }
+      - { name: 3. Course,        url: /api/courses/v3/api-docs }
+      - { name: 4. Batch,         url: /api/batches/v3/api-docs }
+      - { name: 5. Assessment,    url: /api/quizzes/v3/api-docs }
+      - { name: 6. Finance,       url: /api/fees/v3/api-docs }
+      - { name: 7. Certificate,   url: /api/certificates/v3/api-docs }
+      - { name: 8. Placement,     url: /api/jobs/v3/api-docs }
+      - { name: 9. Notification,  url: /api/notifications/v3/api-docs }
+      - { name: 10. File,         url: /api/files/v3/api-docs }
+      - { name: 11. Live Class,   url: /api/liveclass/v3/api-docs }
+      - { name: 12. Reporting,    url: /api/reports/v3/api-docs }
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}

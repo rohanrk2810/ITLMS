@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------
+# finance-service - Fee plans, installments, payments and receipts
+# Owns database: itilms_finance (no other service connects to it)
+# ---------------------------------------------------------------------
+server:
+  port: 8086
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/itilms_finance
+    username: ${DB_USERNAME:itilms}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration
+
+itilms:
+  docs:
+    description: Fee plans, installments, payments and receipts
+
+  finance:
+    currency: ${CURRENCY:INR}
+    currency-symbol: ${CURRENCY_SYMBOL:Rs.}
+    # Students are reminded this many days before an installment is due,
+    # then again once it is overdue.
+    due-reminder-days: [7, 3, 1]
+    overdue-scan-cron: ${OVERDUE_CRON:0 30 6 * * *}
+    receipt-prefix: RCPT
