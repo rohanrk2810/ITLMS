@@ -46,7 +46,7 @@ This is a departure from the source document, which specifies a single applicati
 | **assessment** | Assignments, submissions, MCQ tests, attempts, results | Yes |
 | **finance** | Fee plans, installments, payments, receipts, overdue reminders | Yes |
 | **certificate** | Completion checks, issue, PDF, public verification | Yes |
-| placement | Companies, jobs, applications, interview stages | Pending |
+| **placement** | Companies, jobs, eligibility, applications, interview pipeline | Yes |
 | notification | In-app and email delivery, announcements | Pending |
 | file | Uploads, MIME and size rules, controlled download | Pending |
 | reporting | Dashboards, exports, and the audit log store | Pending |
@@ -80,6 +80,7 @@ Synchronous calls, over Feign, are kept few — they are the ones where the answ
 | liveclass | batch | The session's details, and whether a student is actually enrolled |
 | assessment | batch | Whether a student is in the batch a test is set for, and whether a trainer teaches it |
 | finance | admission | The student's name and code when a fee plan is raised by hand |
+| placement | batch, certificate, assessment | Whether a student meets a job's eligibility rules, checked when they apply |
 | certificate | course, assessment, batch, finance, admission | Each condition of the completion rule, from the service that owns it, at the moment of issue |
 
 ## What travels over Kafka
