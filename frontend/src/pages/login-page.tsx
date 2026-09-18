@@ -18,10 +18,11 @@ export function LoginPage() {
 
   const mutation = useMutation({
     mutationFn: () => login(identifier, password),
-    onSuccess: (auth) => {
+    onSuccess: () => {
+      // A temporary password sends every route to /app/change-password anyway
+      // (see ProtectedRoute), so there is nothing special to do with that case here.
       const state = location.state as { from?: { pathname?: string } } | null
-      const from = state?.from?.pathname ?? '/app'
-      void navigate(auth.mustChangePassword ? '/app' : from, { replace: true })
+      void navigate(state?.from?.pathname ?? '/app', { replace: true })
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not sign in. Check your details and try again.')),
   })

@@ -16,6 +16,9 @@ import { Label } from '@/components/ui/label'
 export function RegisterPage() {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '' })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  // Self-registration is off by default (itilms.security.self-registration-enabled).
+  // Set once the backend actually refuses, rather than guessed in advance.
+  const [closed, setClosed] = useState(false)
   const navigate = useNavigate()
 
   const mutation = useMutation({
@@ -25,8 +28,14 @@ export function RegisterPage() {
       void navigate('/app', { replace: true })
     },
     onError: (error) => {
-      if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.data.fieldErrors) {
-        setFieldErrors(error.response.data.fieldErrors)
+      if (axios.isAxiosError<ApiErrorResponse>(error)) {
+        if (error.response?.status === 403) {
+          setClosed(true)
+          return
+        }
+        if (error.response?.data.fieldErrors) {
+          setFieldErrors(error.response.data.fieldErrors)
+        }
       }
       toast.error(apiErrorMessage(error, 'Could not create the account.'))
     },
@@ -40,6 +49,24 @@ export function RegisterPage() {
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     mutation.mutate()
+  }
+
+  if (closed) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Online registration is not open</CardTitle>
+          <CardDescription>
+            Please contact the institute to enrol. Already have an account from admission?
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild className="w-full">
+            <Link to="/login">Sign in instead</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
