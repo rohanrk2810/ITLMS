@@ -1,0 +1,176 @@
+package com.itilms.assessment.service.impl;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
+import com.itilms.assessment.dto.request.SubmitAttemptRequest;
+import com.itilms.assessment.entity.AttemptStatus;
+import com.itilms.assessment.entity.QuestionType;
+import com.itilms.assessment.entity.Quiz;
+import com.itilms.assessment.entity.QuizAttempt;
+import com.itilms.assessment.entity.QuizOption;
+import com.itilms.assessment.entity.QuizQuestion;
+import com.itilms.assessment.entity.QuizStatus;
+import com.itilms.assessment.repository.QuizAnswerRepository;
+import com.itilms.assessment.repository.QuizAttemptRepository;
+import com.itilms.assessment.repository.QuizQuestionRepository;
+import com.itilms.assessment.repository.QuizRepository;
+import com.itilms.assessment.service.AssessmentAccess;
+import com.itilms.assessment.service.AttemptScorer;
+import com.itilms.common.exception.BusinessRuleException;
+import com.itilms.common.exception.ResourceNotFoundException;
+import com.itilms.common.security.AppPrincipal;
+
+/**
+ * The ways a student could try to get a mark they did not earn, and the ways
+ * the clock ends a sitting.
+ */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class AttemptServiceImplTest {
+
+    private static final long STUDENT = 3L;
+
+    @Mock private QuizRepository quizRepository;
+    @Mock private QuizQuestionRepository questionRepository;
+    @Mock private QuizAttemptRepository attemptRepository;
+    @Mock private QuizAnswerRepository answerRepository;
+    @Mock private AssessmentAccess access;
+    @Mock private AttemptScorer scorer;
+
+    private AttemptServiceImpl service;
+    private Quiz quiz;
+    private QuizQuestion q1;
+    private QuizQuestion q2;
+
+    @BeforeEach
+    void setUp() {
+        service = new AttemptServiceImpl(quizRepository, questionRepository, attemptRepository,
+                answerRepository, access, scorer);
+
+        quiz = Quiz.builder().id(1L).courseId(1L).title("t").durationMinutes(30).totalMarks(2)
+                .attemptsAllowed(1).status(QuizStatus.PUBLISHED).build();
+        q1 = question(10L, 100L, 101L);
+        q2 = question(20L, 200L, 201L);
+
+        when(access.requireStudent()).thenReturn(new AppPrincipal(30L, "s@x", "S", "STUDENT", STUDENT));
+        when(quizRepository.findById(1L)).thenReturn(Optional.of(quiz));
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, q2));
+        when(answerRepository.findByAttemptId(any())).thenReturn(List.of());
+    }
+
+    private static QuizQuestion question(long id, long rightOption, long wrongOption) {
+        QuizQuestion q = QuizQuestion.builder().id(id).quizId(1L).type(QuestionType.SINGLE_CHOICE)
+                .marks(1).sequenceNo((int) id).questionText("q" + id).build();
+        q.addOption(QuizOption.builder().id(rightOption).optionText("right").correct(true).sequenceNo(1).build());
+        q.addOption(QuizOption.builder().id(wrongOption).optionText("wrong").correct(false).sequenceNo(2).build());
+        return q;
+    }
+
+    private QuizAttempt attempt(long studentId, Instant expiresAt) {
+        QuizAttempt a = QuizAttempt.builder().id(9L).quizId(1L).studentId(studentId).attemptNo(1)
+                .startedAt(expiresAt.minusSeconds(1800)).expiresAt(expiresAt)
+                .status(AttemptStatus.IN_PROGRESS).build();
+        when(attemptRepository.findById(9L)).thenReturn(Optional.of(a));
+        return a;
+    }
+
+    private static SubmitAttemptRequest answers(long questionId, Long... options) {
+        return new SubmitAttemptRequest(List.of(new SubmitAttemptRequest.Answer(questionId, Set.of(options))));
+    }
+
+    @Test
+    @DisplayName("An option taken from another question is refused, not scored")
+    void foreignOptionRefused() {
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        // The right answer to question 20, submitted against question 10.
+        assertThatThrownBy(() -> service.saveAnswers(9L, answers(10L, 200L)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("does not belong");
+        verify(answerRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("A question id from a different test is refused")
+    void foreignQuestionRefused() {
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        assertThatThrownBy(() -> service.saveAnswers(9L, answers(999L, 100L)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("not part of this test");
+    }
+
+    @Test
+    @DisplayName("Two answers to a single-choice question are refused")
+    void hedgingRefused() {
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        assertThatThrownBy(() -> service.saveAnswers(9L, answers(10L, 100L, 101L)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("only one answer");
+    }
+
+    @Test
+    @DisplayName("Another student's attempt looks like it does not exist")
+    void othersAttemptHidden() {
+        attempt(99L, Instant.now().plusSeconds(600));
+
+        assertThatThrownBy(() -> service.saveAnswers(9L, answers(10L, 100L)))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("A submission well after the deadline discards the late answers")
+    void lateSubmissionDiscarded() {
+        QuizAttempt late = attempt(STUDENT, Instant.now().minusSeconds(600));
+        when(scorer.finish(any(), any(), eq(true))).thenAnswer(inv -> {
+            QuizAttempt a = inv.getArgument(0);
+            a.complete(0, 2, 40, Instant.now(), true);
+            return a;
+        });
+
+        var result = service.submit(9L, answers(10L, 100L));
+
+        verify(answerRepository, never()).saveAll(anyList());
+        verify(scorer).finish(late, quiz, true);
+        assertThat(result.status()).isEqualTo("EXPIRED");
+    }
+
+    @Test
+    @DisplayName("A submission within the grace minute is accepted and scored normally")
+    void submissionWithinGrace() {
+        QuizAttempt justLate = attempt(STUDENT, Instant.now().minusSeconds(20));
+        when(scorer.finish(any(), any(), eq(false))).thenAnswer(inv -> {
+            QuizAttempt a = inv.getArgument(0);
+            a.complete(1, 2, 40, Instant.now(), false);
+            return a;
+        });
+
+        var result = service.submit(9L, answers(10L, 100L));
+
+        verify(answerRepository).saveAll(anyList());
+        verify(scorer).finish(justLate, quiz, false);
+        assertThat(result.status()).isEqualTo("SUBMITTED");
+    }
+}
