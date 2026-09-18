@@ -466,3 +466,15 @@ services:
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8091/actuator/health || exit 1"]
+
+  reporting-service:
+    <<: *spring-service
+    build:
+      context: ../../services/reporting-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/reporting-service:dev
+    environment:
+      <<: *service-env
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8092/actuator/health || exit 1"]
