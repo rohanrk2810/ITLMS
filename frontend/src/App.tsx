@@ -1,6 +1,6 @@
 import { type ReactNode, Suspense, lazy, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import type { Role } from '@/api/types'
 import { bootstrapSession } from '@/api/auth'
@@ -8,6 +8,7 @@ import { NAV_ITEMS } from '@/components/nav-items'
 import { Toaster } from '@/components/ui/sonner'
 import { AppLayout } from '@/layouts/app-layout'
 import { AuthLayout } from '@/layouts/auth-layout'
+import { mapActionUrl } from '@/lib/action-url'
 import { PlaceholderPage } from '@/pages/placeholder-page'
 import { ProtectedRoute } from '@/routes/protected-route'
 import { useAuthStore } from '@/stores/auth-store'
@@ -30,17 +31,21 @@ const ChangePasswordPage = lazy(() =>
 const ForbiddenPage = lazy(() => import('@/pages/forbidden-page').then((m) => ({ default: m.ForbiddenPage })))
 const NotFoundPage = lazy(() => import('@/pages/not-found-page').then((m) => ({ default: m.NotFoundPage })))
 
-const MyCoursesPage = lazy(() => import('@/pages/courses/my-courses-page').then((m) => ({ default: m.MyCoursesPage })))
-const CourseDetailPage = lazy(() =>
-  import('@/pages/courses/course-detail-page').then((m) => ({ default: m.CourseDetailPage })),
+const CoursesIndexPage = lazy(() =>
+  import('@/pages/courses/courses-index-page').then((m) => ({ default: m.CoursesIndexPage })),
+)
+const CourseDetailIndexPage = lazy(() =>
+  import('@/pages/courses/course-detail-index-page').then((m) => ({ default: m.CourseDetailIndexPage })),
 )
 const LessonPlayerPage = lazy(() =>
   import('@/pages/courses/lesson-player-page').then((m) => ({ default: m.LessonPlayerPage })),
 )
 
-const TestsPage = lazy(() => import('@/pages/assessments/tests-page').then((m) => ({ default: m.TestsPage })))
-const QuizAttemptPage = lazy(() =>
-  import('@/pages/assessments/quiz-attempt-page').then((m) => ({ default: m.QuizAttemptPage })),
+const AssessmentsIndexPage = lazy(() =>
+  import('@/pages/assessments/assessments-index-page').then((m) => ({ default: m.AssessmentsIndexPage })),
+)
+const QuizIndexPage = lazy(() =>
+  import('@/pages/assessments/quiz-index-page').then((m) => ({ default: m.QuizIndexPage })),
 )
 
 const LiveClassesPage = lazy(() =>
@@ -56,6 +61,24 @@ const CertificatesPage = lazy(() =>
   import('@/pages/certificates/certificates-page').then((m) => ({ default: m.CertificatesPage })),
 )
 
+const LeadsPage = lazy(() => import('@/pages/admissions/leads-page').then((m) => ({ default: m.LeadsPage })))
+const LeadDetailPage = lazy(() =>
+  import('@/pages/admissions/lead-detail-page').then((m) => ({ default: m.LeadDetailPage })),
+)
+
+const StudentsPage = lazy(() => import('@/pages/students/students-page').then((m) => ({ default: m.StudentsPage })))
+const StudentDetailPage = lazy(() =>
+  import('@/pages/students/student-detail-page').then((m) => ({ default: m.StudentDetailPage })),
+)
+
+const BatchesPage = lazy(() => import('@/pages/batches/batches-page').then((m) => ({ default: m.BatchesPage })))
+const BatchDetailPage = lazy(() =>
+  import('@/pages/batches/batch-detail-page').then((m) => ({ default: m.BatchDetailPage })),
+)
+const AttendanceMarkPage = lazy(() =>
+  import('@/pages/batches/attendance-mark-page').then((m) => ({ default: m.AttendanceMarkPage })),
+)
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -69,9 +92,21 @@ const queryClient = new QueryClient({
 const ACADEMIC: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT']
 const FINANCE_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'FINANCE', 'STUDENT']
 const CERTIFICATE_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'STUDENT']
+const ADMISSION_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
+const STUDENT_RECORD_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
+const BATCH_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 
 // Nav items with a real page below - excluded from the generic placeholder loop.
-const BUILT_PATHS = new Set(['/app/courses', '/app/live-classes', '/app/assessments', '/app/finance', '/app/certificates'])
+const BUILT_PATHS = new Set([
+  '/app/courses',
+  '/app/live-classes',
+  '/app/assessments',
+  '/app/finance',
+  '/app/certificates',
+  '/app/admissions',
+  '/app/students',
+  '/app/batches',
+])
 
 function PageFallback() {
   return <div className="p-6 text-sm text-muted-foreground">Loading...</div>
@@ -81,6 +116,18 @@ function RootRedirect() {
   const status = useAuthStore((state) => state.status)
   if (status === 'checking') return null
   return <Navigate to={status === 'authenticated' ? '/app' : '/login'} replace />
+}
+
+/**
+ * An email or notification link is the frontend origin plus a backend path
+ * (`/jobs/40`, `/student/fees`, ...) - it never goes through the bell, which
+ * is the only place `mapActionUrl` was used before. Anything unmatched is a
+ * genuine 404, not a path this app is ever expected to answer for.
+ */
+function CatchAll() {
+  const location = useLocation()
+  const mapped = mapActionUrl(location.pathname)
+  return mapped ? <Navigate to={mapped} replace /> : <NotFoundPage />
 }
 
 /** Tries a stored refresh token once, before the router renders anything that needs to know who's signed in. */
@@ -113,16 +160,19 @@ export default function App() {
                   <Route path="/app/change-password" element={<ChangePasswordPage />} />
                   <Route path="/app/forbidden" element={<ForbiddenPage />} />
 
+                  {/* Courses, tests and live classes each branch by role at the page
+                      level - a student gets their own view, everyone else the
+                      authoring/management one - so the route stays a single path. */}
                   <Route element={<ProtectedRoute roles={ACADEMIC} />}>
-                    <Route path="/app/courses" element={<MyCoursesPage />} />
-                    <Route path="/app/courses/:courseId" element={<CourseDetailPage />} />
+                    <Route path="/app/courses" element={<CoursesIndexPage />} />
+                    <Route path="/app/courses/:courseId" element={<CourseDetailIndexPage />} />
                     <Route path="/app/courses/:courseId/lessons/:lessonId" element={<LessonPlayerPage />} />
 
                     <Route path="/app/live-classes" element={<LiveClassesPage />} />
                     <Route path="/app/live-classes/:sessionId" element={<LiveClassRoomPage />} />
 
-                    <Route path="/app/assessments" element={<TestsPage />} />
-                    <Route path="/app/assessments/tests/:quizId" element={<QuizAttemptPage />} />
+                    <Route path="/app/assessments" element={<AssessmentsIndexPage />} />
+                    <Route path="/app/assessments/tests/:quizId" element={<QuizIndexPage />} />
                     <Route
                       path="/app/assessments/assignments/:assignmentId"
                       element={<PlaceholderPage title="Assignment" />}
@@ -137,6 +187,25 @@ export default function App() {
                     <Route path="/app/certificates" element={<CertificatesPage />} />
                   </Route>
 
+                  <Route element={<ProtectedRoute roles={ADMISSION_ROLES} />}>
+                    <Route path="/app/admissions" element={<LeadsPage />} />
+                    <Route path="/app/admissions/:leadId" element={<LeadDetailPage />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute roles={STUDENT_RECORD_ROLES} />}>
+                    <Route path="/app/students" element={<StudentsPage />} />
+                    <Route path="/app/students/:studentId" element={<StudentDetailPage />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute roles={BATCH_ROLES} />}>
+                    <Route path="/app/batches" element={<BatchesPage />} />
+                    <Route path="/app/batches/:batchId" element={<BatchDetailPage />} />
+                    <Route
+                      path="/app/batches/:batchId/sessions/:sessionId/attendance"
+                      element={<AttendanceMarkPage />}
+                    />
+                  </Route>
+
                   {NAV_ITEMS.filter((item) => item.to !== '/app' && !BUILT_PATHS.has(item.to)).map((item) => (
                     <Route key={item.to} element={<ProtectedRoute roles={item.roles} />}>
                       <Route path={item.to} element={<PlaceholderPage title={item.label} />} />
@@ -146,7 +215,7 @@ export default function App() {
                 </Route>
               </Route>
 
-              <Route path="*" element={<NotFoundPage />} />
+              <Route path="*" element={<CatchAll />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

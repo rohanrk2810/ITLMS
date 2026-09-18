@@ -26,12 +26,16 @@ const RULES: Array<{ test: RegExp; to: (match: RegExpMatchArray) => string }> = 
   { test: /^\/announcements\/?$/, to: () => '/app/announcements' },
 ]
 
-/** Best-effort: an unrecognised shape lands on the dashboard rather than a raw 404 on a dead prefix. */
-export function mapActionUrl(url: string | null | undefined): string {
-  if (!url) return '/app'
+/**
+ * Null means "not one of the shapes above" - distinct from a match that
+ * happens to point at `/app` itself, so a caller can fall through to a 404
+ * instead of silently landing on the dashboard for an unrelated bad path.
+ */
+export function mapActionUrl(url: string | null | undefined): string | null {
+  if (!url) return null
   for (const rule of RULES) {
     const match = url.match(rule.test)
     if (match) return rule.to(match)
   }
-  return '/app'
+  return null
 }

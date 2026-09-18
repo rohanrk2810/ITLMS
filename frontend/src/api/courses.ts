@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { PageResponse } from './types'
 
 /** Doc S7.2: how far the signed-in student has got in one course. */
 export interface ProgressResponse {
@@ -108,4 +109,91 @@ export async function recordLessonProgress(
 ): Promise<ProgressResponse> {
   const { data } = await apiClient.post<ProgressResponse>(`/api/progress/lessons/${lessonId}`, body)
   return data
+}
+
+// -----------------------------------------------------------------
+// Authoring (Doc S6.5, S6.8) - staff creates a course, staff and
+// trainers build its modules and lessons.
+// -----------------------------------------------------------------
+
+export interface CourseInput {
+  title: string
+  code: string
+  summary?: string
+  description?: string
+  learningOutcomes?: string
+  prerequisites?: string
+  technologyStack?: string
+  durationHours?: number
+  level?: string
+  fee?: number
+  thumbnailRef?: string
+}
+
+export interface ModuleInput {
+  title: string
+  description?: string
+  sequenceNo?: number
+}
+
+export interface LessonInput {
+  title: string
+  type: LessonResponse['type']
+  contentUrl?: string
+  contentFileRef?: string
+  textContent?: string
+  durationMinutes?: number
+  sequenceNo?: number
+  preview?: boolean
+  mandatory?: boolean
+}
+
+/** The staff view across every status, not just published courses. */
+export async function searchCourses(params: {
+  status?: string
+  level?: string
+  query?: string
+  page?: number
+}): Promise<PageResponse<CourseSummaryResponse>> {
+  const { data } = await apiClient.get<PageResponse<CourseSummaryResponse>>('/api/courses', { params })
+  return data
+}
+
+export async function createCourse(input: CourseInput): Promise<CourseResponse> {
+  const { data } = await apiClient.post<CourseResponse>('/api/courses', input)
+  return data
+}
+
+export async function updateCourse(courseId: number | string, input: CourseInput): Promise<CourseResponse> {
+  const { data } = await apiClient.put<CourseResponse>(`/api/courses/${courseId}`, input)
+  return data
+}
+
+/** Refused unless the summary, description and at least one mandatory lesson are in place (Doc S14). */
+export async function publishCourse(courseId: number | string): Promise<CourseResponse> {
+  const { data } = await apiClient.post<CourseResponse>(`/api/courses/${courseId}/publish`)
+  return data
+}
+
+export async function archiveCourse(courseId: number | string): Promise<CourseResponse> {
+  const { data } = await apiClient.post<CourseResponse>(`/api/courses/${courseId}/archive`)
+  return data
+}
+
+export async function addModule(courseId: number | string, input: ModuleInput): Promise<ModuleResponse> {
+  const { data } = await apiClient.post<ModuleResponse>(`/api/courses/${courseId}/modules`, input)
+  return data
+}
+
+export async function deleteModule(moduleId: number | string): Promise<void> {
+  await apiClient.delete(`/api/modules/${moduleId}`)
+}
+
+export async function addLesson(moduleId: number | string, input: LessonInput): Promise<LessonResponse> {
+  const { data } = await apiClient.post<LessonResponse>(`/api/modules/${moduleId}/lessons`, input)
+  return data
+}
+
+export async function deleteLesson(lessonId: number | string): Promise<void> {
+  await apiClient.delete(`/api/lessons/${lessonId}`)
 }
