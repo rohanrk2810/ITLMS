@@ -311,16 +311,19 @@ public class AuthServiceImpl implements AuthService {
                 .requestedIp(metadata.ipAddress())
                 .build());
 
-        // The raw token travels only in the email body. It is never logged and
-        // never returned in the HTTP response.
+        // The raw token travels only in the email body. It is never logged,
+        // never returned in the HTTP response, and kept out of the action URL:
+        // anything in the URL could end up stored as an in-app notification,
+        // and a stored raw token undoes the point of keeping only its hash here.
+        // notification-service builds the link from the metadata, in the email only.
         events.publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED,
                 new NotificationRequestedEvent(
                         com.itilms.common.event.DomainEvent.newId(), Instant.now(),
                         java.util.List.of(user.getId()), null, null,
                         "PASSWORD_RESET", "Reset your password",
                         "Use the link below to choose a new password. It expires in 2 hours.",
-                        "/reset-password?token=" + rawToken, true,
-                        java.util.Map.of("resetToken", rawToken)));
+                        "/reset-password", true,
+                        java.util.Map.of("resetToken", rawToken, "email", user.getEmail())));
 
         log.info("Password reset token issued for user {}", user.getId());
     }
