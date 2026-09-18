@@ -100,6 +100,7 @@ public class ResultServiceImpl implements ResultService {
             }
         }
         int testsPassed = 0;
+        List<Integer> counted = new ArrayList<>();
         for (Quiz quiz : tests) {
             // A student asking about themselves must not learn whether they
             // passed a test whose results the trainer is still holding back.
@@ -108,6 +109,7 @@ public class ResultServiceImpl implements ResultService {
                 continue;
             }
             Integer percentage = best.get(quiz.getId());
+            counted.add(percentage == null ? 0 : percentage);
             if (percentage != null && quiz.passed(percentage)) {
                 testsPassed++;
             } else {
@@ -132,8 +134,13 @@ public class ResultServiceImpl implements ResultService {
             }
         }
 
+        // A test not yet sat counts as 0: an average over only the tests someone
+        // chose to take would reward skipping the hard ones.
+        Integer average = counted.isEmpty() ? null
+                : (int) (counted.stream().mapToInt(Integer::intValue).sum() / counted.size());
+
         return new CompletionResponse(studentId, courseId, batchId,
-                tests.size(), testsPassed, work.size(), evaluated,
+                tests.size(), testsPassed, average, work.size(), evaluated,
                 outstanding.isEmpty(), outstanding);
     }
 

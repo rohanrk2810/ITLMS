@@ -153,7 +153,31 @@ spring:
                 fallbackUri: forward:/fallback/fees
 
         # ---------------------------------------------------------------
-        # Certificates (public verification included)
+        # Certificate verification - public, and rate-limited
+        #
+        # Anyone may verify a certificate, which also makes this the endpoint a
+        # script would hammer to guess verification codes. Throttled per client
+        # address well below anything a person at a keyboard would notice.
+        # Declared before certificate-service so it matches first.
+        # ---------------------------------------------------------------
+        - id: certificate-verify
+          uri: lb://certificate-service
+          predicates:
+            - Path=/api/certificates/verify/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@clientAddressKeyResolver}"
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+            - name: CircuitBreaker
+              args:
+                name: certificateCircuitBreaker
+                fallbackUri: forward:/fallback/certificates
+
+        # ---------------------------------------------------------------
+        # Certificates
         # ---------------------------------------------------------------
         - id: certificate-service
           uri: lb://certificate-service
