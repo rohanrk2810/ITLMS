@@ -19,24 +19,33 @@ through the API gateway (`VITE_API_BASE_URL`, default `http://localhost:8080`).
 - **API client**: `src/api/client.ts` (axios, attaches the bearer token,
   retries once through a shared refresh on a 401), `src/api/types.ts` mirrors
   the backend's `ErrorResponse`/`PageResponse` shapes.
-- **Notification bell**: `src/components/notification-bell.tsx`, polling
-  `/api/notifications/unread-count`, loading the list on open, and opening a
+- **Notification bell and email links**: `src/components/notification-bell.tsx`
+  polls `/api/notifications/unread-count`, loads the list on open, and opens a
   notification's `actionUrl` through `src/lib/action-url.ts` (backend links
-  use `/student/...`, `/live/...` etc.; this is the one place that maps them
-  onto this app's `/app/...` routes).
+  use `/student/...`, `/live/...` etc.). An email link lands on the same
+  backend path with no `/app` prefix at all, so `App.tsx`'s catch-all route
+  runs it through the same mapper before falling back to the 404 page -
+  `mapActionUrl` is the one place either caller needs.
 - **Student pages**: my courses + a lesson player (video/PDF/notes/link,
   progress tracked as it plays), tests (timed attempts, autosave, results),
   live class join (LiveKit's own `VideoConference` component), fees
   (installments, payment history, a printable receipt), certificates (earned
   + an eligibility checklist with a claim button for courses still in
   progress).
-- Every page is lazy-loaded (`React.lazy` + `Suspense` in `App.tsx`), so a
-  role that never opens a module - Finance for a student, say - never
-  fetches its code, and the LiveKit room (the one genuinely large dependency)
-  loads only when someone actually joins a class.
-- Every other sidebar module (admissions, students, batches, placements,
-  files, announcements) is still a placeholder page - routing and role
-  gating work end-to-end, the pages themselves are next.
+- **Staff pages**: admissions (leads, follow-ups, admit-to-student), students
+  (search, profile, standing), batches (roster, timetable, scheduling a
+  session), attendance marking (a register per session, corrections require a
+  reason per Doc S14), and trainer/staff authoring for courses (modules,
+  lessons, PDF upload through file-service, publish/archive) and tests
+  (questions with an answer key, publish/close, a results sheet). Courses,
+  tests and live classes each render a different page for the same route
+  depending on role - `*-index-page.tsx` in each folder is the switch - so a
+  student's and a trainer's experience never need two different URLs.
+- Every route-level page is lazy-loaded (`React.lazy` + `Suspense` in
+  `App.tsx`), so a role that never opens a module never fetches its code, and
+  the LiveKit room (the one genuinely large dependency) loads only when
+  someone actually joins a class.
+- Remaining placeholders: placements, files, announcements.
 
 ## Commands
 
