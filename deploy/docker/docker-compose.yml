@@ -80,6 +80,7 @@ networks:
 volumes:
   postgres-data:
   kafka-data:
+  file-storage:
 
 services:
 
@@ -424,6 +425,29 @@ services:
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8089/actuator/health || exit 1"]
+
+  file-service:
+    <<: *spring-service
+    build:
+      context: ../../services/file-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/file-service:dev
+    environment:
+      <<: *service-env
+      # "local" writes to the volume below - fine for this dev stack. MinIO
+      # (the production choice, Doc S17) is wired in code but not part of
+      # this compose file; set these to switch a deployment over to it.
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      FILE_STORAGE_PATH: /app/storage
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
+      MINIO_BUCKET: ${MINIO_BUCKET:-itilms}
+    volumes:
+      - file-storage:/app/storage
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8090/actuator/health || exit 1"]
 
   liveclass-service:
     <<: *spring-service

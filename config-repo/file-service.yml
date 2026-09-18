@@ -13,6 +13,14 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      # The shared 50MB/60MB default (config-repo/application.yml) is below
+      # LESSON_RESOURCE's own 200MB ceiling below; without this override
+      # Spring would reject a large lesson video before the category check
+      # ever ran. UploadValidator still enforces the per-category limit.
+      max-file-size: 210MB
+      max-request-size: 220MB
 
 itilms:
   docs:

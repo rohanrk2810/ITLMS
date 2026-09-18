@@ -7,8 +7,10 @@ target/
 .env
 *.env.local
 
-# Local file storage written by file-service in development
-storage/
+# Local file storage written by file-service in development (its uploaded
+# bytes, not the com.itilms.file.storage source package - the leading path
+# anchors this to the one directory, so it does not also hide source code).
+services/file-service/storage/
 
 # Frontend
 node_modules/
