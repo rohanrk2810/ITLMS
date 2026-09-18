@@ -22,6 +22,7 @@ const DOCKER_DIR = process.argv[2] ??
   join(fileURLToPath(new URL('.', import.meta.url)), '..', 'docker');
 const GW = 'http://localhost:8080';
 const LIVEKIT = 'http://localhost:7880';
+const MAILPIT = 'http://localhost:8025';
 const env = Object.fromEntries(readFileSync(`${DOCKER_DIR}/.env`, 'utf8')
   .split(/\r?\n/).filter(l => l && !l.startsWith('#') && l.includes('='))
   .map(l => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
@@ -142,28 +143,40 @@ try {
   const s3 = await must('POST', '/api/students', admin, person('Outsider', 4));
   check('Trainer and students created (identity accounts made through Feign)', !!(trainer.userId && s1.userId && s2.userId && s3.userId));
 
-  // New accounts get a generated temporary password that reaches the person
-  // through notification-service, which is not built yet. Until it is, the only
-  // way for this test to sign in as them is to set a password it knows, so it
-  // copies the administrator password hash onto the new accounts. Replace this
-  // with reading the message out of Mailpit once notifications are delivered.
-  const hash = psql(`select password_hash from users where email='${env.BOOTSTRAP_ADMIN_EMAIL}'`);
-  psql(`update users set password_hash='${hash}' where id in (${trainer.userId},${s1.userId},${s2.userId},${s3.userId})`);
+  // New accounts get a generated temporary password, emailed by notification-service
+  // (Mailpit catches it). Read it from there, the way the person would.
+  const tempPassword = email => until(`temporary-password email for ${email}`, async () => {
+    const found = await (await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent('to:' + email)}`)).json();
+    for (const m of found.messages ?? []) {
+      const full = await (await fetch(`${MAILPIT}/api/v1/message/${m.ID}`)).json();
+      const hit = /Temporary password:\s*(\S+)/.exec(full.Text ?? '');
+      if (hit) return hit[1];
+    }
+    return null;
+  }, 90000);
+  const passwords = await Promise.all([trainer, s1, s2, s3].map(p => tempPassword(p.email)));
+  check('Temporary passwords delivered by email (read from Mailpit)', passwords.every(Boolean));
 
   // Profile ids reach identity-service by Kafka (ProfileLinkedEvent); tokens carry them.
   await until('profile ids to be linked in identity-service', async () =>
     psql(`select count(*) from users where id in (${trainer.userId},${s1.userId},${s2.userId},${s3.userId}) and profile_id is not null`) === '4', 60000);
   check('Profile ids linked back to identity-service over Kafka', true);
 
-  const pw = env.BOOTSTRAP_ADMIN_PASSWORD;
-  const [tTok, s1Tok, s2Tok, s3Tok] = await Promise.all([trainer, s1, s2, s3].map(p => login(p.email, pw)));
+  const [tTok, s1Tok, s2Tok, s3Tok] = await Promise.all([trainer, s1, s2, s3].map((p, i) => login(p.email, passwords[i])));
 
   // ------------------------------------------------------------------ batch, enrolment, online session
   const now = new Date();
-  const start = new Date(now.getTime() - 5 * 60000);
-  const end = new Date(start.getTime() + 60 * 60000);
-  const sp = istParts(start), ep = istParts(end);
-  if (sp.date !== ep.date) throw new Error('Session would cross midnight in IST; run the test earlier in the day');
+  let start = new Date(now.getTime() - 5 * 60000);
+  let end = new Date(start.getTime() + 60 * 60000);
+  let sp = istParts(start), ep = istParts(end);
+  if (sp.date !== ep.date) {
+    // A session cannot cross midnight, so late in the IST evening slide the whole
+    // hour back to finish at 23:59 (it is still running now, so still joinable).
+    end = new Date(now.getTime() + (23 * 60 + 59 - (Number(istParts(now).time.slice(0, 2)) * 60 + Number(istParts(now).time.slice(3)))) * 60000);
+    start = new Date(end.getTime() - 60 * 60000);
+    sp = istParts(start); ep = istParts(end);
+    if (sp.date !== ep.date) throw new Error('Cannot fit a one-hour session before midnight IST; run the test earlier in the day');
+  }
 
   const batch = await must('POST', '/api/batches', admin, {
     name: `JFS Evening ${run}`, courseId, trainerId: trainer.id, startDate: sp.date,
