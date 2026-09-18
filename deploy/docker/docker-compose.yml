@@ -367,6 +367,18 @@ services:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8085/actuator/health || exit 1"]
 
+  finance-service:
+    <<: *spring-service
+    build:
+      context: ../../services/finance-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/finance-service:dev
+    environment:
+      <<: *service-env
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8086/actuator/health || exit 1"]
+
   liveclass-service:
     <<: *spring-service
     build:

@@ -25,4 +25,6 @@ itilms:
     # then again once it is overdue.
     due-reminder-days: [7, 3, 1]
     overdue-scan-cron: ${OVERDUE_CRON:0 30 6 * * *}
+    # "Today" for due dates is the institute's today, not the server's.
+    zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}
     receipt-prefix: RCPT

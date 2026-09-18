@@ -44,7 +44,7 @@ This is a departure from the source document, which specifies a single applicati
 | **batch** | Batches, enrolments, timetable, attendance register | Yes |
 | **liveclass** | Live rooms, join tokens, room time, automatic attendance | Yes |
 | **assessment** | Assignments, submissions, MCQ tests, attempts, results | Yes |
-| finance | Fee plans, installments, payments, receipts | Pending |
+| **finance** | Fee plans, installments, payments, receipts, overdue reminders | Yes |
 | certificate | Completion checks, issue, public verification | Pending |
 | placement | Companies, jobs, applications, interview stages | Pending |
 | notification | In-app and email delivery, announcements | Pending |
@@ -79,12 +79,14 @@ Synchronous calls, over Feign, are kept few — they are the ones where the answ
 | batch | course, admission | Course titles and trainer names when a batch is created |
 | liveclass | batch | The session's details, and whether a student is actually enrolled |
 | assessment | batch | Whether a student is in the batch a test is set for, and whether a trainer teaches it |
+| finance | admission | The student's name and code when a fee plan is raised by hand |
 
 ## What travels over Kafka
 
 | Event | Published by | Consumed by | So that |
 |---|---|---|---|
 | `user-created` | identity | admission | A self-registered student gets a profile |
+| `student-admitted` | admission | finance | The fee agreed at admission becomes a fee plan without being typed in twice |
 | `profile-linked` | admission | identity | Access tokens can carry the profile id, with no lookup at login |
 | `enrollment-created` / `-closed` | batch | course | Progress rows exist the moment a student is enrolled |
 | `course.published` | course | batch | Batch listings show the current course title |
@@ -92,6 +94,7 @@ Synchronous calls, over Feign, are kept few — they are the ones where the answ
 | `session-cancelled` | batch | liveclass | A called-off class does not leave an open room |
 | `live.attendance-computed` | liveclass | batch | An online class writes its own register |
 | `assignment-created`, `submission-evaluated`, `quiz-attempt-completed` | assessment | notification, reporting, certificate (to come) | Results reach dashboards and the completion check without anyone asking assessment-service |
+| `fee-plan-created`, `payment-recorded`, `installment-overdue` | finance | notification, reporting (to come) | Students hear about dues and receipts; the dashboard sees collections |
 | `notification.requested` | any | notification | One way to reach people, from anywhere |
 | `audit.recorded` | any | reporting | One chronological audit log across twelve databases |
 

@@ -89,8 +89,8 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 
 | ID | Module | Question | Proposal |
 |---|---|---|---|
-| **O1** | Fees | §10 ties each payment to exactly one installment (`payments.fee_installment_id`). How are partial payments, one payment covering two installments, and advance payments recorded? | Record the payment against the fee plan and allocate it to installments oldest-due first. §14's outstanding formula (net fee minus successful payments) works unchanged. |
-| **O2** | Fees | §10 gives installments no paid, partly-paid or overdue status. | Derive the status from payments at read time rather than storing it, so the two can never disagree. |
+| **O1** | Fees | §10 ties each payment to exactly one installment (`payments.fee_installment_id`). How are partial payments, one payment covering two installments, and advance payments recorded? | Record the payment against the fee plan and allocate it to installments oldest-due first. §14's outstanding formula (net fee minus successful payments) works unchanged. **Built as proposed.** |
+| **O2** | Fees | §10 gives installments no paid, partly-paid or overdue status. | Derive the status from payments at read time rather than storing it, so the two can never disagree. **Built as proposed**, including the overdue amount, which is the unpaid part of an installment rather than its full value. |
 | **O3** | Tests | `quiz_questions` has four fixed option columns (`option_a`–`option_d`), but §5 asks for an "MCQ/coding-ready framework". | Store options in a separate table, and add a question type. MCQ ships first. **Built as proposed:** single-choice, multi-choice and true/false. |
 | **O4** | Assignments | `assignment_submissions` holds one `file_url`, but §6.10 lets students submit "files/text". Resubmission is not addressed. | A text answer plus any number of attachments through file-service. Resubmission is allowed until the deadline, and the latest submission is the one evaluated. **Built as proposed**, with one addition: once work is marked, only the trainer can reopen it, by returning it for rework. |
 | **O5** | Certificates | §6.13 requires public verification by certificate number, while §17 requires certificate URLs to be non-guessable. With sequential numbers, anyone can walk the verification page and collect every graduate's name. | The verification page shows only name, course and issue date. It is rate-limited, and each certificate also carries a random verification code, so a guessed number reveals nothing without the code. |
@@ -136,7 +136,7 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 | Late assignment submissions marked LATE | Decided from the server clock at submission; a trainer can instead refuse late work per assignment | Done |
 | Quiz score calculated on the server | Scored from the stored answer key. The paper a student receives has no answer key in it, and answers naming another question's options are refused | Done |
 | Certificate criteria validated on the server | certificate-service | Pending |
-| Outstanding = net fee − successful payments | finance-service | Pending |
+| Outstanding = net fee − successful payments | Computed on every read from the payments, never stored; reversed payments do not count | Done |
 | Course not published without required metadata | `publish` refuses and names each missing field | Done |
 | Trainers see only their batches' submissions | Every read and every mark checks with batch-service that the trainer teaches the batch | Done |
 | Placement status changes audited | placement-service | Pending |
