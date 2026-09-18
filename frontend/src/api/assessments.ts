@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { PageResponse } from './types'
 
 /** A test as it appears on the student's list: no questions, just whether they can sit it and how they did. */
 export interface StudentQuizResponse {
@@ -134,5 +135,123 @@ export async function getAttemptResult(attemptId: number | string): Promise<Atte
 /** Every attempt the signed-in student has made at a test, most recent first. */
 export async function getMyAttempts(quizId: number | string): Promise<AttemptResultResponse[]> {
   const { data } = await apiClient.get<AttemptResultResponse[]>(`/api/quizzes/${quizId}/attempts/mine`)
+  return data
+}
+
+// -----------------------------------------------------------------
+// Authoring (Doc S6.11) - trainers and staff. QuizResponse carries the
+// answer key and is only ever returned to them, never to a student.
+// -----------------------------------------------------------------
+
+export interface QuizOption {
+  id: number
+  optionText: string
+  correct: boolean
+  sequenceNo: number
+}
+
+export interface QuizQuestionWithKey {
+  id: number
+  questionText: string
+  type: string
+  marks: number
+  sequenceNo: number
+  explanation: string | null
+  options: QuizOption[]
+}
+
+export interface QuizResponse {
+  id: number
+  courseId: number
+  batchId: number | null
+  title: string
+  instructions: string | null
+  durationMinutes: number
+  passPercentage: number
+  attemptsAllowed: number
+  totalMarks: number
+  availableFrom: string | null
+  availableUntil: string | null
+  shuffleQuestions: boolean
+  showResultImmediately: boolean
+  mandatory: boolean
+  status: string
+  trainerId: number | null
+  publishedAt: string | null
+  questionCount: number
+  /** Present on the single-test view only. */
+  questions: QuizQuestionWithKey[] | null
+}
+
+export interface QuizInput {
+  courseId: number
+  batchId?: number
+  title: string
+  instructions?: string
+  durationMinutes: number
+  passPercentage?: number
+  attemptsAllowed?: number
+  availableFrom?: string
+  availableUntil?: string
+  shuffleQuestions?: boolean
+  showResultImmediately?: boolean
+  mandatory?: boolean
+}
+
+export interface QuestionOptionInput {
+  optionText: string
+  correct: boolean
+}
+
+export interface QuestionInput {
+  questionText: string
+  /** SINGLE_CHOICE, MULTI_CHOICE or TRUE_FALSE. Default SINGLE_CHOICE. */
+  type?: string
+  marks?: number
+  explanation?: string
+  options: QuestionOptionInput[]
+}
+
+export async function listQuizzes(courseId?: number): Promise<PageResponse<QuizResponse>> {
+  const { data } = await apiClient.get<PageResponse<QuizResponse>>('/api/quizzes', { params: { courseId } })
+  return data
+}
+
+/** With the answer key - trainers of the course/batch, and staff. */
+export async function getQuiz(quizId: number | string): Promise<QuizResponse> {
+  const { data } = await apiClient.get<QuizResponse>(`/api/quizzes/${quizId}`)
+  return data
+}
+
+export async function createQuiz(input: QuizInput): Promise<QuizResponse> {
+  const { data } = await apiClient.post<QuizResponse>('/api/quizzes', input)
+  return data
+}
+
+export async function addQuestion(quizId: number | string, input: QuestionInput): Promise<QuizResponse> {
+  const { data } = await apiClient.post<QuizResponse>(`/api/quizzes/${quizId}/questions`, input)
+  return data
+}
+
+export async function deleteQuestion(questionId: number | string): Promise<QuizResponse> {
+  const { data } = await apiClient.delete<QuizResponse>(`/api/quizzes/questions/${questionId}`)
+  return data
+}
+
+/** Needs at least one question. The batch is notified. */
+export async function publishQuiz(quizId: number | string): Promise<QuizResponse> {
+  const { data } = await apiClient.post<QuizResponse>(`/api/quizzes/${quizId}/publish`)
+  return data
+}
+
+/** No new attempts; running attempts are scored as they stand. */
+export async function closeQuiz(quizId: number | string): Promise<QuizResponse> {
+  const { data } = await apiClient.post<QuizResponse>(`/api/quizzes/${quizId}/close`)
+  return data
+}
+
+/** The trainer's results sheet, best score first. */
+export async function getQuizResults(quizId: number | string): Promise<AttemptResultResponse[]> {
+  const { data } = await apiClient.get<AttemptResultResponse[]>(`/api/quizzes/${quizId}/results`)
   return data
 }

@@ -55,7 +55,7 @@ export function NotificationBell() {
 
   function handleOpen(id: number, read: boolean, actionUrl: string | null) {
     setOpen(false)
-    void navigate(mapActionUrl(actionUrl))
+    void navigate(mapActionUrl(actionUrl) ?? '/app')
     if (!read) {
       void markNotificationRead(id).then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }))
     }
