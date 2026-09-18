@@ -35,12 +35,24 @@ through the API gateway (`VITE_API_BASE_URL`, default `http://localhost:8080`).
 - **Staff pages**: admissions (leads, follow-ups, admit-to-student), students
   (search, profile, standing), batches (roster, timetable, scheduling a
   session), attendance marking (a register per session, corrections require a
-  reason per Doc S14), and trainer/staff authoring for courses (modules,
-  lessons, PDF upload through file-service, publish/archive) and tests
-  (questions with an answer key, publish/close, a results sheet). Courses,
-  tests and live classes each render a different page for the same route
-  depending on role - `*-index-page.tsx` in each folder is the switch - so a
-  student's and a trainer's experience never need two different URLs.
+  reason per Doc S14), the finance desk (dashboard, overdue list, a fee-plan
+  page to record/reverse payments and cancel a plan), user management
+  (create trainer/finance/placement/coordinator accounts, status, password
+  reset - `/api/users`, ADMIN only for anything that changes state), and
+  trainer/staff authoring for courses (modules, lessons, PDF upload through
+  file-service, publish/archive) and tests (questions with an answer key,
+  publish/close, a results sheet). Assignment submit (student, with file
+  attachments) and evaluate/return-for-rework (trainer) share one detail
+  page, reached from the Assessments tab or a batch's own assignment list.
+  Courses, tests, live classes and finance each render a different page for
+  the same route depending on role - `*-index-page.tsx` in each folder is the
+  switch - so a student's and a trainer's (or a finance officer's)
+  experience never need two different URLs.
+- **Dashboard and audit log**: ADMIN/COORDINATOR see the institute-wide
+  counters from reporting-service (`/api/dashboard/summary`) instead of the
+  generic per-role blurb; ADMIN also gets `/app/audit-logs`
+  (`/api/audit-logs`, search plus CSV/Excel/PDF export via
+  `/api/reports/audit-logs/export`), linked from the dashboard.
 - Every route-level page is lazy-loaded (`React.lazy` + `Suspense` in
   `App.tsx`), so a role that never opens a module never fetches its code, and
   the LiveKit room (the one genuinely large dependency) loads only when

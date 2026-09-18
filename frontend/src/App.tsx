@@ -55,7 +55,12 @@ const LiveClassRoomPage = lazy(() =>
   import('@/pages/live-classes/live-class-room-page').then((m) => ({ default: m.LiveClassRoomPage })),
 )
 
-const FinancePage = lazy(() => import('@/pages/finance/finance-page').then((m) => ({ default: m.FinancePage })))
+const FinanceIndexPage = lazy(() =>
+  import('@/pages/finance/finance-index-page').then((m) => ({ default: m.FinanceIndexPage })),
+)
+const FeePlanDetailPage = lazy(() =>
+  import('@/pages/finance/fee-plan-detail-page').then((m) => ({ default: m.FeePlanDetailPage })),
+)
 
 const CertificatesPage = lazy(() =>
   import('@/pages/certificates/certificates-page').then((m) => ({ default: m.CertificatesPage })),
@@ -79,6 +84,14 @@ const AttendanceMarkPage = lazy(() =>
   import('@/pages/batches/attendance-mark-page').then((m) => ({ default: m.AttendanceMarkPage })),
 )
 
+const AssignmentDetailPage = lazy(() =>
+  import('@/pages/assessments/assignment-detail-page').then((m) => ({ default: m.AssignmentDetailPage })),
+)
+
+const UsersPage = lazy(() => import('@/pages/users/users-page').then((m) => ({ default: m.UsersPage })))
+
+const AuditLogsPage = lazy(() => import('@/pages/audit-logs-page').then((m) => ({ default: m.AuditLogsPage })))
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -95,6 +108,7 @@ const CERTIFICATE_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'STUDENT']
 const ADMISSION_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 const STUDENT_RECORD_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 const BATCH_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
+const USER_MANAGEMENT_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 
 // Nav items with a real page below - excluded from the generic placeholder loop.
 const BUILT_PATHS = new Set([
@@ -106,6 +120,7 @@ const BUILT_PATHS = new Set([
   '/app/admissions',
   '/app/students',
   '/app/batches',
+  '/app/users',
 ])
 
 function PageFallback() {
@@ -173,14 +188,12 @@ export default function App() {
 
                     <Route path="/app/assessments" element={<AssessmentsIndexPage />} />
                     <Route path="/app/assessments/tests/:quizId" element={<QuizIndexPage />} />
-                    <Route
-                      path="/app/assessments/assignments/:assignmentId"
-                      element={<PlaceholderPage title="Assignment" />}
-                    />
+                    <Route path="/app/assessments/assignments/:assignmentId" element={<AssignmentDetailPage />} />
                   </Route>
 
                   <Route element={<ProtectedRoute roles={FINANCE_ROLES} />}>
-                    <Route path="/app/finance" element={<FinancePage />} />
+                    <Route path="/app/finance" element={<FinanceIndexPage />} />
+                    <Route path="/app/finance/:feePlanId" element={<FeePlanDetailPage />} />
                   </Route>
 
                   <Route element={<ProtectedRoute roles={CERTIFICATE_ROLES} />}>
@@ -204,6 +217,14 @@ export default function App() {
                       path="/app/batches/:batchId/sessions/:sessionId/attendance"
                       element={<AttendanceMarkPage />}
                     />
+                  </Route>
+
+                  <Route element={<ProtectedRoute roles={USER_MANAGEMENT_ROLES} />}>
+                    <Route path="/app/users" element={<UsersPage />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute roles={['ADMIN']} />}>
+                    <Route path="/app/audit-logs" element={<AuditLogsPage />} />
                   </Route>
 
                   {NAV_ITEMS.filter((item) => item.to !== '/app' && !BUILT_PATHS.has(item.to)).map((item) => (
