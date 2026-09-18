@@ -17,3 +17,6 @@ spring:
 itilms:
   docs:
     description: Companies, job openings and the interview pipeline
+
+  placement:
+    zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}

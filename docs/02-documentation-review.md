@@ -139,7 +139,7 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 | Outstanding = net fee − successful payments | Computed on every read from the payments, never stored; reversed payments do not count | Done |
 | Course not published without required metadata | `publish` refuses and names each missing field | Done |
 | Trainers see only their batches' submissions | Every read and every mark checks with batch-service that the trainer teaches the batch | Done |
-| Placement status changes audited | placement-service | Pending |
+| Placement status changes audited | Every move is written to the application's stage history in the same transaction, and published as an audit event. Only allowed moves are accepted; decisions are final | Done |
 
 ---
 
