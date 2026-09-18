@@ -1,0 +1,64 @@
+package com.itilms.assessment.controller;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.itilms.assessment.dto.request.SubmitAttemptRequest;
+import com.itilms.assessment.dto.response.AnswerSaveResponse;
+import com.itilms.assessment.dto.response.AttemptResultResponse;
+import com.itilms.assessment.dto.response.AttemptViewResponse;
+import com.itilms.assessment.service.AttemptService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+/** Sitting a test (Doc S6.11, S11). */
+@Tag(name = "Test attempts", description = "Answering, submitting and reading results")
+@RestController
+@RequestMapping("/api/quiz-attempts")
+@RequiredArgsConstructor
+public class AttemptController {
+
+    private final AttemptService attemptService;
+
+    @Operation(summary = "The paper for a running attempt", description = "Never includes the answer key.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/{id}")
+    public AttemptViewResponse paper(@PathVariable Long id) {
+        return attemptService.paper(id);
+    }
+
+    @Operation(summary = "Save answers so far",
+            description = "What is saved is what gets scored if time runs out, so save as you go.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PutMapping("/{id}/answers")
+    public AnswerSaveResponse save(@PathVariable Long id, @Valid @RequestBody SubmitAttemptRequest request) {
+        return attemptService.saveAnswers(id, request);
+    }
+
+    @Operation(summary = "Submit an attempt",
+            description = "Scored on the server from the answer key (Doc S14). Accepted up to a minute "
+                    + "after the deadline for network delay; later than that, answers saved before "
+                    + "the deadline are what count.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/{id}/submit")
+    public AttemptResultResponse submit(@PathVariable Long id, @Valid @RequestBody SubmitAttemptRequest request) {
+        return attemptService.submit(id, request);
+    }
+
+    @Operation(summary = "An attempt's result",
+            description = "The student's own, or any attempt at a test the caller teaches.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{id}/result")
+    public AttemptResultResponse result(@PathVariable Long id) {
+        return attemptService.result(id);
+    }
+}

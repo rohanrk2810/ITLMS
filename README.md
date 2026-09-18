@@ -40,9 +40,11 @@ docs/
 
 ## Status
 
-Built and running: **identity, admission, course, batch, liveclass**, behind the gateway, with discovery, configuration and events.
+Built and verified end to end in Docker: **identity, admission, course, batch, liveclass**, behind the gateway, with discovery, configuration and events.
 
-Still to build: assessment, finance, certificate, placement, notification, file, reporting — and the React frontend.
+Built and unit-tested, not yet run in the full stack: **assessment** (assignments, MCQ tests with server-side scoring, results).
+
+Still to build: finance, certificate, placement, notification, file, reporting — and the React frontend.
 
 ## Checks
 

@@ -43,7 +43,7 @@ This is a departure from the source document, which specifies a single applicati
 | **course** | Catalog, modules, lessons, lesson progress | Yes |
 | **batch** | Batches, enrolments, timetable, attendance register | Yes |
 | **liveclass** | Live rooms, join tokens, room time, automatic attendance | Yes |
-| assessment | Assignments, submissions, quizzes, attempts, results | Pending |
+| **assessment** | Assignments, submissions, MCQ tests, attempts, results | Yes |
 | finance | Fee plans, installments, payments, receipts | Pending |
 | certificate | Completion checks, issue, public verification | Pending |
 | placement | Companies, jobs, applications, interview stages | Pending |
@@ -78,6 +78,7 @@ Synchronous calls, over Feign, are kept few — they are the ones where the answ
 | admission | identity | Create the account for a new student or trainer |
 | batch | course, admission | Course titles and trainer names when a batch is created |
 | liveclass | batch | The session's details, and whether a student is actually enrolled |
+| assessment | batch | Whether a student is in the batch a test is set for, and whether a trainer teaches it |
 
 ## What travels over Kafka
 
@@ -90,6 +91,7 @@ Synchronous calls, over Feign, are kept few — they are the ones where the answ
 | `session-scheduled` / `-rescheduled` | batch | liveclass | A live room is ready before the class starts |
 | `session-cancelled` | batch | liveclass | A called-off class does not leave an open room |
 | `live.attendance-computed` | liveclass | batch | An online class writes its own register |
+| `assignment-created`, `submission-evaluated`, `quiz-attempt-completed` | assessment | notification, reporting, certificate (to come) | Results reach dashboards and the completion check without anyone asking assessment-service |
 | `notification.requested` | any | notification | One way to reach people, from anywhere |
 | `audit.recorded` | any | reporting | One chronological audit log across twelve databases |
 
