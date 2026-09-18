@@ -46,12 +46,18 @@ export async function deleteFile(fileId: number | string): Promise<void> {
   await apiClient.delete(`/api/files/${fileId}`)
 }
 
-/** ADMIN/COORDINATOR only (Doc S12) - everyone else only knows the files they uploaded this session. */
+/** ADMIN/COORDINATOR only (Doc S12) - everyone else uses {@link listMyFiles} instead. */
 export async function listFiles(params: {
   ownerUserId?: number
   category?: string
   page?: number
 }): Promise<PageResponse<FileResponse>> {
   const { data } = await apiClient.get<PageResponse<FileResponse>>('/api/files', { params })
+  return data
+}
+
+/** Every file the signed-in caller has uploaded themselves, most recent first. */
+export async function listMyFiles(page = 0): Promise<PageResponse<FileResponse>> {
+  const { data } = await apiClient.get<PageResponse<FileResponse>>('/api/files/mine', { params: { page } })
   return data
 }

@@ -32,7 +32,7 @@ CREATE TABLE files (
 
     CONSTRAINT uk_file_storage_key UNIQUE (storage_key),
     CONSTRAINT ck_file_category CHECK (category IN
-        ('AVATAR', 'DOCUMENT', 'ASSIGNMENT', 'SUBMISSION', 'LESSON_RESOURCE', 'CERTIFICATE', 'RECEIPT')),
+        ('AVATAR', 'DOCUMENT', 'ASSIGNMENT', 'SUBMISSION', 'LESSON_RESOURCE', 'CERTIFICATE', 'RECEIPT', 'RESUME')),
     CONSTRAINT ck_file_size CHECK (size_bytes > 0)
 );
 

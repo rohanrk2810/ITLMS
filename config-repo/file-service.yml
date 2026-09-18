@@ -60,3 +60,4 @@ itilms:
       LESSON_RESOURCE: 200MB
       CERTIFICATE: 5MB
       RECEIPT: 5MB
+      RESUME: 10MB

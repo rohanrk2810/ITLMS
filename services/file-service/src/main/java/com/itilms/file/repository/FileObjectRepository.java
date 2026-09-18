@@ -17,4 +17,6 @@ public interface FileObjectRepository extends JpaRepository<FileObject, Long> {
 
     Page<FileObject> findByOwnerUserIdAndCategoryOrderByIdDesc(
             Long ownerUserId, FileCategory category, Pageable pageable);
+
+    Page<FileObject> findByUploadedByOrderByIdDesc(Long uploadedBy, Pageable pageable);
 }

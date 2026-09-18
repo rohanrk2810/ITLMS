@@ -139,6 +139,14 @@ public class FileServiceImpl implements FileService {
         return PageResponse.from(page, FileResponse::from);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<FileResponse> listMine(Pageable pageable) {
+        AppPrincipal caller = SecurityUtils.requirePrincipal();
+        Page<FileObject> page = repository.findByUploadedByOrderByIdDesc(caller.userId(), pageable);
+        return PageResponse.from(page, FileResponse::from);
+    }
+
     // -----------------------------------------------------------------
 
     private Long resolveOwner(AppPrincipal caller, FileCategory category, Long requestedOwner) {

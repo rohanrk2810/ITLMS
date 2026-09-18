@@ -219,4 +219,32 @@ class FileServiceImplTest {
         verify(repository).findByOwnerUserIdAndCategoryOrderByIdDesc(
                 STUDENT.userId(), FileCategory.SUBMISSION, PageRequest.of(0, 20));
     }
+
+    @Test
+    @DisplayName("listMine looks up files by the caller's own id, not any owner passed elsewhere")
+    void listMineFiltersByCaller() {
+        actAs(STUDENT);
+        when(repository.findByUploadedByOrderByIdDesc(any(), any())).thenReturn(Page.empty());
+        service.listMine(PageRequest.of(0, 20));
+        verify(repository).findByUploadedByOrderByIdDesc(STUDENT.userId(), PageRequest.of(0, 20));
+    }
+
+    @Test
+    @DisplayName("A student uploading a resume is stored under RESUME, readable by placement later")
+    void uploadStoresResume() throws Exception {
+        actAs(STUDENT);
+        FileResponse response = service.upload(pdf("cv"), FileCategory.RESUME, null);
+
+        assertThat(response.category()).isEqualTo(FileCategory.RESUME);
+        assertThat(response.ownerUserId()).isEqualTo(STUDENT.userId());
+    }
+
+    @Test
+    @DisplayName("Placement staff may not upload a resume on a student's behalf - only the student does")
+    void uploadRejectsResumeFromPlacement() {
+        AppPrincipal placement = new AppPrincipal(40L, "p@x", "Placement", "PLACEMENT", null);
+        actAs(placement);
+        assertThatThrownBy(() -> service.upload(pdf("cv"), FileCategory.RESUME, null))
+                .isInstanceOf(ForbiddenOperationException.class);
+    }
 }
