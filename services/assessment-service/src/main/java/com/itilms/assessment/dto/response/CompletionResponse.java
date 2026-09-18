@@ -18,6 +18,8 @@ public record CompletionResponse(
         Long batchId,
         int testsRequired,
         int testsPassed,
+        @Schema(description = "Average of the best result on each mandatory test; null when there are none, or none yet visible")
+        Integer averageTestPercent,
         int assignmentsRequired,
         int assignmentsEvaluated,
         @Schema(description = "True when every mandatory test is passed and every mandatory assignment marked")

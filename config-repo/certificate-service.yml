@@ -25,11 +25,15 @@ itilms:
     criteria:
       require-all-mandatory-lessons: true
       require-all-quizzes-passed: true
-      require-all-assignments-submitted: true
+      # Handed in AND marked. Work still waiting for its mark is not complete.
+      require-all-assignments-complete: true
       require-attendance: ${CERT_REQUIRE_ATTENDANCE:true}
       minimum-attendance-percent: ${CERT_MIN_ATTENDANCE:75}
+      # Average of the student's best result on each mandatory test.
       minimum-average-score-percent: ${CERT_MIN_SCORE:40}
       require-fees-cleared: ${CERT_REQUIRE_FEES_CLEARED:true}
     verification-base-url: ${CERT_VERIFY_URL:http://localhost:5173/verify}
     institute-name: ${INSTITUTE_NAME:IT Training Institute}
     signatory-name: ${CERT_SIGNATORY:Director}
+    currency-symbol: ${CURRENCY_SYMBOL:Rs.}
+    zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}

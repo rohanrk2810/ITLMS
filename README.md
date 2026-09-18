@@ -42,9 +42,9 @@ docs/
 
 Built and verified end to end in Docker: **identity, admission, course, batch, liveclass**, behind the gateway, with discovery, configuration and events.
 
-Built and unit-tested, not yet run in the full stack: **assessment** (assignments, MCQ tests with server-side scoring, results) and **finance** (fee plans, payments, receipts, overdue reminders).
+Built and unit-tested, not yet run in the full stack: **assessment** (assignments, MCQ tests with server-side scoring, results) **finance** (fee plans, payments, receipts, overdue reminders) and **certificate** (completion rule, PDF, public verification).
 
-Still to build: certificate, placement, notification, file, reporting — and the React frontend.
+Still to build: placement, notification, file, reporting — and the React frontend.
 
 ## Checks
 
