@@ -2,7 +2,7 @@
 
 **Source:** `IT_Institute_LMS_Complete_Project_Documentation.pdf` (24 sections)
 **Reviewed against:** the implementation in this repository
-**Last updated:** 2026-09-17
+**Last updated:** 2026-09-18
 
 This document records every place where IT-ILMS, as built, differs from the source document, and why. Section numbers (§) refer to the source document.
 
@@ -60,7 +60,7 @@ These override the document. Each was an explicit request from the product owner
 | **R4** | A student's place in a batch is modelled twice, in `batch_students` and in `enrollments` (§10, §10.1). | `enrollments` only. §14's "not enrolled twice in the same active batch" is enforced by a partial unique index on active enrolments. |
 | **R5** | §11 allows student self-registration only "where enabled", but §7.1 creates the student account after an admission is confirmed. | Setting `itilms.security.self-registration-enabled`, **off by default**. When off, accounts come from the admission workflow. |
 | **R6** | §6.1 allows login by email *or phone*, but §10 does not make `users.phone` unique, so a phone number could match two accounts. | Phone numbers are unique. |
-| **R7** | §7.3 completes a course when the *required* lessons, tests and assignments are done, but nothing in §10 marks anything as required. | Lessons carry `is_mandatory`, and only mandatory lessons count toward completion. Tests and assignments get the same flag when assessment-service is built. |
+| **R7** | §7.3 completes a course when the *required* lessons, tests and assignments are done, but nothing in §10 marks anything as required. | Lessons carry `is_mandatory`, and only mandatory lessons count toward completion. Tests and assignments carry the same flag; completion counts only mandatory ones. |
 | **R8** | §6.9 lists present, absent and late, which leaves no way to record an approved absence. | `EXCUSED` is added. It is left out of the percentage entirely, so an approved absence does not cost a student their certificate (§7.3). |
 | **R9** | §3.1 scopes "online/offline attendance" without saying how online attendance differs. | Classroom sessions are marked by the trainer. Online sessions are computed from room time (D3), and the trainer can override the result. |
 | **R10** | §6.9 and §14 require corrections to be audited, but the `attendance` table in §10 has nowhere to record one. | `corrected_at` and `corrected_by` columns were added. Changing a saved register requires a reason, which is recorded in the audit log. |
@@ -91,8 +91,8 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 |---|---|---|---|
 | **O1** | Fees | §10 ties each payment to exactly one installment (`payments.fee_installment_id`). How are partial payments, one payment covering two installments, and advance payments recorded? | Record the payment against the fee plan and allocate it to installments oldest-due first. §14's outstanding formula (net fee minus successful payments) works unchanged. |
 | **O2** | Fees | §10 gives installments no paid, partly-paid or overdue status. | Derive the status from payments at read time rather than storing it, so the two can never disagree. |
-| **O3** | Tests | `quiz_questions` has four fixed option columns (`option_a`–`option_d`), but §5 asks for an "MCQ/coding-ready framework". | Store options in a separate table, and add a question type. MCQ ships first. |
-| **O4** | Assignments | `assignment_submissions` holds one `file_url`, but §6.10 lets students submit "files/text". Resubmission is not addressed. | A text answer plus any number of attachments through file-service. Resubmission is allowed until the deadline, and the latest submission is the one evaluated. |
+| **O3** | Tests | `quiz_questions` has four fixed option columns (`option_a`–`option_d`), but §5 asks for an "MCQ/coding-ready framework". | Store options in a separate table, and add a question type. MCQ ships first. **Built as proposed:** single-choice, multi-choice and true/false. |
+| **O4** | Assignments | `assignment_submissions` holds one `file_url`, but §6.10 lets students submit "files/text". Resubmission is not addressed. | A text answer plus any number of attachments through file-service. Resubmission is allowed until the deadline, and the latest submission is the one evaluated. **Built as proposed**, with one addition: once work is marked, only the trainer can reopen it, by returning it for rework. |
 | **O5** | Certificates | §6.13 requires public verification by certificate number, while §17 requires certificate URLs to be non-guessable. With sequential numbers, anyone can walk the verification page and collect every graduate's name. | The verification page shows only name, course and issue date. It is rate-limited, and each certificate also carries a random verification code, so a guessed number reveals nothing without the code. |
 | **O6** | Students | §6.2 asks for student import but gives no format. | A CSV template, with a dry run that reports every invalid row before anything is saved. |
 
@@ -133,12 +133,12 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 | No learning content without enrolment | course-service returns lesson content only for lessons the caller's enrolment unlocks | Done |
 | No double enrolment in the same active batch | Partial unique index on `enrollments` | Done |
 | Attendance corrections by authorized roles, audited | Re-marking a saved register requires a reason and publishes an audit event | Done |
-| Late assignment submissions marked LATE | assessment-service | Pending |
-| Quiz score calculated on the server | assessment-service | Pending |
+| Late assignment submissions marked LATE | Decided from the server clock at submission; a trainer can instead refuse late work per assignment | Done |
+| Quiz score calculated on the server | Scored from the stored answer key. The paper a student receives has no answer key in it, and answers naming another question's options are refused | Done |
 | Certificate criteria validated on the server | certificate-service | Pending |
 | Outstanding = net fee − successful payments | finance-service | Pending |
 | Course not published without required metadata | `publish` refuses and names each missing field | Done |
-| Trainers see only their batches' submissions | assessment-service | Pending |
+| Trainers see only their batches' submissions | Every read and every mark checks with batch-service that the trainer teaches the batch | Done |
 | Placement status changes audited | placement-service | Pending |
 
 ---
