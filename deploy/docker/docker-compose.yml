@@ -410,6 +410,12 @@ services:
       context: ../../services/notification-service
       dockerfile: ../../deploy/docker/Dockerfile
     image: itilms/notification-service:dev
+    # Thymeleaf templating plus the outbox job and a mail client sit close to the
+    # shared 512M ceiling (~470M in use under the smoke test), so this one gets more.
+    deploy:
+      resources:
+        limits:
+          memory: 640M
     environment:
       <<: *service-env
       # Mailpit catches everything locally; point these at a real SMTP

@@ -86,7 +86,7 @@ public class FeePlan extends AuditableEntity {
     private String cancelledReason;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "fee_plan_id")
+    @JoinColumn(name = "fee_plan_id", nullable = false)
     @OrderBy("installmentNo ASC")
     @Builder.Default
     private List<FeeInstallment> installments = new ArrayList<>();
