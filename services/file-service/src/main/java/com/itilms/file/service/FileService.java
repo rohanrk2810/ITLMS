@@ -21,6 +21,9 @@ public interface FileService {
 
     PageResponse<FileResponse> list(Long ownerUserId, FileCategory category, Pageable pageable);
 
+    /** Every file the caller has uploaded themselves, most recent first - so a non-staff upload survives a reload. */
+    PageResponse<FileResponse> listMine(Pageable pageable);
+
     record Download(InputStream content, String filename, String contentType, long sizeBytes) {
     }
 }

@@ -14,7 +14,9 @@ import com.itilms.file.entity.FileCategory;
  * openly readable once signed in - access to the lesson or assignment itself
  * is gated elsewhere, the same simplification already recorded for L1/L2 in
  * docs/02-documentation-review.md. Anything naming a person - a document, a
- * submission, a certificate, a receipt - is owner-and-staff only.
+ * submission, a certificate, a receipt - is owner-and-staff only. A resume is
+ * the same, plus the placement desk, which is why it is its own category
+ * instead of DOCUMENT.
  */
 public final class FileAccessRules {
 
@@ -32,6 +34,7 @@ public final class FileAccessRules {
             case SUBMISSION -> caller.isStudent();
             case CERTIFICATE -> caller.isStaff();
             case RECEIPT -> caller.isStaff() || Roles.FINANCE.equals(caller.role());
+            case RESUME -> caller.isStudent();
         };
     }
 
@@ -46,6 +49,7 @@ public final class FileAccessRules {
             case DOCUMENT, CERTIFICATE -> caller.isStaff();
             case SUBMISSION -> caller.isStaff() || caller.isTrainer();
             case RECEIPT -> caller.isStaff() || Roles.FINANCE.equals(caller.role());
+            case RESUME -> caller.isStaff() || Roles.PLACEMENT.equals(caller.role());
             default -> false;
         };
     }

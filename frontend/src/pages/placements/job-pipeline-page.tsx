@@ -1,10 +1,11 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Paperclip } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
+import { downloadFile } from '@/api/files'
 import {
   type ApplicationResponse,
   applicationHistory,
@@ -171,6 +172,7 @@ export function JobPipelinePage() {
               <TableHead>Stage</TableHead>
               <TableHead>Round</TableHead>
               <TableHead>Next interview</TableHead>
+              {canEdit && <TableHead>Resume</TableHead>}
               {canEdit && <TableHead />}
             </TableRow>
           </TableHeader>
@@ -188,6 +190,19 @@ export function JobPipelinePage() {
                 <TableCell>{application.nextInterviewAt ? formatDate(application.nextInterviewAt) : '—'}</TableCell>
                 {canEdit && (
                   <TableCell>
+                    {application.resumeRef && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void downloadFile(application.resumeRef!, `${application.studentName}-resume`)}
+                      >
+                        <Paperclip className="size-3.5" />
+                      </Button>
+                    )}
+                  </TableCell>
+                )}
+                {canEdit && (
+                  <TableCell>
                     {ALLOWED_NEXT[application.stage]?.length > 0 && (
                       <StageChangeDialog
                         application={application}
@@ -201,7 +216,7 @@ export function JobPipelinePage() {
             ))}
             {applicationsQuery.isSuccess && applicationsQuery.data.length === 0 && (
               <TableRow>
-                <TableCell colSpan={canEdit ? 6 : 5} className="text-center text-muted-foreground">
+                <TableCell colSpan={canEdit ? 7 : 5} className="text-center text-muted-foreground">
                   No applications yet.
                 </TableCell>
               </TableRow>

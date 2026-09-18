@@ -49,6 +49,13 @@ public class FileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(fileService.upload(file, category, ownerUserId));
     }
 
+    @Operation(summary = "Files I uploaded", description = "Every file the caller uploaded themselves, most recent first.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/mine")
+    public PageResponse<FileResponse> listMine(@PageableDefault(size = 20) Pageable pageable) {
+        return fileService.listMine(pageable);
+    }
+
     @Operation(summary = "File metadata")
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")

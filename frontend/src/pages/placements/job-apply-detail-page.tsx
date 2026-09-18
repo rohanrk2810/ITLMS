@@ -175,7 +175,7 @@ function ApplyForm({ jobId, onApplied }: { jobId: number; onApplied: () => void 
     if (!file) return
     setUploading(true)
     try {
-      const uploaded = await uploadFile(file, 'DOCUMENT')
+      const uploaded = await uploadFile(file, 'RESUME')
       setResumeRef(String(uploaded.id))
       setResumeName(uploaded.filename)
     } catch (error) {

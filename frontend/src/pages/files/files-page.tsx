@@ -4,7 +4,7 @@ import { Download, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
-import { deleteFile, downloadFile, type FileResponse, listFiles, uploadFile } from '@/api/files'
+import { deleteFile, downloadFile, listFiles, listMyFiles, uploadFile } from '@/api/files'
 import type { Role } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ import { formatDate } from '@/lib/format'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const CATEGORIES_BY_ROLE: Record<Role, string[]> = {
-  STUDENT: ['AVATAR', 'DOCUMENT', 'SUBMISSION'],
+  STUDENT: ['AVATAR', 'DOCUMENT', 'SUBMISSION', 'RESUME'],
   TRAINER: ['AVATAR', 'ASSIGNMENT', 'LESSON_RESOURCE'],
   ADMIN: ['AVATAR', 'DOCUMENT', 'ASSIGNMENT', 'LESSON_RESOURCE', 'CERTIFICATE', 'RECEIPT'],
   COORDINATOR: ['AVATAR', 'DOCUMENT', 'ASSIGNMENT', 'LESSON_RESOURCE', 'CERTIFICATE', 'RECEIPT'],
@@ -23,7 +23,16 @@ const CATEGORIES_BY_ROLE: Record<Role, string[]> = {
   PLACEMENT: ['AVATAR'],
 }
 
-const ALL_CATEGORIES = ['AVATAR', 'DOCUMENT', 'ASSIGNMENT', 'SUBMISSION', 'LESSON_RESOURCE', 'CERTIFICATE', 'RECEIPT']
+const ALL_CATEGORIES = [
+  'AVATAR',
+  'DOCUMENT',
+  'ASSIGNMENT',
+  'SUBMISSION',
+  'LESSON_RESOURCE',
+  'CERTIFICATE',
+  'RECEIPT',
+  'RESUME',
+]
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -53,13 +62,16 @@ export function FilesPage() {
 function UploadPanel({ categories }: { categories: string[] }) {
   const [category, setCategory] = useState(categories[0] ?? 'AVATAR')
   const [uploading, setUploading] = useState(false)
-  const [uploaded, setUploaded] = useState<FileResponse[]>([])
+  const queryClient = useQueryClient()
+
+  const mineQuery = useQuery({ queryKey: ['files', 'mine'], queryFn: () => listMyFiles() })
+  const uploaded = mineQuery.data?.content ?? []
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteFile(id),
-    onSuccess: (_data, id) => {
+    onSuccess: () => {
       toast.success('File deleted')
-      setUploaded((current) => current.filter((f) => f.id !== id))
+      void queryClient.invalidateQueries({ queryKey: ['files', 'mine'] })
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not delete the file.')),
   })
@@ -70,8 +82,8 @@ function UploadPanel({ categories }: { categories: string[] }) {
     if (!file) return
     setUploading(true)
     try {
-      const result = await uploadFile(file, category)
-      setUploaded((current) => [result, ...current])
+      await uploadFile(file, category)
+      void queryClient.invalidateQueries({ queryKey: ['files', 'mine'] })
       toast.success('Uploaded')
     } catch (error) {
       toast.error(apiErrorMessage(error, 'Could not upload the file.'))
@@ -154,7 +166,7 @@ function UploadPanel({ categories }: { categories: string[] }) {
         </Table>
       )}
       {uploaded.length === 0 && (
-        <p className="text-xs text-muted-foreground">Files you upload here appear below, this session, with a download link.</p>
+        <p className="text-xs text-muted-foreground">Files you upload appear below with a download link.</p>
       )}
     </div>
   )
