@@ -54,6 +54,24 @@ class FileAccessRulesTest {
         assertThat(FileAccessRules.canUpload(PLACEMENT, FileCategory.RECEIPT)).isFalse();
     }
 
+    @Test
+    @DisplayName("Only a student uploads a resume; not placement, not staff")
+    void resumeUploadIsStudentOnly() {
+        assertThat(FileAccessRules.canUpload(STUDENT, FileCategory.RESUME)).isTrue();
+        assertThat(FileAccessRules.canUpload(PLACEMENT, FileCategory.RESUME)).isFalse();
+        assertThat(FileAccessRules.canUpload(ADMIN, FileCategory.RESUME)).isFalse();
+    }
+
+    @Test
+    @DisplayName("A resume is read by its owner, staff and the placement desk; not a classmate or a trainer")
+    void resumeReadIsOwnerStaffOrPlacement() {
+        assertThat(FileAccessRules.canRead(STUDENT, FileCategory.RESUME, STUDENT.userId())).isTrue();
+        assertThat(FileAccessRules.canRead(ADMIN, FileCategory.RESUME, STUDENT.userId())).isTrue();
+        assertThat(FileAccessRules.canRead(PLACEMENT, FileCategory.RESUME, STUDENT.userId())).isTrue();
+        assertThat(FileAccessRules.canRead(OTHER_STUDENT, FileCategory.RESUME, STUDENT.userId())).isFalse();
+        assertThat(FileAccessRules.canRead(TRAINER, FileCategory.RESUME, STUDENT.userId())).isFalse();
+    }
+
     @ParameterizedTest
     @EnumSource(value = FileCategory.class, names = {"AVATAR", "ASSIGNMENT", "LESSON_RESOURCE"})
     @DisplayName("Course content and avatars are readable by anyone signed in, owner or not")

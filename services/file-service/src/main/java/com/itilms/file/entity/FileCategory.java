@@ -19,5 +19,7 @@ public enum FileCategory {
     /** A certificate PDF. Owner and staff only. */
     CERTIFICATE,
     /** A fee receipt. Owner and finance desk only. */
-    RECEIPT
+    RECEIPT,
+    /** A resume attached to a placement application. Owner, staff and the placement desk. */
+    RESUME
 }
