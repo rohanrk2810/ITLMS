@@ -391,6 +391,18 @@ services:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8087/actuator/health || exit 1"]
 
+  placement-service:
+    <<: *spring-service
+    build:
+      context: ../../services/placement-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/placement-service:dev
+    environment:
+      <<: *service-env
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8088/actuator/health || exit 1"]
+
   liveclass-service:
     <<: *spring-service
     build:
