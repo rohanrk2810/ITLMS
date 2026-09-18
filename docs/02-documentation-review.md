@@ -2,7 +2,7 @@
 
 **Source:** `IT_Institute_LMS_Complete_Project_Documentation.pdf` (24 sections)
 **Reviewed against:** the implementation in this repository
-**Last updated:** 2026-09-18
+**Last updated:** 2026-09-18 (file-service)
 
 This document records every place where IT-ILMS, as built, differs from the source document, and why. Section numbers (§) refer to the source document.
 
@@ -81,6 +81,7 @@ These tables were added because the requirements cannot be met without them.
 | **A6** | `live_sessions`, `live_participants`, `live_participant_events` | liveclass | D3 |
 | **A7** | Copies of other services' data, such as `course_enrollments` in course-service | several | D2. Each copy is kept current from events. |
 | **A8** | `announcements`, `email_outbox`, and copies of users and enrolments (`recipients`, `batch_members`) | notification | §16. §10 has only `notifications`. Announcements need an audience; the outbox lets email fail and retry without losing the in-app notification; the copies let "everyone in batch 12" be expanded without calling other services. |
+| **A9** | `files` | file | §10 has no table for uploaded bytes at all - `assignment_submissions.file_url` and admission's `student_documents` (A4) assume a file already lives somewhere. `files` is that store: storage key, MIME type, size and who may read it back, behind local disk or MinIO (Doc S17). Access is by category (§14's "restrict MIME type and size"), not by re-checking batch or course enrolment - the same simplification already recorded for L1/L2. |
 
 ---
 
@@ -118,7 +119,7 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 | BCrypt hashing, no plain-text passwords | identity-service, BCrypt strength 12 | Done |
 | Role-based authorization at API and service level | `@PreAuthorize` on every endpoint, plus ownership checks in services (a student reads only their own records) | Done for implemented services; see L1, L2 |
 | No reliance on frontend visibility | The gateway validates every token, and each service validates it again | Done |
-| Validate uploads; restrict MIME type and size | file-service, with an allow-list configured in `config-repo/file-service.yml` | Pending (file-service) |
+| Validate uploads; restrict MIME type and size | file-service, with an allow-list and per-category size ceiling in `config-repo/file-service.yml` (`UploadValidator`) | Done |
 | HTTPS in production | Terminated at the reverse proxy | Pending (deployment) |
 | No passwords, tokens or payment data in logs | Refresh and reset tokens are stored only as SHA-256 hashes, so neither the database nor a log line built from it holds a usable token. A log review is part of the release checklist. | Partly done |
 | Secrets from the environment | The database password, JWT secret, first admin password and LiveKit secret have no defaults; startup fails if any is missing | Done |
