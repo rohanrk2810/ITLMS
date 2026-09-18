@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------
+# notification-service - In-app notifications, announcements and email
+# Owns database: itilms_notification (no other service connects to it)
+# ---------------------------------------------------------------------
+server:
+  port: 8089
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/itilms_notification
+    username: ${DB_USERNAME:itilms}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_TLS:false}
+        transport:
+          protocol: smtp
+
+itilms:
+  docs:
+    description: In-app notifications, announcements and email
+
+  mail:
+    # Off by default. Doc S16 describes several events as "in-app + email
+    # ready": the in-app row is always written, and email is switched on
+    # once the institute supplies real SMTP credentials. A failed send must
+    # never lose the in-app notification, so the two are written separately.
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:no-reply@itinstitute.local}
+    from-name: ${MAIL_FROM_NAME:IT Institute}
+
+  notification:
+    # In-app rows are kept for this long, then pruned. Without a retention
+    # rule the table grows forever and the student's bell icon becomes a
+    # history of their entire course.
+    retention-days: ${NOTIFICATION_RETENTION_DAYS:180}
+    digest-hour: 9

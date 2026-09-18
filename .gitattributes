@@ -1,0 +1,6 @@
+# Shell scripts run inside Linux containers; a CRLF checkout on Windows makes
+# them fail with "bad interpreter" or "set: illegal option".
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

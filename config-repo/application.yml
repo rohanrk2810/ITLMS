@@ -1,0 +1,170 @@
+# =====================================================================
+# Shared configuration - applied to EVERY service that talks to the
+# config server. Anything here can be overridden in <service-name>.yml.
+#
+# Nothing secret is written literally. Every credential is an environment
+# variable resolved by the config server's own process (Doc S12).
+# =====================================================================
+
+spring:
+  jackson:
+    # ISO-8601 strings, not epoch numbers. The React client parses these
+    # directly and a human reading a log can tell what time it was.
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: ${APP_TIMEZONE:Asia/Kolkata}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 5
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # ErrorHandlingDeserializer keeps one unparseable message from wedging
+      # the whole consumer: the bad record is handed to the error handler
+      # instead of throwing in the poll loop forever.
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: com.itilms.common.event
+    listener:
+      ack-mode: record
+      concurrency: 2
+      observation-enabled: true
+
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:50MB}
+      max-request-size: ${MAX_REQUEST_SIZE:60MB}
+
+  jpa:
+    open-in-view: false          # No lazy loading in the view layer; DTOs are built in services.
+    hibernate:
+      ddl-auto: validate         # Flyway owns the schema. Hibernate only checks it matches.
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+  cloud:
+    openfeign:
+      # Wraps every Feign call in a circuit breaker, which is what makes the
+      # @FeignClient fallbackFactory classes actually fire. Without this the
+      # fallbacks are dead code and a slow downstream service blocks a caller
+      # thread until the read timeout.
+      circuitbreaker:
+        enabled: true
+      client:
+        config:
+          default:
+            connect-timeout: 3000
+            read-timeout: 15000
+            logger-level: basic
+
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 30000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    registry-fetch-interval-seconds: 10
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+itilms:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: it-ilms
+    access-token-ttl: ${JWT_ACCESS_TTL:30m}
+    refresh-token-ttl: ${JWT_REFRESH_TTL:7d}
+    password-reset-ttl: 2h
+  cors:
+    allowed-origins:
+      - ${FRONTEND_URL:http://localhost:5173}
+      - http://localhost:3000
+  docs:
+    gateway-url: ${GATEWAY_URL:http://localhost:8080}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 8
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 4
+  timelimiter:
+    configs:
+      default:
+        # Must exceed the Feign read timeout above, or the time limiter cancels
+        # calls that would have succeeded and the breaker opens on healthy
+        # services.
+        timeoutDuration: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,refresh
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLE_RATE:0.1}
+
+logging:
+  pattern:
+    # The correlation id set by the gateway appears on every line, which is
+    # what makes a single user action greppable across twelve services.
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: INFO
+    com.itilms: ${APP_LOG_LEVEL:DEBUG}
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
+    org.springframework.web: INFO
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha

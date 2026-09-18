@@ -1,0 +1,32 @@
+# ---------------------------------------------------------------------
+# api-gateway - edge configuration.
+# Routes live in the gateway's own application.yml (they change when the
+# service topology changes, so they belong with the code). What lives here
+# is everything environment-specific: secrets, origins, infrastructure.
+# ---------------------------------------------------------------------
+
+itilms:
+  gateway:
+    jwt-secret: ${JWT_SECRET}
+    issuer: it-ilms
+    clock-skew-seconds: 30
+
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - ${FRONTEND_URL:http://localhost:5173}
+              - http://localhost:3000
+            allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+            allowedHeaders: "*"
+            exposedHeaders: [Content-Disposition, X-Correlation-Id]
+            allowCredentials: true
+            maxAge: 3600
