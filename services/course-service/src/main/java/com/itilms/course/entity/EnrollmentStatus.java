@@ -11,4 +11,9 @@ public enum EnrollmentStatus {
     public boolean allowsProgress() {
         return this == ACTIVE;
     }
+
+    /** Whether the student may still open the course content. A finished student keeps it for revision. */
+    public boolean allowsContentAccess() {
+        return this == ACTIVE || this == COMPLETED;
+    }
 }
