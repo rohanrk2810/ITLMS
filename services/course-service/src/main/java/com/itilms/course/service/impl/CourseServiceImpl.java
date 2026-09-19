@@ -115,17 +115,25 @@ public class CourseServiceImpl implements CourseService {
         AppPrincipal principal = SecurityUtils.currentPrincipal().orElse(null);
 
         boolean staffView = principal != null && !principal.isStudent();
-        if (!staffView && !course.getStatus().isVisibleToStudents()) {
-            // An unpublished course simply does not exist as far as students
-            // and anonymous visitors are concerned.
+
+        // Only an enrolment that still counts opens the content: a student who has been
+        // dropped or suspended sees the same locked view as anyone who never enrolled.
+        var enrollment = (principal != null && principal.isStudent() && principal.profileId() != null)
+                ? enrollmentRepository.findByStudentIdAndCourseId(principal.profileId(), courseId)
+                        .filter(e -> e.getStatus().allowsContentAccess())
+                : Optional.<com.itilms.course.entity.CourseEnrollment>empty();
+        boolean enrolled = enrollment.isPresent();
+
+        // An unpublished course simply does not exist as far as students and
+        // anonymous visitors are concerned. The exception is an archived course
+        // for someone who already took it: archiving removes it from the catalog,
+        // not from the people who hold it (see archive()).
+        boolean visible = course.getStatus().isVisibleToStudents()
+                || (enrolled && course.getStatus() == CourseStatus.ARCHIVED);
+        if (!staffView && !visible) {
             throw new ResourceNotFoundException("Course", courseId);
         }
 
-        var enrollment = (principal != null && principal.isStudent() && principal.profileId() != null)
-                ? enrollmentRepository.findByStudentIdAndCourseId(principal.profileId(), courseId)
-                : Optional.<com.itilms.course.entity.CourseEnrollment>empty();
-
-        boolean enrolled = enrollment.isPresent();
         boolean unlockEverything = staffView || enrolled;
 
         // One query for all progress rows, keyed by lesson, so building the
