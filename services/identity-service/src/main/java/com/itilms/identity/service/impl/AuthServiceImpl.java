@@ -66,8 +66,12 @@ public class AuthServiceImpl implements AuthService {
     // Sign in
     // -----------------------------------------------------------------
 
+    // These two record what a failed attempt did (the failure count and lockout, the
+    // revocation after a replayed token) and then throw. Spring rolls back on any
+    // RuntimeException by default, which would undo exactly that work - so the failures
+    // below must commit. The test AuthServiceImplTest.Transactions pins this.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {BadCredentialsException.class, ForbiddenOperationException.class})
     public AuthResponse login(LoginRequest request, ClientMetadata metadata) {
         User user = userRepository.findByEmailOrPhone(request.identifier().trim()).orElse(null);
 
@@ -170,7 +174,7 @@ public class AuthServiceImpl implements AuthService {
     // -----------------------------------------------------------------
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {BadCredentialsException.class, ForbiddenOperationException.class})
     public AuthResponse refresh(String refreshToken, ClientMetadata metadata) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BadCredentialsException("A refresh token is required");
