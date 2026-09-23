@@ -12,6 +12,8 @@ Every request goes through the gateway. There is no other way in — service por
 
 This file lists every controller endpoint, grouped by service, with the role it requires and a one-line description. It does not repeat request/response bodies — read those from Swagger UI (generated, always current) or the DTOs under each service's `dto/request` and `dto/response` packages. Paths are as declared; `{x}` is a path variable.
 
+A handful of endpoints are marked **internal only, 404 via gateway** rather than a role — the gateway refuses any external request to an `/internal/` path outright, before authentication is even checked, so no bearer token gets one through. They exist solely for one service to call another over the container network (see the note at the end of this file).
+
 Regenerate the endpoint/role columns at any time with:
 ```
 node deploy/scripts/check-gateway-routes.mjs   # also confirms the gateway routes match (181 endpoints, 0 misrouted)
@@ -84,8 +86,8 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | PATCH | /api/users/{id}/status | ADMIN_ONLY | Activate, deactivate or block |
 | POST | /api/users/{id}/reset-password | ADMIN_ONLY | Admin-initiated reset |
 | GET | /api/users/stats/counts | STAFF | Active user counts by role |
-| POST | /api/users/internal/lookup | any signed-in user | *cross-service:* resolve many user ids at once |
-| GET | /api/users/internal/by-role | any signed-in user | *cross-service:* every active user holding a role |
+| POST | /api/users/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many user ids at once |
+| GET | /api/users/internal/by-role | **internal only, 404 via gateway** | *cross-service:* every active user holding a role |
 
 ---
 
@@ -117,7 +119,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | PUT | /api/students/{id} | STAFF | Update a profile |
 | PATCH | /api/students/{id}/status | STAFF | Change standing (ACTIVE/ALUMNI/DROPPED/SUSPENDED) |
 | GET | /api/students/stats/counts | ADMIN, COORDINATOR, FINANCE, PLACEMENT | Counts by standing |
-| POST | /api/students/internal/lookup | any signed-in user | *cross-service:* resolve many student ids |
+| POST | /api/students/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many student ids |
 
 ### `TrainerController` — `/api/trainers`
 | Method | Path | Role | Does |
@@ -128,7 +130,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | POST | /api/trainers | STAFF | Create a trainer (+ identity account) |
 | PUT | /api/trainers/{id} | STAFF | Update |
 | GET | /api/trainers/available | STAFF | Trainers qualified for a given course (A3) |
-| POST | /api/trainers/internal/lookup | any signed-in user | *cross-service:* resolve many trainer ids |
+| POST | /api/trainers/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many trainer ids |
 
 ---
 
@@ -146,7 +148,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | POST | /api/courses/{id}/publish | STAFF | Publish — refuses if required metadata is missing, naming each field |
 | POST | /api/courses/{id}/archive | ADMIN_ONLY | Archive |
 | GET | /api/courses/stats/counts | STAFF | Counts by status |
-| POST | /api/courses/internal/lookup | any signed-in user | *cross-service:* resolve many course ids |
+| POST | /api/courses/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many course ids |
 
 ### `CurriculumController` (modules and lessons, no own base path)
 | Method | Path | Role | Does |
@@ -189,8 +191,8 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | POST | /api/batches/enrollments/{enrollmentId}/drop | STAFF | Drop a student |
 | POST | /api/batches/enrollments/{enrollmentId}/transfer | STAFF | Transfer to another batch |
 | GET | /api/batches/stats/counts | ACADEMIC | Counts by status |
-| POST | /api/batches/internal/lookup | any signed-in user | *cross-service:* resolve many batch ids |
-| GET | /api/batches/internal/{batchId}/enrolled/{studentId} | any signed-in user | *cross-service:* is this student in this batch? (used by liveclass, assessment, placement, certificate) |
+| POST | /api/batches/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many batch ids |
+| GET | /api/batches/internal/{batchId}/enrolled/{studentId} | **internal only, 404 via gateway** | *cross-service:* is this student in this batch? (used by liveclass, assessment, placement, certificate) |
 
 ### `AttendanceController` (no own base path)
 | Method | Path | Role | Does |
