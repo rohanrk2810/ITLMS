@@ -90,6 +90,13 @@ public class Quiz extends AuditableEntity {
     @Builder.Default
     private int maxViolations = 2;
 
+    /**
+     * The student's camera must be on: they allow it before starting, and the browser reports when no face
+     * (or several) is visible. Independent of secure mode. Events are recorded and warn; none ends the attempt.
+     */
+    @Column(name = "require_camera", nullable = false)
+    private boolean requireCamera;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

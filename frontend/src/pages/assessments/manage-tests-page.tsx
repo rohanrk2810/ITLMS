@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, ShieldCheck } from 'lucide-react'
+import { Camera, Plus, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -58,6 +58,12 @@ export function ManageTestsPage() {
                     <Badge variant="outline" className="ml-2 gap-1">
                       <ShieldCheck className="size-3" />
                       Secure
+                    </Badge>
+                  )}
+                  {quiz.requireCamera && (
+                    <Badge variant="outline" className="ml-2 gap-1">
+                      <Camera className="size-3" />
+                      Camera
                     </Badge>
                   )}
                 </TableCell>
@@ -191,6 +197,20 @@ function NewQuizDialog() {
                 </p>
               </div>
             )}
+          </div>
+          <div className="flex flex-col gap-2 rounded-md border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox
+                checked={form.requireCamera ?? false}
+                onCheckedChange={(value) => setForm({ ...form, requireCamera: value === true })}
+              />
+              Require camera
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Students must allow their camera before starting, and show their face. During the test they are
+              warned when no face (or more than one) is visible or the camera is turned off, and each of these is
+              recorded with its time for you to review. Nothing is failed automatically, and no pictures are stored.
+            </p>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>

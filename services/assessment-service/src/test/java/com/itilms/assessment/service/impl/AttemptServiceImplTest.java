@@ -434,6 +434,84 @@ class AttemptServiceImplTest {
     }
 
     @Test
+    @DisplayName("A camera event on a test that needs the camera is recorded and warns, in the requested words")
+    void cameraEventWarnsAndIsRecorded() {
+        quiz.setRequireCamera(true);
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        var outcome = service.recordViolation(9L, report(ViolationType.FACE_NOT_DETECTED));
+
+        assertThat(outcome.counted()).isFalse();
+        assertThat(outcome.terminated()).isFalse();
+        assertThat(outcome.message()).isEqualTo("Warning: Please keep your face properly visible in the camera.");
+        org.mockito.ArgumentCaptor<QuizViolation> saved = org.mockito.ArgumentCaptor.forClass(QuizViolation.class);
+        verify(violations).save(saved.capture());
+        assertThat(saved.getValue().getType()).isEqualTo(ViolationType.FACE_NOT_DETECTED);
+        assertThat(saved.getValue().isCounted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Camera events never end an attempt, however many there are and however low the limit")
+    void cameraEventsNeverTerminate() {
+        quiz.setRequireCamera(true);
+        quiz.setSecureMode(true);
+        quiz.setMaxViolations(1);
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        for (ViolationType type : List.of(ViolationType.FACE_NOT_DETECTED, ViolationType.MULTIPLE_FACES,
+                ViolationType.CAMERA_DISABLED, ViolationType.CAMERA_PERMISSION_DENIED, ViolationType.FACE_NOT_DETECTED)) {
+            var outcome = service.recordViolation(9L, report(type));
+            assertThat(outcome.message()).isEqualTo(type.warning()).startsWith("Warning:");
+            assertThat(outcome.terminated()).isFalse();
+        }
+
+        assertThat(a.getViolationCount()).isZero();
+        assertThat(a.getStatus()).isEqualTo(AttemptStatus.IN_PROGRESS);
+        verify(scorer, never()).terminate(any(), any(), any());
+        verify(violations, org.mockito.Mockito.times(5)).save(any());
+    }
+
+    @Test
+    @DisplayName("A camera event on a test that does not use the camera is ignored")
+    void cameraEventIgnoredWithoutCamera() {
+        quiz.setSecureMode(true);
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        var outcome = service.recordViolation(9L, report(ViolationType.FACE_NOT_DETECTED));
+
+        assertThat(outcome.message()).isNull();
+        verify(violations, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Window events on a camera-only test are ignored: it is not a secure test")
+    void windowEventIgnoredOnCameraOnlyTest() {
+        quiz.setRequireCamera(true);
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        var outcome = service.recordViolation(9L, report(ViolationType.TAB_SWITCH));
+
+        assertThat(outcome.counted()).isFalse();
+        assertThat(a.getViolationCount()).isZero();
+        verify(violations, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("The trainer's sheet carries the number of camera events per attempt, in one query")
+    void resultsSheetCountsCameraEvents() {
+        quiz.setRequireCamera(true);
+        QuizAttempt done = attempt(STUDENT, Instant.now().minusSeconds(60));
+        done.complete(1, 2, 40, Instant.now(), false);
+        when(attemptRepository.findByQuizIdAndStatusInOrderByScoreDesc(eq(1L), anyList())).thenReturn(List.of(done));
+        when(violations.countByAttemptAndTypes(anyList(), anyList())).thenReturn(List.<Object[]>of(new Object[] {9L, 3L}));
+
+        var sheet = service.quizResults(1L);
+
+        assertThat(sheet).singleElement().satisfies(row -> assertThat(row.cameraEventCount()).isEqualTo(3));
+        verify(violations).countByAttemptAndTypes(eq(List.of(9L)), anyList());
+    }
+
+    @Test
     @DisplayName("On a test that is not secure, a report is accepted and changes nothing")
     void ignoredWhenNotSecure() {
         QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));

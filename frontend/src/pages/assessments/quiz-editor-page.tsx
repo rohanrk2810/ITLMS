@@ -161,7 +161,7 @@ export function QuizEditorPage() {
                 <TableHead>Student</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Result</TableHead>
-                {quiz.secureMode && <TableHead>Violations</TableHead>}
+                {(quiz.secureMode || quiz.requireCamera) && <TableHead>Monitoring</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -176,9 +176,15 @@ export function QuizEditorPage() {
                       {result.status === 'TERMINATED' ? 'Terminated' : result.passed ? 'Passed' : 'Not passed'}
                     </Badge>
                   </TableCell>
-                  {quiz.secureMode && (
+                  {(quiz.secureMode || quiz.requireCamera) && (
                     <TableCell>
-                      <ViolationsButton attemptId={result.attemptId} count={result.violationCount} />
+                      <ViolationsButton
+                        attemptId={result.attemptId}
+                        count={result.violationCount}
+                        cameraEvents={result.cameraEventCount}
+                        secure={quiz.secureMode}
+                        camera={quiz.requireCamera}
+                      />
                     </TableCell>
                   )}
                 </TableRow>
@@ -192,7 +198,19 @@ export function QuizEditorPage() {
 }
 
 /** How many times a student left the test window, and a way to see every event the browser reported. */
-function ViolationsButton({ attemptId, count }: { attemptId: number; count: number }) {
+function ViolationsButton({
+  attemptId,
+  count,
+  cameraEvents,
+  secure,
+  camera,
+}: {
+  attemptId: number
+  count: number
+  cameraEvents: number
+  secure: boolean
+  camera: boolean
+}) {
   const [open, setOpen] = useState(false)
   const query = useQuery({
     queryKey: ['quiz-attempts', attemptId, 'violations'],
@@ -203,8 +221,8 @@ function ViolationsButton({ attemptId, count }: { attemptId: number; count: numb
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant={count > 0 ? 'outline' : 'ghost'}>
-          {count} counted &middot; review
+        <Button size="sm" variant={count > 0 || cameraEvents > 0 ? 'outline' : 'ghost'}>
+          {[secure && `${count} counted`, camera && `${cameraEvents} camera`].filter(Boolean).join(' · ')} &middot; review
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[80vh] overflow-y-auto">

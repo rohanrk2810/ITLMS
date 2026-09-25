@@ -46,6 +46,9 @@ public record AttemptResultResponse(
         @Schema(description = "Secure tests: violations that counted. Shown to the student too - they were warned")
         int violationCount,
 
+        @Schema(description = "Camera events recorded (no face, several faces, camera off). Staff results sheet only; 0 elsewhere")
+        int cameraEventCount,
+
         @Schema(description = "Set when the attempt was ended by the secure-test rules")
         String terminatedReason,
 
@@ -110,7 +113,14 @@ public record AttemptResultResponse(
                 visible ? attempt.getPercentage() : null,
                 visible ? attempt.getPassed() : null,
                 quiz.getPassPercentage(),
-                attempt.getViolationCount(), attempt.getTerminatedReason(),
+                attempt.getViolationCount(), 0, attempt.getTerminatedReason(),
                 breakdown);
+    }
+
+    /** The same result with the number of camera events recorded for the attempt, for the trainer's sheet. */
+    public AttemptResultResponse withCameraEventCount(int count) {
+        return new AttemptResultResponse(attemptId, quizId, quizTitle, studentId, studentName, attemptNo, status,
+                startedAt, submittedAt, resultVisible, score, totalMarks, percentage, passed, passPercentage,
+                violationCount, count, terminatedReason, answers);
     }
 }

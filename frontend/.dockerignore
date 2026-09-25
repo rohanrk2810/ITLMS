@@ -1,4 +1,6 @@
 node_modules
+# Regenerated inside the image by the prebuild script; no need to send 33 MB of it as build context.
+public/mediapipe
 dist
 dist-ssr
 .env.local
