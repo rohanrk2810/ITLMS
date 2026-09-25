@@ -59,6 +59,8 @@ public interface LiveSessionRepository extends JpaRepository<LiveSession, Long> 
 
     List<LiveSession> findByBatchIdOrderByScheduledStartAtDesc(Long batchId);
 
+    List<LiveSession> findByBatchIdInAndStatus(java.util.Collection<Long> batchIds, com.itilms.liveclass.entity.LiveSessionStatus status);
+
     Page<LiveSession> findByStatusOrderByScheduledStartAtDesc(LiveSessionStatus status, Pageable pageable);
 
     Page<LiveSession> findAllByOrderByScheduledStartAtDesc(Pageable pageable);

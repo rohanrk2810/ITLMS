@@ -92,6 +92,7 @@ const QUICK_LINKS: Record<string, { label: string; to: string; description: stri
     { label: 'Assessments', to: '/app/assessments', description: 'Tests and assignments to mark.' },
   ],
   STUDENT: [
+    { label: 'My progress', to: '/app/my-progress', description: 'How you are doing, and what to do next.' },
     { label: 'My courses', to: '/app/courses', description: 'Pick up where you left off.' },
     { label: 'Assessments', to: '/app/assessments', description: 'Tests to sit, assignments to hand in.' },
     { label: 'Fees', to: '/app/finance', description: 'What you owe and what you’ve paid.' },

@@ -17,6 +17,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     Page<Assignment> findByBatchIdOrderByDueAtDesc(Long batchId, Pageable pageable);
 
+    List<Assignment> findByBatchIdInAndStatusInOrderByDueAtAsc(Collection<Long> batchIds, Collection<AssignmentStatus> statuses);
+
     /** What a student sees: published work for the batches they are in. */
     List<Assignment> findByBatchIdInAndStatusOrderByDueAtAsc(Collection<Long> batchIds, AssignmentStatus status);
 

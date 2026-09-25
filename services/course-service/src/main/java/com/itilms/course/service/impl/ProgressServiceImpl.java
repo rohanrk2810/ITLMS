@@ -1,7 +1,10 @@
 package com.itilms.course.service.impl;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +21,15 @@ import com.itilms.common.security.AppPrincipal;
 import com.itilms.common.security.SecurityUtils;
 import com.itilms.course.dto.request.LessonProgressRequest;
 import com.itilms.course.dto.response.ProgressResponse;
+import com.itilms.course.dto.response.StudentCourseProgressResponse;
 import com.itilms.course.entity.CourseEnrollment;
+import com.itilms.course.entity.CourseModule;
 import com.itilms.course.entity.EnrollmentStatus;
+import com.itilms.course.entity.Lesson;
 import com.itilms.course.entity.LessonProgress;
+import com.itilms.course.entity.LessonType;
 import com.itilms.course.repository.CourseEnrollmentRepository;
+import com.itilms.course.repository.CourseModuleRepository;
 import com.itilms.course.repository.CourseRepository;
 import com.itilms.course.repository.LessonProgressRepository;
 import com.itilms.course.repository.LessonRepository;
@@ -40,6 +48,7 @@ public class ProgressServiceImpl implements ProgressService {
     private final CourseEnrollmentRepository enrollmentRepository;
     private final LessonProgressRepository progressRepository;
     private final EventPublisher events;
+    private final CourseModuleRepository moduleRepository;
 
     // -----------------------------------------------------------------
     // Recording
@@ -98,6 +107,38 @@ public class ProgressServiceImpl implements ProgressService {
     // -----------------------------------------------------------------
     // Reading
     // -----------------------------------------------------------------
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentCourseProgressResponse> courseProgressOf(Long studentId) {
+        List<StudentCourseProgressResponse> report = new ArrayList<>();
+        for (CourseEnrollment enrollment : enrollmentRepository.findByStudentId(studentId)) {
+            String title = courseRepository.findById(enrollment.getCourseId()).map(c -> c.getTitle()).orElse(null);
+            List<CourseModule> modules = moduleRepository.findByCourseIdOrderBySequenceNo(enrollment.getCourseId());
+            List<Lesson> lessons = modules.isEmpty() ? List.of()
+                    : lessonRepository.findByModuleIdInOrderByModuleIdAscSequenceNoAsc(
+                            modules.stream().map(CourseModule::getId).toList());
+            Set<Long> done = new HashSet<>(progressRepository.findCompletedLessonIds(enrollment.getId()));
+
+            List<StudentCourseProgressResponse.ModuleProgress> moduleProgress = new ArrayList<>();
+            for (CourseModule module : modules) {
+                List<Lesson> mandatory = lessons.stream()
+                        .filter(l -> l.getModuleId().equals(module.getId()) && l.isMandatory()).toList();
+                moduleProgress.add(new StudentCourseProgressResponse.ModuleProgress(module.getId(), module.getTitle(),
+                        mandatory.size(), (int) mandatory.stream().filter(l -> done.contains(l.getId())).count()));
+            }
+            List<Lesson> videos = lessons.stream().filter(l -> l.getType() == LessonType.VIDEO).toList();
+
+            report.add(new StudentCourseProgressResponse(enrollment.getCourseId(), title, enrollment.getBatchId(),
+                    enrollment.getStatus().name(),
+                    enrollment.getProgressPercent() == null ? 0 : enrollment.getProgressPercent().intValue(),
+                    enrollment.getCompletedLessons() == null ? 0 : enrollment.getCompletedLessons(),
+                    enrollment.getTotalLessons() == null ? 0 : enrollment.getTotalLessons(),
+                    videos.size(), (int) videos.stream().filter(l -> done.contains(l.getId())).count(),
+                    moduleProgress));
+        }
+        return report;
+    }
 
     @Override
     @Transactional(readOnly = true)

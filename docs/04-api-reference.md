@@ -171,6 +171,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 |---|---|---|---|
 | POST | /api/progress/lessons/{lessonId} | STUDENT | Record progress on a lesson (watched seconds / completed) |
 | GET | /api/progress/me | STUDENT | My own progress |
+| GET | /api/progress/internal/students/{studentId} | **internal only, 404 via gateway** | *cross-service:* every course a student is taking, module by module, with video lessons finished (for the progress report) |
 | GET | /api/progress/batches/{batchId} | ACADEMIC | Progress for a whole batch — **L1:** any trainer, not just one teaching this batch |
 | GET | /api/progress/students/{studentId}/courses/{courseId} | any signed-in user | Progress for one student on one course — ownership-checked (a student may only read their own; fixed defect, see [02-documentation-review.md §7](02-documentation-review.md#7-defects-found-and-fixed-during-this-review)) |
 
@@ -419,6 +420,14 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | Method | Path | Role | Does |
 |---|---|---|---|
 | GET | /api/dashboard/summary | STAFF | Institute-wide summary, cached in memory for `dashboard-cache-seconds` |
+
+### `StudentProgressController` — `/api/reports`
+A student's complete record and progress report, put together from the services that own each part. See `10-student-progress-report.md`.
+
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/reports/me/progress | STUDENT | My report: profile, batches, attendance, live classes, recorded lessons, tests, coding, assignments, seven headline percentages, and suggestions. Test results a trainer has not released are held back |
+| GET | /api/reports/students/{studentId}/progress | ACADEMIC | Any student's report for ADMIN / COORDINATOR; for a TRAINER only if the student is enrolled in a batch they teach (else 403). A student uses `/me/progress`, so this is 403 for them |
 
 ### `AuditLogController` — `/api/audit-logs`
 | Method | Path | Role | Does |

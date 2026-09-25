@@ -43,6 +43,8 @@ public interface LiveParticipantRepository extends JpaRepository<LiveParticipant
 
     Optional<LiveParticipant> findByLiveSessionIdAndIdentity(Long liveSessionId, String identity);
 
+    List<LiveParticipant> findByStudentId(Long studentId);
+
     Optional<LiveParticipant> findByLiveSessionIdAndUserId(Long liveSessionId, Long userId);
 
     List<LiveParticipant> findByLiveSessionIdOrderByDisplayNameAsc(Long liveSessionId);

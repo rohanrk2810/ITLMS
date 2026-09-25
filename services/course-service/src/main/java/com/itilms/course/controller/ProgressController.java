@@ -16,6 +16,7 @@ import com.itilms.common.security.AppPrincipal;
 import com.itilms.common.security.Roles;
 import com.itilms.course.dto.request.LessonProgressRequest;
 import com.itilms.course.dto.response.ProgressResponse;
+import com.itilms.course.dto.response.StudentCourseProgressResponse;
 import com.itilms.course.service.ProgressService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,6 +52,15 @@ public class ProgressController {
                     "Your account is not yet linked to a student profile. Contact the institute office.");
         }
         return progressService.myProgress(principal.profileId());
+    }
+
+    @Operation(summary = "Internal: every course one student is taking, module by module",
+            description = "For reporting-service's student progress report. Not reachable through the gateway; "
+                    + "reporting-service decides who may see which student.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/internal/students/{studentId}")
+    public List<StudentCourseProgressResponse> courseProgressOf(@PathVariable Long studentId) {
+        return progressService.courseProgressOf(studentId);
     }
 
     @Operation(summary = "Progress for a batch",
