@@ -194,6 +194,19 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | POST | /api/batches/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many batch ids |
 | GET | /api/batches/internal/{batchId}/enrolled/{studentId} | **internal only, 404 via gateway** | *cross-service:* is this student in this batch? (used by liveclass, assessment, placement, certificate) |
 
+### `CourseRequestController` — `/api/course-requests`
+A student asks to join a course; an administrator or coordinator decides. Approving enrols through the normal enrolment path, so batch status, capacity and the double-enrolment rule apply.
+
+| Method | Path | Role | Does |
+|---|---|---|---|
+| POST | /api/course-requests | STUDENT | Ask to join a published course (optional preferred batch, message). One open request per course; refused if already enrolled |
+| GET | /api/course-requests/mine | STUDENT | My requests, newest first |
+| POST | /api/course-requests/{id}/cancel | STUDENT | Withdraw my own waiting request |
+| GET | /api/course-requests | STAFF | Queue, filter `?status=PENDING/APPROVED/REJECTED/CANCELLED` |
+| GET | /api/course-requests/{id} | any signed-in user | One request — the student who made it, or staff; anyone else gets 404 |
+| POST | /api/course-requests/{id}/approve | STAFF | Enrol the student in a batch of the course (`batchId`, or the one they asked for) |
+| POST | /api/course-requests/{id}/reject | STAFF | Reject; a reason is required and the student sees it |
+
 ### `AttendanceController` (no own base path)
 | Method | Path | Role | Does |
 |---|---|---|---|
@@ -377,7 +390,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 |---|---|---|---|
 | GET | /api/announcements | any signed-in user | Announcements for me |
 | GET | /api/announcements/{id} | any signed-in user | One announcement |
-| POST | /api/announcements | ACADEMIC | Make one — audience ALL/ROLE/BATCH/COURSE |
+| POST | /api/announcements | ACADEMIC | Make one — audience ALL/ROLE/BATCH/COURSE, and a `category` (GENERAL, COURSE, BATCH, LIVE_CLASS, TEST, ASSIGNMENT, INSTITUTE; default GENERAL). Students cannot publish |
 | PUT | /api/announcements/{id} | ACADEMIC | Correct |
 | POST | /api/announcements/{id}/withdraw | ACADEMIC | Withdraw |
 
