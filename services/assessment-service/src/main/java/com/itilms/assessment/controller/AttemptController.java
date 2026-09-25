@@ -1,5 +1,7 @@
 package com.itilms.assessment.controller;
 
+import java.util.List;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,11 +12,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.itilms.assessment.dto.request.SubmitAttemptRequest;
+import com.itilms.assessment.dto.request.ViolationRequest;
 import com.itilms.assessment.dto.response.AnswerSaveResponse;
 import com.itilms.assessment.dto.response.AttemptResultResponse;
 import com.itilms.assessment.dto.response.AttemptViewResponse;
 import com.itilms.assessment.dto.response.CodingRunResponse;
+import com.itilms.assessment.dto.response.ViolationResponse;
 import com.itilms.assessment.service.AttemptService;
+import com.itilms.common.security.Roles;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -59,6 +64,24 @@ public class AttemptController {
 
     /** The code to test. */
     public record RunTestsRequest(@NotBlank @Size(max = 50000) String sourceCode) {
+    }
+
+    @Operation(summary = "Report something the browser noticed in a secure test",
+            description = "Leaving the window counts; copying and the like are only recorded. The server decides: a counted "
+                    + "violation below the test's limit warns, the one that reaches it ends the attempt (TERMINATED, failed). "
+                    + "On a test that is not secure the report is accepted and does nothing.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/{id}/violations")
+    public ViolationResponse.Outcome reportViolation(@PathVariable Long id, @Valid @RequestBody ViolationRequest request) {
+        return attemptService.recordViolation(id, request);
+    }
+
+    @Operation(summary = "What the browser reported during an attempt",
+            description = "Trainers of the test and staff. Oldest first; 'counted' says whether it added to the limit.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping("/{id}/violations")
+    public List<ViolationResponse.Entry> violations(@PathVariable Long id) {
+        return attemptService.violations(id);
     }
 
     @Operation(summary = "Submit an attempt",

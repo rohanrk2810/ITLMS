@@ -61,7 +61,10 @@ function TestsList() {
                   {quiz.durationMinutes} min &middot; {quiz.totalMarks} marks &middot; {quiz.passPercentage}% to pass
                 </CardDescription>
               </div>
-              {quiz.mandatory && <Badge variant="outline">Mandatory</Badge>}
+              <div className="flex items-center gap-2">
+                {quiz.secureMode && <Badge variant="outline">Secure test</Badge>}
+                {quiz.mandatory && <Badge variant="outline">Mandatory</Badge>}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center justify-between gap-3">

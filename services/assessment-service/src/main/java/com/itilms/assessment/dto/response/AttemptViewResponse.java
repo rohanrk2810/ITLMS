@@ -40,6 +40,12 @@ public record AttemptViewResponse(
         Instant expiresAt,
 
         int secondsRemaining,
+
+        @Schema(description = "Secure test mode is on: the browser must report leaving the window")
+        boolean secureMode,
+        int maxViolations,
+        @Schema(description = "Violations that have counted so far in this attempt")
+        int violationCount,
         List<Question> questions,
 
         @Schema(description = "What this attempt already has saved, so a resumed sitting shows it again")
@@ -87,6 +93,7 @@ public record AttemptViewResponse(
                 attempt.getId(), quiz.getId(), quiz.getTitle(), quiz.getInstructions(),
                 attempt.getAttemptNo(), quiz.getAttemptsAllowed(), quiz.getTotalMarks(),
                 quiz.getPassPercentage(), attempt.getStartedAt(), attempt.getExpiresAt(),
-                attempt.secondsRemaining(now), paper, savedAnswers);
+                attempt.secondsRemaining(now), quiz.isSecureMode(), quiz.getMaxViolations(),
+                attempt.getViolationCount(), paper, savedAnswers);
     }
 }

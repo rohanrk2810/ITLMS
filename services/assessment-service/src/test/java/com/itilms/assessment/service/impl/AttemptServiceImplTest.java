@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import com.itilms.assessment.dto.request.SubmitAttemptRequest;
+import com.itilms.assessment.dto.request.ViolationRequest;
 import com.itilms.assessment.entity.AttemptStatus;
 import com.itilms.assessment.entity.QuestionType;
 import com.itilms.assessment.entity.Quiz;
@@ -33,10 +34,13 @@ import com.itilms.assessment.entity.QuizOption;
 import com.itilms.assessment.entity.QuizQuestion;
 import com.itilms.assessment.entity.QuizStatus;
 import com.itilms.assessment.entity.QuizTestCase;
+import com.itilms.assessment.entity.QuizViolation;
+import com.itilms.assessment.entity.ViolationType;
 import com.itilms.assessment.repository.QuizAnswerRepository;
 import com.itilms.assessment.repository.QuizAttemptRepository;
 import com.itilms.assessment.repository.QuizQuestionRepository;
 import com.itilms.assessment.repository.QuizRepository;
+import com.itilms.assessment.repository.QuizViolationRepository;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
 import com.itilms.assessment.service.CodingJudge;
@@ -61,6 +65,7 @@ class AttemptServiceImplTest {
     @Mock private AssessmentAccess access;
     @Mock private AttemptScorer scorer;
     @Mock private CodingJudge judge;
+    @Mock private QuizViolationRepository violations;
 
     private AttemptServiceImpl service;
     private Quiz quiz;
@@ -70,7 +75,7 @@ class AttemptServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new AttemptServiceImpl(quizRepository, questionRepository, attemptRepository,
-                answerRepository, access, scorer, judge);
+                answerRepository, access, scorer, judge, violations);
 
         quiz = Quiz.builder().id(1L).courseId(1L).title("t").durationMinutes(30).totalMarks(2)
                 .attemptsAllowed(1).status(QuizStatus.PUBLISHED).build();
@@ -337,6 +342,145 @@ class AttemptServiceImplTest {
 
         assertThat(result.status()).isEqualTo("SUBMITTED");
         assertThat(stale.getTestedMarks()).isEqualTo(2);
+    }
+
+    // ------------------------------------------------------------------
+    // Secure test mode
+    // ------------------------------------------------------------------
+
+    private static ViolationRequest report(ViolationType type) {
+        return new ViolationRequest(type, null, null);
+    }
+
+    private QuizAttempt secureAttempt(int limit) {
+        quiz.setSecureMode(true);
+        quiz.setMaxViolations(limit);
+        return attempt(STUDENT, Instant.now().plusSeconds(600));
+    }
+
+    @Test
+    @DisplayName("The first counted violation warns; the one that reaches the limit ends the attempt")
+    void warnsThenTerminates() {
+        QuizAttempt a = secureAttempt(2);
+
+        var first = service.recordViolation(9L, report(ViolationType.TAB_SWITCH));
+        assertThat(first.counted()).isTrue();
+        assertThat(first.terminated()).isFalse();
+        assertThat(first.violationCount()).isEqualTo(1);
+        assertThat(first.warningsLeft()).isZero();
+        assertThat(first.message()).startsWith("Warning: Please do not leave the test window.");
+        verify(scorer, never()).terminate(any(), any(), any());
+
+        // Three seconds on, a second leaving: not a repeat report of the first.
+        when(violations.findFirstByAttemptIdAndCountedTrueOrderByOccurredAtDesc(9L)).thenReturn(Optional.of(
+                QuizViolation.builder().counted(true).occurredAt(Instant.now().minusSeconds(30)).build()));
+        when(scorer.terminate(any(), any(), any())).thenAnswer(inv -> {
+            a.complete(1, 2, 40, Instant.now(), false);
+            a.terminate(inv.getArgument(2));
+            return a;
+        });
+
+        var second = service.recordViolation(9L, report(ViolationType.WINDOW_BLUR));
+
+        assertThat(second.terminated()).isTrue();
+        assertThat(second.violationCount()).isEqualTo(2);
+        assertThat(second.message()).contains("ended");
+        verify(scorer).terminate(eq(a), eq(quiz), any());
+        assertThat(a.getStatus()).isEqualTo(AttemptStatus.TERMINATED);
+        assertThat(a.getPassed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("With a limit of one, the first violation ends the attempt at once")
+    void limitOneTerminatesImmediately() {
+        secureAttempt(1);
+
+        var outcome = service.recordViolation(9L, report(ViolationType.TAB_SWITCH));
+
+        verify(scorer).terminate(any(), eq(quiz), any());
+        assertThat(outcome.maxViolations()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("A second report of the same leaving (tab hidden, then window blurred) is recorded but counted once")
+    void mergesTheSameLeaving() {
+        QuizAttempt a = secureAttempt(3);
+        when(violations.findFirstByAttemptIdAndCountedTrueOrderByOccurredAtDesc(9L)).thenReturn(Optional.of(
+                QuizViolation.builder().counted(true).occurredAt(Instant.now().minusMillis(400)).build()));
+
+        var outcome = service.recordViolation(9L, report(ViolationType.WINDOW_BLUR));
+
+        assertThat(outcome.counted()).isFalse();
+        assertThat(a.getViolationCount()).isZero();
+        org.mockito.ArgumentCaptor<QuizViolation> saved = org.mockito.ArgumentCaptor.forClass(QuizViolation.class);
+        verify(violations).save(saved.capture());
+        assertThat(saved.getValue().isCounted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Copying, right-clicks and leaving fullscreen are recorded, and never end a test")
+    void recordedButNotCounted() {
+        QuizAttempt a = secureAttempt(1);
+
+        for (ViolationType type : List.of(ViolationType.COPY_ATTEMPT, ViolationType.PASTE_ATTEMPT,
+                ViolationType.RIGHT_CLICK, ViolationType.FULLSCREEN_EXIT, ViolationType.SHORTCUT_BLOCKED)) {
+            assertThat(service.recordViolation(9L, report(type)).counted()).isFalse();
+        }
+
+        assertThat(a.getViolationCount()).isZero();
+        assertThat(a.getStatus()).isEqualTo(AttemptStatus.IN_PROGRESS);
+        verify(violations, org.mockito.Mockito.times(5)).save(any());
+        verify(scorer, never()).terminate(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("On a test that is not secure, a report is accepted and changes nothing")
+    void ignoredWhenNotSecure() {
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        var outcome = service.recordViolation(9L, report(ViolationType.TAB_SWITCH));
+
+        assertThat(outcome.counted()).isFalse();
+        assertThat(a.getViolationCount()).isZero();
+        verify(violations, never()).save(any());
+        verify(scorer, never()).terminate(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("A report after the attempt has ended does nothing, and says whether it was terminated")
+    void ignoredOnceOver() {
+        QuizAttempt a = secureAttempt(2);
+        a.complete(1, 2, 40, Instant.now(), false);
+        a.terminate("too many");
+
+        var outcome = service.recordViolation(9L, report(ViolationType.TAB_SWITCH));
+
+        assertThat(outcome.terminated()).isTrue();
+        assertThat(outcome.counted()).isFalse();
+        verify(violations, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Only the student who owns the attempt can report on it")
+    void violationsAreOwnerOnly() {
+        secureAttempt(2);
+        attempt(99L, Instant.now().plusSeconds(600));
+
+        assertThatThrownBy(() -> service.recordViolation(9L, report(ViolationType.TAB_SWITCH)))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(violations, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("The trainer's review of an attempt needs the right to manage that test")
+    void reviewNeedsManagerRights() {
+        secureAttempt(2);
+        org.mockito.Mockito.doThrow(new com.itilms.common.exception.ForbiddenOperationException("no"))
+                .when(access).requireManagesQuiz(quiz);
+
+        assertThatThrownBy(() -> service.violations(9L))
+                .isInstanceOf(com.itilms.common.exception.ForbiddenOperationException.class);
+        verify(violations, never()).findByAttemptIdOrderByOccurredAtAsc(any());
     }
 
     @Test

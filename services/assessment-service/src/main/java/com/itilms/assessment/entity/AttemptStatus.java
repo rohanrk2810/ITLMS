@@ -12,9 +12,14 @@ public enum AttemptStatus {
      * <p>Scored on whatever was answered rather than discarded: a student
      * whose connection died ten minutes before the end keeps their work.
      */
-    EXPIRED;
+    EXPIRED,
+    /**
+     * Ended by the secure-test rules: too many violations. Scored on what was answered, for the
+     * record, and always marked failed.
+     */
+    TERMINATED;
 
     public boolean isFinished() {
-        return this == SUBMITTED || this == EXPIRED;
+        return this != IN_PROGRESS;
     }
 }
