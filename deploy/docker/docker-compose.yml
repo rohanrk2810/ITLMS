@@ -81,6 +81,7 @@ volumes:
   postgres-data:
   kafka-data:
   file-storage:
+  piston-packages:
 
 services:
 
@@ -484,6 +485,76 @@ services:
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8092/actuator/health || exit 1"]
+
+  codeexec-service:
+    <<: *spring-service
+    build:
+      context: ../../services/codeexec-service
+      dockerfile: ../../deploy/docker/Dockerfile
+    image: itilms/codeexec-service:dev
+    # Stateless: it needs neither the database nor Kafka, so it does not wait for them.
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    environment:
+      <<: *service-env
+      # Where Judge0 runs, as seen from inside this network. Blank switches code
+      # execution off (the editor says so). host.docker.internal reaches a Judge0
+      # running on this same computer.
+      JUDGE0_URL: ${JUDGE0_URL:-}
+      JUDGE0_AUTH_HEADER: ${JUDGE0_AUTH_HEADER:-X-Auth-Token}
+      JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-}
+      # Which sandbox runs the code: judge0 (default) or piston (the optional "piston" service below).
+      CODEEXEC_ENGINE: ${CODEEXEC_ENGINE:-judge0}
+      PISTON_URL: ${PISTON_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      <<: *health-timing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8093/actuator/health || exit 1"]
+
+  # Optional code-execution sandbox: Piston, as an alternative to a self-hosted Judge0.
+  # Not started by a plain "up": bring it up with
+  #   docker compose --profile piston up -d piston
+  # then point codeexec-service at it (CODEEXEC_ENGINE=piston, PISTON_URL=http://piston:2000).
+  # Piston needs cgroup v2 with v1 disabled - the reverse of Judge0 - which Docker Desktop is.
+  # Languages are installed once into the volume; see docs/08-code-execution.md.
+  piston:
+    profiles: [piston]
+    image: ghcr.io/engineer-man/piston
+    restart: unless-stopped
+    networks: [itilms]
+    # Piston builds its own namespaces and cgroups for every run, which needs this.
+    privileged: true
+    volumes:
+      - piston-packages:/piston/packages
+    environment:
+      # Ceilings. codeexec-service sends its own (lower or equal) limits with each run.
+      PISTON_MAX_CONCURRENT_JOBS: ${PISTON_MAX_CONCURRENT_JOBS:-2}
+      PISTON_RUN_TIMEOUT: "15000"
+      PISTON_RUN_CPU_TIME: "15000"
+      # Unlimited by default in Piston, which lets one student's program take every byte of RAM.
+      PISTON_RUN_MEMORY_LIMIT: "268435456"
+      PISTON_COMPILE_TIMEOUT: "20000"
+      PISTON_COMPILE_CPU_TIME: "20000"
+      PISTON_COMPILE_MEMORY_LIMIT: "536870912"
+      # 1024 by default: far too little for a program that prints a table.
+      PISTON_OUTPUT_MAX_SIZE: "65536"
+      # A JVM and mono start dozens of threads.
+      PISTON_MAX_PROCESS_COUNT: "256"
+      PISTON_MAX_OPEN_FILES: "2048"
+    deploy:
+      resources:
+        limits:
+          memory: ${PISTON_MEMORY_LIMIT:-1536M}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # =========================================================================
   # Frontend

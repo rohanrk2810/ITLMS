@@ -38,6 +38,65 @@ spring:
 
       routes:
         # ---------------------------------------------------------------
+        # API docs for the gateway's Swagger page. The page asks for
+        # /api/<prefix>/v3/api-docs; the service serves /v3/api-docs, and
+        # rejects the prefixed path. Declared first so no service route
+        # swallows them. Unauthenticated: see GatewayJwtProperties.
+        # ---------------------------------------------------------------
+        - id: docs-identity
+          uri: lb://identity-service
+          predicates: [ "Path=/api/auth/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/auth/(?<rest>.*), /\${rest}' ]
+        - id: docs-admission
+          uri: lb://admission-service
+          predicates: [ "Path=/api/students/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/students/(?<rest>.*), /\${rest}' ]
+        - id: docs-course
+          uri: lb://course-service
+          predicates: [ "Path=/api/courses/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/courses/(?<rest>.*), /\${rest}' ]
+        - id: docs-batch
+          uri: lb://batch-service
+          predicates: [ "Path=/api/batches/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/batches/(?<rest>.*), /\${rest}' ]
+        - id: docs-assessment
+          uri: lb://assessment-service
+          predicates: [ "Path=/api/quizzes/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/quizzes/(?<rest>.*), /\${rest}' ]
+        - id: docs-finance
+          uri: lb://finance-service
+          predicates: [ "Path=/api/fees/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/fees/(?<rest>.*), /\${rest}' ]
+        - id: docs-certificate
+          uri: lb://certificate-service
+          predicates: [ "Path=/api/certificates/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/certificates/(?<rest>.*), /\${rest}' ]
+        - id: docs-placement
+          uri: lb://placement-service
+          predicates: [ "Path=/api/jobs/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/jobs/(?<rest>.*), /\${rest}' ]
+        - id: docs-notification
+          uri: lb://notification-service
+          predicates: [ "Path=/api/notifications/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/notifications/(?<rest>.*), /\${rest}' ]
+        - id: docs-file
+          uri: lb://file-service
+          predicates: [ "Path=/api/files/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/files/(?<rest>.*), /\${rest}' ]
+        - id: docs-liveclass
+          uri: lb://liveclass-service
+          predicates: [ "Path=/api/liveclass/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/liveclass/(?<rest>.*), /\${rest}' ]
+        - id: docs-reporting
+          uri: lb://reporting-service
+          predicates: [ "Path=/api/reports/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/reports/(?<rest>.*), /\${rest}' ]
+        - id: docs-codeexec
+          uri: lb://codeexec-service
+          predicates: [ "Path=/api/code/v3/api-docs/**" ]
+          filters: [ 'RewritePath=/api/code/(?<rest>.*), /\${rest}' ]
+
+        # ---------------------------------------------------------------
         # Identity - login, tokens, user accounts
         # Login and password reset are throttled: these are the endpoints a
         # credential-stuffing script aims at (Doc S12).
@@ -228,6 +287,20 @@ spring:
             connect-timeout: 5000
 
         # ---------------------------------------------------------------
+        # Practice-editor code runs. A run holds the connection until the
+        # sandbox answers (up to its 15s wall-time limit), so it gets a longer
+        # response timeout than the 30s default above, and no circuit breaker:
+        # a slow program is not a sick service.
+        # ---------------------------------------------------------------
+        - id: codeexec-service
+          uri: lb://codeexec-service
+          predicates:
+            - Path=/api/code/**
+          metadata:
+            response-timeout: 45000
+            connect-timeout: 5000
+
+        # ---------------------------------------------------------------
         # Live classes. The webhook path is anonymous (LiveKit signs its own
         # payloads) and must not be rate limited - a busy room emits a burst
         # of participant events and dropping them would corrupt attendance.
@@ -309,6 +382,7 @@ springdoc:
       - { name: 10. File,         url: /api/files/v3/api-docs }
       - { name: 11. Live Class,   url: /api/liveclass/v3/api-docs }
       - { name: 12. Reporting,    url: /api/reports/v3/api-docs }
+      - { name: 13. Code Exec,    url: /api/code/v3/api-docs }
 
 management:
   endpoints:

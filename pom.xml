@@ -56,6 +56,7 @@
         <module>services/file-service</module>
         <module>services/liveclass-service</module>
         <module>services/reporting-service</module>
+        <module>services/codeexec-service</module>
     </modules>
 
     <dependencyManagement>

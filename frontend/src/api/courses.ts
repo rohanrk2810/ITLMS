@@ -1,3 +1,4 @@
+import type { CodeLanguageCode } from './code'
 import { apiClient } from './client'
 import type { PageResponse } from './types'
 
@@ -32,6 +33,9 @@ export interface LessonResponse {
   accessible: boolean
   completed: boolean | null
   watchedSeconds: number | null
+  /** The lesson's practice editor language; null when it has none (and while the lesson is locked). */
+  codeLanguage: CodeLanguageCode | null
+  starterCode: string | null
 }
 
 export interface ModuleResponse {
@@ -146,6 +150,9 @@ export interface LessonInput {
   sequenceNo?: number
   preview?: boolean
   mandatory?: boolean
+  /** Adds a practice editor to the lesson. Starter code needs it. */
+  codeLanguage?: CodeLanguageCode
+  starterCode?: string
 }
 
 /** The staff view across every status, not just published courses. */

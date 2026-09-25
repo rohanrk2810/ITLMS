@@ -159,7 +159,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | DELETE | /api/modules/{moduleId} | STAFF | Delete |
 | PUT | /api/courses/{courseId}/modules/order | ACADEMIC | Reorder modules |
 | GET | /api/modules/{moduleId}/lessons | ACADEMIC | List lessons |
-| POST | /api/modules/{moduleId}/lessons | ACADEMIC | Add a lesson |
+| POST | /api/modules/{moduleId}/lessons | ACADEMIC | Add a lesson (optional `codeLanguage` + `starterCode` give it a practice editor) |
 | PUT | /api/lessons/{lessonId} | ACADEMIC | Update |
 | DELETE | /api/lessons/{lessonId} | ACADEMIC | Delete |
 | PUT | /api/modules/{moduleId}/lessons/order | ACADEMIC | Reorder lessons |
@@ -414,6 +414,19 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | Method | Path | Role | Does |
 |---|---|---|---|
 | GET | /api/reports/audit-logs/export | ADMIN_ONLY | CSV / Excel / PDF export, capped at `max-export-rows` |
+
+---
+
+## codeexec-service
+
+Stateless - no database. Runs practice-editor code in a Judge0 sandbox. Set-up and limits: [08-code-execution.md](08-code-execution.md).
+
+### `CodeExecController` — `/api/code`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/code/languages | any signed-in user | Languages switched on in configuration |
+| POST | /api/code/run | any signed-in user | Run code; a compile error or crash is a `200` with an `outcome` |
+| GET | /api/code/status | ADMIN_ONLY | Judge0 configured / reachable, and which language ids it does not know |
 
 ---
 

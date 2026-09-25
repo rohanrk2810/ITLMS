@@ -1,0 +1,42 @@
+# Replaces the service's bootstrap application.yml during tests: no config
+# server, no Eureka, no broker. The values below mirror config-repo/codeexec-service.yml
+# so the test exercises the same property binding the real service does.
+spring:
+  application:
+    name: codeexec-service
+  cloud:
+    config:
+      enabled: false
+  kafka:
+    bootstrap-servers: localhost:9092
+
+eureka:
+  client:
+    enabled: false
+
+itilms:
+  kafka:
+    create-topics: false
+  jwt:
+    secret: test-secret-test-secret-test-secret-test-secret
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+  docs:
+    gateway-url: http://localhost:8080
+  codeexec:
+    judge0:
+      base-url:
+    language-ids:
+      JAVA: 91
+      PYTHON: 92
+      C: 103
+      CPP: 105
+      CSHARP: 51
+      SQL: 82
+    limits:
+      max-source-chars: 50
+      max-concurrent-runs: 2
+    rate-limit:
+      runs-per-minute: 10
+      runs-per-day: 300

@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
+import { CODE_LANGUAGES, type CodeLanguageCode } from '@/api/code'
 import {
   addLesson,
   addModule,
@@ -412,6 +413,45 @@ function AddLessonDialog({ moduleId, onAdded }: { moduleId: number; onAdded: () 
                 className="rounded-md border bg-transparent px-3 py-2 text-sm"
                 value={form.textContent ?? ''}
                 onChange={(event) => setForm({ ...form, textContent: event.target.value })}
+              />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="codeLanguage">Practice editor (optional)</Label>
+            <select
+              id="codeLanguage"
+              value={form.codeLanguage ?? ''}
+              onChange={(event) => {
+                const language = (event.target.value || undefined) as CodeLanguageCode | undefined
+                // Starter code without a language is refused by the server, so it goes when the language does.
+                setForm({ ...form, codeLanguage: language, starterCode: language ? form.starterCode : undefined })
+              }}
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            >
+              <option value="">No editor</option>
+              {CODE_LANGUAGES.map((language) => (
+                <option key={language.code} value={language.code}>
+                  {language.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Students get a code editor under the lesson to try what they learned.
+            </p>
+          </div>
+          {form.codeLanguage && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="starterCode">Starter code</Label>
+              <textarea
+                id="starterCode"
+                rows={6}
+                spellCheck={false}
+                wrap="off"
+                className="rounded-md border bg-transparent px-3 py-2 font-mono text-sm whitespace-pre"
+                placeholder="What the editor opens with (optional)"
+                value={form.starterCode ?? ''}
+                onChange={(event) => setForm({ ...form, starterCode: event.target.value })}
               />
             </div>
           )}
