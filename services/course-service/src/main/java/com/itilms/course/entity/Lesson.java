@@ -1,5 +1,6 @@
 package com.itilms.course.entity;
 
+import com.itilms.common.code.CodeLanguage;
 import com.itilms.common.entity.AuditableEntity;
 
 import jakarta.persistence.Column;
@@ -50,6 +51,18 @@ public class Lesson extends AuditableEntity {
 
     @Column(name = "text_content", columnDefinition = "text")
     private String textContent;
+
+    /**
+     * Language of the embedded practice editor; null when the lesson has none.
+     * Running the code is codeexec-service's job - this only says what to offer.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "code_language", length = 10)
+    private CodeLanguage codeLanguage;
+
+    /** What the practice editor opens with. Only meaningful with a language. */
+    @Column(name = "starter_code", columnDefinition = "text")
+    private String starterCode;
 
     /** Drives the estimated course length shown to students. */
     @Column(name = "duration_minutes", nullable = false)

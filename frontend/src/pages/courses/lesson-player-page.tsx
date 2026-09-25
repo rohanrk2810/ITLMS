@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { apiClient } from '@/api/client'
 import { getCourseDetail, type LessonResponse, recordLessonProgress } from '@/api/courses'
+import { PracticeEditor } from '@/components/practice-editor'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -141,6 +142,10 @@ export function LessonPlayerPage() {
           </div>
         )}
       </div>
+
+      {lesson.accessible && lesson.codeLanguage && (
+        <PracticeEditor key={lesson.id} lessonId={lesson.id} language={lesson.codeLanguage} starterCode={lesson.starterCode} />
+      )}
 
       <div className="flex items-center justify-between">
         {prev ? (

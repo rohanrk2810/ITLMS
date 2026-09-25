@@ -93,7 +93,7 @@ class CurriculumServiceImplTest {
     }
 
     private static LessonRequest video(Boolean mandatory) {
-        return new LessonRequest(" JVM basics ", "video", "https://example.com/jvm", null, null, 30, null, null, mandatory);
+        return new LessonRequest(" JVM basics ", "video", "https://example.com/jvm", null, null, 30, null, null, mandatory, null, null);
     }
 
     // ------------------------------------------------------------------------------------
@@ -198,12 +198,12 @@ class CurriculumServiceImplTest {
 
         @Test
         void eachLessonTypeNeedsItsOwnKindOfMaterial() {
-            LessonRequest videoNoUrl = new LessonRequest("V", "VIDEO", null, null, "some text", null, null, null, null);
-            LessonRequest linkNoUrl = new LessonRequest("L", "LINK", null, "file-1", null, null, null, null, null);
-            LessonRequest noteNoText = new LessonRequest("N", "NOTE", "https://x.test", null, null, null, null, null, null);
-            LessonRequest textNoText = new LessonRequest("T", "TEXT", null, "file-1", null, null, null, null, null);
-            LessonRequest pdfNothing = new LessonRequest("P", "PDF", null, null, "text only", null, null, null, null);
-            LessonRequest nothing = new LessonRequest("X", "VIDEO", " ", " ", " ", null, null, null, null);
+            LessonRequest videoNoUrl = new LessonRequest("V", "VIDEO", null, null, "some text", null, null, null, null, null, null);
+            LessonRequest linkNoUrl = new LessonRequest("L", "LINK", null, "file-1", null, null, null, null, null, null, null);
+            LessonRequest noteNoText = new LessonRequest("N", "NOTE", "https://x.test", null, null, null, null, null, null, null, null);
+            LessonRequest textNoText = new LessonRequest("T", "TEXT", null, "file-1", null, null, null, null, null, null, null);
+            LessonRequest pdfNothing = new LessonRequest("P", "PDF", null, null, "text only", null, null, null, null, null, null);
+            LessonRequest nothing = new LessonRequest("X", "VIDEO", " ", " ", " ", null, null, null, null, null, null);
 
             for (LessonRequest bad : List.of(videoNoUrl, linkNoUrl, noteNoText, textNoText, pdfNothing, nothing)) {
                 assertThatThrownBy(() -> service.addLesson(MODULE, bad)).as(bad.title()).isInstanceOf(BusinessRuleException.class);
@@ -215,16 +215,70 @@ class CurriculumServiceImplTest {
         void aPdfAcceptsAnUploadedFileOrALink() {
             when(lessonRepository.nextSequenceNo(MODULE)).thenReturn(1);
 
-            service.addLesson(MODULE, new LessonRequest("Notes", "PDF", null, "file-9", null, null, null, null, false));
-            service.addLesson(MODULE, new LessonRequest("Notes 2", "pdf", "https://x.test/n.pdf", null, null, null, null, null, false));
+            service.addLesson(MODULE, new LessonRequest("Notes", "PDF", null, "file-9", null, null, null, null, false, null, null));
+            service.addLesson(MODULE, new LessonRequest("Notes 2", "pdf", "https://x.test/n.pdf", null, null, null, null, null, false, null, null));
 
             verify(lessonRepository, org.mockito.Mockito.times(2)).save(any(Lesson.class));
         }
 
         @Test
         void anUnknownLessonTypeIsRefused() {
-            assertThatThrownBy(() -> service.addLesson(MODULE, new LessonRequest("S", "HOLOGRAM", "https://x.test", null, null, null, null, null, null)))
+            assertThatThrownBy(() -> service.addLesson(MODULE, new LessonRequest("S", "HOLOGRAM", "https://x.test", null, null, null, null, null, null, null, null)))
                     .isInstanceOf(BusinessRuleException.class).hasMessageContaining("VIDEO, PDF, NOTE, LINK or TEXT");
+        }
+
+        @Test
+        void aLessonOfAnyTypeCanCarryAPracticeEditorWithItsIndentationIntact() {
+            when(lessonRepository.nextSequenceNo(MODULE)).thenReturn(1);
+            String starter = "public class Main {\n    public static void main(String[] a) {\n    }\n}\n";
+
+            var response = service.addLesson(MODULE, new LessonRequest(
+                    "JVM basics", "VIDEO", "https://example.com/jvm", null, null, 30, null, null, null, " java ", starter));
+
+            assertThat(response.codeLanguage()).isEqualTo("JAVA");
+            assertThat(response.starterCode()).isEqualTo(starter);
+        }
+
+        @Test
+        void aLessonWithoutAPracticeLanguageHasNoEditorAndDropsAnyStarterCode() {
+            when(lessonRepository.nextSequenceNo(MODULE)).thenReturn(1);
+
+            var response = service.addLesson(MODULE, video(null));
+
+            assertThat(response.codeLanguage()).isNull();
+            assertThat(response.starterCode()).isNull();
+        }
+
+        @Test
+        void starterCodeWithoutALanguageIsRefused() {
+            assertThatThrownBy(() -> service.addLesson(MODULE, new LessonRequest(
+                    "V", "VIDEO", "https://x.test", null, null, null, null, null, null, " ", "print(1)")))
+                    .isInstanceOf(BusinessRuleException.class).hasMessageContaining("practice language");
+            verify(lessonRepository, never()).save(any());
+        }
+
+        @Test
+        void anUnsupportedPracticeLanguageIsRefusedAndTheAllowedOnesAreListed() {
+            // PL/SQL is deliberately unsupported: it needs an Oracle database, not a compiler.
+            assertThatThrownBy(() -> service.addLesson(MODULE, new LessonRequest(
+                    "V", "VIDEO", "https://x.test", null, null, null, null, null, null, "PLSQL", null)))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("JAVA, PYTHON, C, CPP, CSHARP or SQL");
+        }
+
+        @Test
+        void editingALessonCanAddChangeAndRemoveItsPracticeEditor() {
+            Lesson existing = lesson(30, 1, true);
+            when(lessonRepository.findById(30L)).thenReturn(Optional.of(existing));
+
+            service.updateLesson(30L, new LessonRequest(
+                    "V", "VIDEO", "https://x.test", null, null, null, null, null, true, "python", "print('hi')"));
+            assertThat(existing.getCodeLanguage()).isEqualTo(com.itilms.common.code.CodeLanguage.PYTHON);
+            assertThat(existing.getStarterCode()).isEqualTo("print('hi')");
+
+            service.updateLesson(30L, video(true));
+            assertThat(existing.getCodeLanguage()).as("omitting the language removes the editor").isNull();
+            assertThat(existing.getStarterCode()).isNull();
         }
 
         @Test
