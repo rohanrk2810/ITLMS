@@ -58,6 +58,10 @@ public record CreateQuizRequest(
         @Schema(description = "Secure mode: the counted violation that ends the attempt (2 = one warning, "
                 + "then termination). Default 2.")
         @Min(value = 1, message = "At least 1") @Max(value = 10, message = "At most 10")
-        Integer maxViolations
+        Integer maxViolations,
+
+        @Schema(description = "The student's camera must be on: allowed before starting, and monitored for a "
+                + "visible face during the test. Default false.")
+        Boolean requireCamera
 ) {
 }

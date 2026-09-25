@@ -63,6 +63,7 @@ function TestsList() {
               </div>
               <div className="flex items-center gap-2">
                 {quiz.secureMode && <Badge variant="outline">Secure test</Badge>}
+                {quiz.requireCamera && <Badge variant="outline">Camera on</Badge>}
                 {quiz.mandatory && <Badge variant="outline">Mandatory</Badge>}
               </div>
             </div>

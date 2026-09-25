@@ -36,6 +36,7 @@ public record QuizResponse(
         boolean mandatory,
         boolean secureMode,
         int maxViolations,
+        boolean requireCamera,
         String status,
         Long trainerId,
         Instant publishedAt,
@@ -90,7 +91,7 @@ public record QuizResponse(
                 q.getDurationMinutes(), q.getPassPercentage(), q.getAttemptsAllowed(), q.getTotalMarks(),
                 q.getAvailableFrom(), q.getAvailableUntil(), q.isShuffleQuestions(),
                 q.isShowResultImmediately(), q.isMandatory(), q.isSecureMode(), q.getMaxViolations(),
-                q.getStatus().name(), q.getTrainerId(),
+                q.isRequireCamera(), q.getStatus().name(), q.getTrainerId(),
                 q.getPublishedAt(), questionCount, questions);
     }
 }

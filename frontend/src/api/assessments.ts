@@ -20,6 +20,8 @@ export interface StudentQuizResponse {
   /** Secure test mode: leaving the test window is reported, and too many reports end the attempt. */
   secureMode: boolean
   maxViolations: number
+  /** The camera must be on: allowed before starting and watched for a visible face. */
+  requireCamera: boolean
   openNow: boolean
   canStart: boolean
   inProgressAttemptId: number | null
@@ -84,6 +86,8 @@ export interface AttemptViewResponse {
   secondsRemaining: number
   secureMode: boolean
   maxViolations: number
+  /** The camera must stay on and show the student's face. */
+  requireCamera: boolean
   /** Violations that have counted so far in this attempt. */
   violationCount: number
   questions: AttemptQuestion[]
@@ -126,6 +130,8 @@ export interface AttemptResultResponse {
   passed: boolean | null
   passPercentage: number
   violationCount: number
+  /** Camera events recorded (no face, several faces, camera off). Filled on the staff results sheet only. */
+  cameraEventCount: number
   /** Set when the attempt was ended by the secure-test rules. */
   terminatedReason: string | null
   answers: AnswerResult[] | null
@@ -139,8 +145,16 @@ export type ViolationType =
   | 'PASTE_ATTEMPT'
   | 'RIGHT_CLICK'
   | 'SHORTCUT_BLOCKED'
+  | 'FACE_NOT_DETECTED'
+  | 'MULTIPLE_FACES'
+  | 'CAMERA_DISABLED'
+  | 'CAMERA_PERMISSION_DENIED'
 
 export const VIOLATION_LABEL: Record<ViolationType, string> = {
+  FACE_NOT_DETECTED: 'Face not visible',
+  MULTIPLE_FACES: 'More than one face',
+  CAMERA_DISABLED: 'Camera turned off',
+  CAMERA_PERMISSION_DENIED: 'Camera permission removed',
   TAB_SWITCH: 'Left the test tab',
   WINDOW_BLUR: 'Left the test window',
   FULLSCREEN_EXIT: 'Left fullscreen',
@@ -327,6 +341,7 @@ export interface QuizResponse {
   mandatory: boolean
   secureMode: boolean
   maxViolations: number
+  requireCamera: boolean
   status: string
   trainerId: number | null
   publishedAt: string | null
@@ -350,6 +365,7 @@ export interface QuizInput {
   mandatory?: boolean
   secureMode?: boolean
   maxViolations?: number
+  requireCamera?: boolean
 }
 
 export interface QuestionOptionInput {
