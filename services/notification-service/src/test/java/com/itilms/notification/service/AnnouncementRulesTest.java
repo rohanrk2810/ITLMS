@@ -23,6 +23,7 @@ import com.itilms.common.exception.ForbiddenOperationException;
 import com.itilms.common.exception.ResourceNotFoundException;
 import com.itilms.common.security.AppPrincipal;
 import com.itilms.notification.client.BatchClient;
+import com.itilms.notification.dto.NotificationDtos;
 import com.itilms.notification.dto.NotificationDtos.AnnouncementRequest;
 import com.itilms.notification.entity.Announcement;
 import com.itilms.notification.entity.Announcement.Audience;
@@ -52,7 +53,16 @@ class AnnouncementRulesTest {
     }
 
     private static AnnouncementRequest request(Audience audience, String role, Long targetId) {
-        return new AnnouncementRequest("Holiday", "Closed on Monday", audience, role, targetId, false, null);
+        return new AnnouncementRequest("Holiday", "Closed on Monday", audience, role, targetId, false, null, null);
+    }
+
+    @Test
+    @DisplayName("an announcement with no category is a general one, and the response says so")
+    void categoryDefaultsToGeneral() {
+        Announcement announcement = Announcement.builder().title("t").message("m").audience(Audience.ALL).build();
+
+        assertThat(announcement.getCategory()).isEqualTo(Announcement.Category.GENERAL);
+        assertThat(NotificationDtos.AnnouncementResponse.from(announcement, false).category()).isEqualTo("GENERAL");
     }
 
     @Test
