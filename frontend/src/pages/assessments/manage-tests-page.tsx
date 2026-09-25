@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { createQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
+import { searchCourses } from '@/api/courses'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -23,6 +24,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 
 export function ManageTestsPage() {
   const quizzesQuery = useQuery({ queryKey: ['quizzes', 'manage'], queryFn: () => listQuizzes() })
+  const coursesQuery = useQuery({ queryKey: ['courses', 'search', 'all'], queryFn: () => searchCourses({}) })
+  const courseTitles = new Map((coursesQuery.data?.content ?? []).map((course) => [course.id, course.title]))
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -67,7 +70,7 @@ export function ManageTestsPage() {
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell>#{quiz.courseId}</TableCell>
+                <TableCell>{courseTitles.get(quiz.courseId) ?? `#${quiz.courseId}`}</TableCell>
                 <TableCell>{quiz.questionCount}</TableCell>
                 <TableCell>{quiz.durationMinutes} min</TableCell>
                 <TableCell>
@@ -93,6 +96,7 @@ function NewQuizDialog() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<Partial<QuizInput>>({ durationMinutes: 30, passPercentage: 40, attemptsAllowed: 1 })
   const queryClient = useQueryClient()
+  const coursesQuery = useQuery({ queryKey: ['courses', 'search', 'new-test'], queryFn: () => searchCourses({}), enabled: open })
 
   const mutation = useMutation({
     mutationFn: () => createQuiz(form as QuizInput),
@@ -123,13 +127,23 @@ function NewQuizDialog() {
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="courseId">Course id</Label>
-            <Input
+            <Label htmlFor="courseId">Course</Label>
+            <select
               id="courseId"
-              type="number"
               required
+              value={form.courseId ?? ''}
               onChange={(event) => setForm({ ...form, courseId: Number(event.target.value) })}
-            />
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            >
+              <option value="" disabled>
+                Select a course
+              </option>
+              {coursesQuery.data?.content.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title} ({course.code})
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="title">Title</Label>
