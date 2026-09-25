@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BookOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { lookupCourses, myCourseProgress } from '@/api/courses'
+import { lookupCourses, myCourseProgress, searchCourses } from '@/api/courses'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -37,7 +37,9 @@ export function MyCoursesPage() {
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>No courses yet</CardTitle>
-            <CardDescription>Once you&apos;re enrolled in a batch, it will show up here.</CardDescription>
+            <CardDescription>
+              Once you&apos;re enrolled in a batch, it will show up here. Pick a course below to ask to join.
+            </CardDescription>
           </CardHeader>
         </Card>
       )}
@@ -70,6 +72,48 @@ export function MyCoursesPage() {
           )
         })}
       </div>
+
+      <BrowseCourses enrolledIds={courseIds} />
     </div>
+  )
+}
+
+/** Published courses the student is not in yet. Opening one shows its outline and a request-to-join form. */
+function BrowseCourses({ enrolledIds }: { enrolledIds: number[] }) {
+  const query = useQuery({
+    queryKey: ['courses', 'browse'],
+    queryFn: () => searchCourses({ status: 'PUBLISHED' }),
+  })
+  const courses = (query.data?.content ?? []).filter((c) => !enrolledIds.includes(c.id))
+
+  if (query.isSuccess && courses.length === 0) return null
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div>
+        <h2 className="text-lg font-semibold">Browse courses</h2>
+        <p className="text-sm text-muted-foreground">
+          Open a course to see what it covers, then ask to join. <Link to="/app/course-requests" className="text-primary hover:underline">Your requests</Link>
+        </p>
+      </div>
+      {query.isLoading && <Skeleton className="h-32" />}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {courses.map((course) => (
+          <Link key={course.id} to={`/app/courses/${course.id}`}>
+            <Card className="h-full transition-colors hover:border-primary">
+              <CardHeader>
+                <CardTitle className="line-clamp-2">{course.title}</CardTitle>
+                <CardDescription className="line-clamp-2">{course.summary}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline">{course.level}</Badge>
+                {course.durationHours != null && <span>{course.durationHours} hours</span>}
+                {course.technologyStack && <span className="line-clamp-1">{course.technologyStack}</span>}
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </section>
   )
 }

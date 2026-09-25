@@ -6,6 +6,7 @@ import {
   CalendarClock,
   ClipboardList,
   FileText,
+  Inbox,
   LayoutDashboard,
   Megaphone,
   ShieldCheck,
@@ -35,6 +36,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     to: '/app/courses',
     icon: BookOpen,
     roles: ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT'],
+  },
+  {
+    label: 'Course requests',
+    to: '/app/course-requests',
+    icon: Inbox,
+    // A student's own requests, or the queue that administrators and coordinators decide.
+    roles: ['ADMIN', 'COORDINATOR', 'STUDENT'],
   },
   { label: 'Batches', to: '/app/batches', icon: CalendarClock, roles: ['ADMIN', 'COORDINATOR', 'TRAINER'] },
   {
