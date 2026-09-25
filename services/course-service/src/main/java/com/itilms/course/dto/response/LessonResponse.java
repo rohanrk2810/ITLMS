@@ -31,7 +31,11 @@ public record LessonResponse(
         boolean accessible,
         @Schema(description = "Present only when the caller is an enrolled student")
         Boolean completed,
-        Integer watchedSeconds
+        Integer watchedSeconds,
+        @Schema(description = "Language of the lesson's practice editor; null when it has none. "
+                + "Null too when the lesson is locked - starter code is material.")
+        String codeLanguage,
+        String starterCode
 ) {
 
     /** Full content, for an enrolled student or for staff. */
@@ -40,7 +44,9 @@ public record LessonResponse(
                 lesson.getId(), lesson.getModuleId(), lesson.getTitle(), lesson.getType().name(),
                 lesson.getContentUrl(), lesson.getContentFileRef(), lesson.getTextContent(),
                 lesson.getDurationMinutes(), lesson.getSequenceNo(),
-                lesson.isPreview(), lesson.isMandatory(), true, completed, watchedSeconds);
+                lesson.isPreview(), lesson.isMandatory(), true, completed, watchedSeconds,
+                lesson.getCodeLanguage() == null ? null : lesson.getCodeLanguage().name(),
+                lesson.getStarterCode());
     }
 
     /**
@@ -54,6 +60,6 @@ public record LessonResponse(
                 lesson.getId(), lesson.getModuleId(), lesson.getTitle(), lesson.getType().name(),
                 null, null, null,
                 lesson.getDurationMinutes(), lesson.getSequenceNo(),
-                lesson.isPreview(), lesson.isMandatory(), false, null, null);
+                lesson.isPreview(), lesson.isMandatory(), false, null, null, null, null);
     }
 }

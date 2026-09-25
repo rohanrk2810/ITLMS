@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.itilms.common.code.CodeLanguage;
 import com.itilms.common.event.DomainEvent;
 import com.itilms.common.event.EventPublisher;
 import com.itilms.common.event.KafkaTopics;
@@ -149,6 +150,7 @@ public class CurriculumServiceImpl implements CurriculumService {
 
         LessonType type = parseType(request.type());
         validateContent(type, request);
+        CodeLanguage codeLanguage = parseCodeLanguage(request);
 
         int sequence = request.sequenceNo() != null
                 ? request.sequenceNo()
@@ -161,6 +163,8 @@ public class CurriculumServiceImpl implements CurriculumService {
                 .contentUrl(trim(request.contentUrl()))
                 .contentFileRef(trim(request.contentFileRef()))
                 .textContent(trim(request.textContent()))
+                .codeLanguage(codeLanguage)
+                .starterCode(starterCodeOrNull(codeLanguage, request))
                 .durationMinutes(request.durationMinutes() == null ? 0 : request.durationMinutes())
                 .sequenceNo(sequence)
                 .preview(request.previewOrDefault())
@@ -199,6 +203,7 @@ public class CurriculumServiceImpl implements CurriculumService {
 
         LessonType type = parseType(request.type());
         validateContent(type, request);
+        CodeLanguage codeLanguage = parseCodeLanguage(request);
 
         boolean wasMandatory = lesson.isMandatory();
 
@@ -207,6 +212,8 @@ public class CurriculumServiceImpl implements CurriculumService {
         lesson.setContentUrl(trim(request.contentUrl()));
         lesson.setContentFileRef(trim(request.contentFileRef()));
         lesson.setTextContent(trim(request.textContent()));
+        lesson.setCodeLanguage(codeLanguage);
+        lesson.setStarterCode(starterCodeOrNull(codeLanguage, request));
         lesson.setDurationMinutes(request.durationMinutes() == null ? 0 : request.durationMinutes());
         lesson.setPreview(request.previewOrDefault());
         lesson.setMandatory(request.mandatoryOrDefault());
@@ -349,6 +356,28 @@ public class CurriculumServiceImpl implements CurriculumService {
                 }
             }
         }
+    }
+
+    /** The practice-editor language, or null when the lesson has none. */
+    private CodeLanguage parseCodeLanguage(LessonRequest request) {
+        boolean hasLanguage = request.codeLanguage() != null && !request.codeLanguage().isBlank();
+        if (!hasLanguage) {
+            if (request.starterCode() != null && !request.starterCode().isBlank()) {
+                throw new BusinessRuleException(
+                        "Starter code needs a practice language: choose " + CodeLanguage.allowedList());
+            }
+            return null;
+        }
+        return CodeLanguage.parse(request.codeLanguage()).orElseThrow(() ->
+                new BusinessRuleException("Practice language must be " + CodeLanguage.allowedList()));
+    }
+
+    /** Kept verbatim - indentation is part of code - but never stored without a language. */
+    private String starterCodeOrNull(CodeLanguage language, LessonRequest request) {
+        if (language == null || request.starterCode() == null || request.starterCode().isBlank()) {
+            return null;
+        }
+        return request.starterCode();
     }
 
     private void validateReorder(List<Long> existingIds, List<Long> submittedIds, String noun) {

@@ -44,7 +44,16 @@ public record LessonRequest(
         Boolean preview,
 
         @Schema(description = "Counts toward course completion. Default true.")
-        Boolean mandatory
+        Boolean mandatory,
+
+        @Schema(description = "Adds a practice editor to the lesson. Omit for none.",
+                allowableValues = {"JAVA", "PYTHON", "C", "CPP", "CSHARP", "SQL"})
+        @Size(max = 10)
+        String codeLanguage,
+
+        @Schema(description = "What the practice editor opens with. Needs codeLanguage.")
+        @Size(max = 20000, message = "Starter code is limited to 20,000 characters")
+        String starterCode
 ) {
 
     public boolean previewOrDefault() {

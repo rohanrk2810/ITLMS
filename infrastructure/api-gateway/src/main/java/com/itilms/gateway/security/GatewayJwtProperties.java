@@ -41,6 +41,9 @@ public class GatewayJwtProperties {
             "/api/liveclass/webhook/**",
             "/actuator/health/**",
             "/v3/api-docs/**",
+            // The gateway's Swagger page loads each service's docs through its route prefix.
+            "/api/*/v3/api-docs",
+            "/api/*/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html"
     );

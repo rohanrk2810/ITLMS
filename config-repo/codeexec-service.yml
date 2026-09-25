@@ -1,0 +1,74 @@
+# ---------------------------------------------------------------------
+# codeexec-service - Runs students' practice code in a sandbox
+# Stateless: no database, no Kafka topics of its own.
+# ---------------------------------------------------------------------
+server:
+  port: 8093
+
+itilms:
+  docs:
+    description: Runs students' practice code in a sandbox (Judge0 or Piston)
+
+  codeexec:
+    # Which sandbox runs the code: judge0 or piston. Only that one's settings below are used.
+    engine: ${CODEEXEC_ENGINE:judge0}
+
+    judge0:
+      # Blank = code execution is off; the editor then says so instead of failing.
+      # From inside the compose network use the address of wherever Judge0 runs,
+      # e.g. http://host.docker.internal:2358 for Judge0 on the same computer.
+      base-url: ${JUDGE0_URL:}
+      # Judge0's AUTHN_HEADER / AUTHN_TOKEN, if you protected the instance.
+      auth-header: ${JUDGE0_AUTH_HEADER:X-Auth-Token}
+      auth-token: ${JUDGE0_AUTH_TOKEN:}
+
+    # Judge0 language id per language. Remove a line to switch a language off.
+    # These are the ids of Judge0 CE 1.13.1; an older or "Extra CE" install
+    # differs. After installing, GET /api/code/status (as ADMIN) compares each
+    # id with what your Judge0 actually has and names any that do not exist.
+    #   JAVA   91  Java (JDK 17.0.6)         PYTHON 92  Python (3.11.2)
+    #   C     103  C (GCC 14.1.0)            CPP   105  C++ (GCC 14.1.0)
+    #   CSHARP 51  C# (Mono 6.6.0.161)       SQL    82  SQL (SQLite 3.27.2)
+    # PL/SQL has no entry on purpose: it needs an Oracle database.
+    language-ids:
+      JAVA: 91
+      PYTHON: 92
+      C: 103
+      CPP: 105
+      CSHARP: 51
+      SQL: 82
+
+    piston:
+      # Blank = code execution is off. From the compose network: http://piston:2000
+      base-url: ${PISTON_URL:}
+      # What each language runs as. Piston only has what has been installed into it
+      # (docs/08-code-execution.md); GET /api/code/status (as ADMIN) compares this list with
+      # what Piston reports. Remove a line to switch a language off.
+      # Java: Piston's package repository has 15.0.2 only, so records and sealed classes do not
+      # compile, and Java runs the FIRST class in the file (put the class with main first).
+      # file-name is the name error messages show. Java, C, C++ and C# must be given WITHOUT an
+      # extension: Piston adds .java/.c/.cpp/.cs itself, and "Main.java" would come out as Main.java.java.
+      runtimes:
+        JAVA:   { language: java,    version: 15.0.2, file-name: Main }
+        PYTHON: { language: python,  version: 3.12.0, file-name: main.py }
+        C:      { language: c,       version: 10.2.0, file-name: main }
+        CPP:    { language: c++,     version: 10.2.0, file-name: main }
+        CSHARP: { language: csharp,  version: 6.12.0, file-name: Main }
+        SQL:    { language: sqlite3, version: 3.36.0, file-name: main.sql }
+
+    limits:
+      max-source-chars: 50000
+      max-stdin-chars: 10000
+      # A print loop must not become a megabyte response.
+      max-output-chars: 64000
+      # Judge0's own ceilings (MAX_CPU_TIME_LIMIT 15, MAX_WALL_TIME_LIMIT 20,
+      # MAX_MEMORY_LIMIT 512000 by default) cap these.
+      cpu-time-seconds: 5
+      wall-time-seconds: 15
+      memory-kb: 256000
+      # More runs than this at once are told to retry rather than queued.
+      max-concurrent-runs: ${CODEEXEC_MAX_CONCURRENT:8}
+
+    rate-limit:
+      runs-per-minute: 10
+      runs-per-day: 300
