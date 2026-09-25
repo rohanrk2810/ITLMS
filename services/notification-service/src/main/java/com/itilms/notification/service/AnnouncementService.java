@@ -65,6 +65,7 @@ public class AnnouncementService {
                 .title(request.title().trim())
                 .message(request.message().trim())
                 .audience(request.audience())
+                .category(request.category() == null ? Announcement.Category.GENERAL : request.category())
                 .targetRole(role)
                 .targetId(request.audience() == Audience.BATCH || request.audience() == Audience.COURSE
                         ? request.targetId() : null)

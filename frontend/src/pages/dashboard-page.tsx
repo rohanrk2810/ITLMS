@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
 import { getDashboardSummary } from '@/api/reporting'
+import { AnnouncementsPanel } from '@/components/announcements-panel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney } from '@/lib/format'
@@ -28,6 +29,7 @@ export function DashboardPage() {
       </div>
 
       {showInstituteSummary ? <InstituteSummary /> : <RoleQuickLinks role={user?.role} />}
+      {!showInstituteSummary && <AnnouncementsPanel />}
     </div>
   )
 }

@@ -4,6 +4,9 @@ import { Megaphone, Plus, Send, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
+  ANNOUNCEMENT_CATEGORIES,
+  announcementCategoryLabel,
+  type AnnouncementCategory,
   type AnnouncementInput,
   type AnnouncementResponse,
   createAnnouncement,
@@ -93,6 +96,7 @@ function AnnouncementCard({
             {announcement.title}
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Badge variant="secondary">{announcementCategoryLabel(announcement.category)}</Badge>
             <Badge variant="outline">{announcement.audience}</Badge>
             {announcement.withdrawn && <Badge variant="destructive">Withdrawn</Badge>}
           </div>
@@ -118,7 +122,7 @@ function AnnouncementCard({
   )
 }
 
-const EMPTY: AnnouncementInput = { title: '', message: '', audience: 'ALL', sendEmail: false }
+const EMPTY: AnnouncementInput = { title: '', message: '', audience: 'ALL', category: 'GENERAL', sendEmail: false }
 
 function NewAnnouncementDialog() {
   const [open, setOpen] = useState(false)
@@ -137,7 +141,12 @@ function NewAnnouncementDialog() {
   })
 
   const mutation = useMutation({
-    mutationFn: () => createAnnouncement(form),
+    // The date input gives "2026-09-30"; the API wants a moment, so expire at the end of that day.
+    mutationFn: () =>
+      createAnnouncement({
+        ...form,
+        expiresAt: form.expiresAt ? new Date(`${form.expiresAt}T23:59:59`).toISOString() : undefined,
+      }),
     onSuccess: () => {
       toast.success('Announcement sent')
       setOpen(false)
@@ -179,6 +188,21 @@ function NewAnnouncementDialog() {
               onChange={(e) => setForm({ ...form, message: e.target.value })}
               required
             />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="category">About</Label>
+            <select
+              id="category"
+              value={form.category ?? 'GENERAL'}
+              onChange={(e) => setForm({ ...form, category: e.target.value as AnnouncementCategory })}
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            >
+              {ANNOUNCEMENT_CATEGORIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="audience">Audience</Label>
