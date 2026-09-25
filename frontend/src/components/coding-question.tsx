@@ -6,6 +6,7 @@ import { type AttemptQuestion, type CodingRunResponse, runCodingTests } from '@/
 import { apiErrorMessage } from '@/api/client'
 import { codeLanguageLabel } from '@/api/code'
 import { Button } from '@/components/ui/button'
+import { CLIPBOARD_OK_ATTRIBUTE } from '@/lib/use-test-guard'
 import { cn } from '@/lib/utils'
 
 // Monaco is several MB, so it loads only when a test with a coding question is opened.
@@ -73,16 +74,19 @@ export function CodingQuestion({ attemptId, question, code, onChange, savedPasse
         </div>
       )}
 
-      <Suspense fallback={<div className="h-72 rounded-md border bg-muted/30" aria-busy />}>
-        <CodeEditor
-          language={language}
-          value={code}
-          onChange={onChange}
-          onRun={() => !mutation.isPending && code.trim() && mutation.mutate()}
-          height={288}
-          ariaLabel={`${codeLanguageLabel(language)} answer`}
-        />
-      </Suspense>
+      {/* A secure test blocks copying everywhere except here: writing code needs it. Pasting is recorded. */}
+      <div {...{ [CLIPBOARD_OK_ATTRIBUTE]: '' }}>
+        <Suspense fallback={<div className="h-72 rounded-md border bg-muted/30" aria-busy />}>
+          <CodeEditor
+            language={language}
+            value={code}
+            onChange={onChange}
+            onRun={() => !mutation.isPending && code.trim() && mutation.mutate()}
+            height={288}
+            ariaLabel={`${codeLanguageLabel(language)} answer`}
+          />
+        </Suspense>
+      </div>
 
       {runError && (
         <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -26,6 +26,11 @@ public record StudentQuizResponse(
         Instant availableUntil,
         boolean mandatory,
 
+        @Schema(description = "Secure test mode: leaving the test window is reported, and too many reports end the attempt")
+        boolean secureMode,
+
+        int maxViolations,
+
         @Schema(description = "True when the test is open right now")
         boolean openNow,
 
@@ -50,6 +55,7 @@ public record StudentQuizResponse(
                 q.getId(), q.getCourseId(), q.getBatchId(), q.getTitle(), q.getInstructions(),
                 q.getDurationMinutes(), q.getTotalMarks(), q.getPassPercentage(), q.getAttemptsAllowed(),
                 attemptsUsed, q.getAvailableFrom(), q.getAvailableUntil(), q.isMandatory(),
+                q.isSecureMode(), q.getMaxViolations(),
                 open, canStart, inProgressAttemptId, best,
                 best == null ? null : q.passed(best));
     }

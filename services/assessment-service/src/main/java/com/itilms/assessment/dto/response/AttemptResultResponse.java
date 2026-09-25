@@ -43,6 +43,12 @@ public record AttemptResultResponse(
         Boolean passed,
         int passPercentage,
 
+        @Schema(description = "Secure tests: violations that counted. Shown to the student too - they were warned")
+        int violationCount,
+
+        @Schema(description = "Set when the attempt was ended by the secure-test rules")
+        String terminatedReason,
+
         @Schema(description = "Per-question breakdown, when results are visible")
         List<AnswerResult> answers
 ) {
@@ -104,6 +110,7 @@ public record AttemptResultResponse(
                 visible ? attempt.getPercentage() : null,
                 visible ? attempt.getPassed() : null,
                 quiz.getPassPercentage(),
+                attempt.getViolationCount(), attempt.getTerminatedReason(),
                 breakdown);
     }
 }

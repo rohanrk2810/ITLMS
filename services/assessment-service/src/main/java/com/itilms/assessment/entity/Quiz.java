@@ -78,6 +78,18 @@ public class Quiz extends AuditableEntity {
     @Builder.Default
     private boolean mandatory = true;
 
+    /**
+     * Secure test mode: the student's browser reports leaving the test window, copying and the like.
+     * See {@link #maxViolations}.
+     */
+    @Column(name = "secure_mode", nullable = false)
+    private boolean secureMode;
+
+    /** The counted violation that ends the attempt. 2 means one warning, then termination. */
+    @Column(name = "max_violations", nullable = false)
+    @Builder.Default
+    private int maxViolations = 2;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

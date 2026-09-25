@@ -16,10 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.itilms.assessment.dto.request.SubmitAttemptRequest;
+import com.itilms.assessment.dto.request.ViolationRequest;
 import com.itilms.assessment.dto.response.AnswerSaveResponse;
 import com.itilms.assessment.dto.response.AttemptResultResponse;
 import com.itilms.assessment.dto.response.AttemptViewResponse;
 import com.itilms.assessment.dto.response.CodingRunResponse;
+import com.itilms.assessment.dto.response.ViolationResponse;
 import com.itilms.assessment.entity.AttemptStatus;
 import com.itilms.assessment.entity.QuestionType;
 import com.itilms.assessment.entity.Quiz;
@@ -27,10 +29,12 @@ import com.itilms.assessment.entity.QuizAnswer;
 import com.itilms.assessment.entity.QuizAttempt;
 import com.itilms.assessment.entity.QuizQuestion;
 import com.itilms.assessment.entity.QuizStatus;
+import com.itilms.assessment.entity.QuizViolation;
 import com.itilms.assessment.repository.QuizAnswerRepository;
 import com.itilms.assessment.repository.QuizAttemptRepository;
 import com.itilms.assessment.repository.QuizQuestionRepository;
 import com.itilms.assessment.repository.QuizRepository;
+import com.itilms.assessment.repository.QuizViolationRepository;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
 import com.itilms.assessment.service.AttemptService;
@@ -61,6 +65,11 @@ public class AttemptServiceImpl implements AttemptService {
 
     private static final int MAX_SHORT_ANSWER = 1000;
 
+    /** Leaving a window is often reported twice (the tab hides, then the window blurs): one leaving counts once. */
+    static final Duration VIOLATION_MERGE_WINDOW = Duration.ofSeconds(3);
+    /** A browser stuck in a loop must not fill the table. */
+    private static final int MAX_STORED_VIOLATIONS = 300;
+
     private final QuizRepository quizRepository;
     private final QuizQuestionRepository questionRepository;
     private final QuizAttemptRepository attemptRepository;
@@ -68,6 +77,7 @@ public class AttemptServiceImpl implements AttemptService {
     private final AssessmentAccess access;
     private final AttemptScorer scorer;
     private final CodingJudge judge;
+    private final QuizViolationRepository violations;
 
     // -----------------------------------------------------------------
     // Sitting the test
@@ -161,6 +171,75 @@ public class AttemptServiceImpl implements AttemptService {
 
         return new AnswerSaveResponse(attempt.getId(), answered, questions.size(),
                 attempt.getExpiresAt(), attempt.secondsRemaining(now));
+    }
+
+    @Override
+    @Transactional
+    public ViolationResponse.Outcome recordViolation(Long attemptId, ViolationRequest request) {
+        QuizAttempt attempt = requireOwnAttempt(attemptId);
+        Quiz quiz = requireQuiz(attempt.getQuizId());
+        Instant now = Instant.now();
+
+        // Not a secure test, or the sitting is already over: nothing to enforce, and no reason to make the
+        // page handle an error for a report it had every right to send.
+        if (!quiz.isSecureMode() || attempt.getStatus().isFinished() || attempt.hasExpired(now)) {
+            return outcome(attempt, quiz, false);
+        }
+
+        boolean counts = request.type().counts() && !mergesWithLastLeaving(attempt, now);
+        if (violations.countByAttemptId(attemptId) < MAX_STORED_VIOLATIONS) {
+            violations.save(QuizViolation.builder().attemptId(attemptId).type(request.type()).counted(counts)
+                    .detail(trimToNull(request.detail())).occurredAt(now).clientAt(request.clientAt()).build());
+        }
+        if (!counts) {
+            return outcome(attempt, quiz, false);
+        }
+
+        attempt.setViolationCount(attempt.getViolationCount() + 1);
+        if (attempt.getViolationCount() >= quiz.getMaxViolations()) {
+            scorer.terminate(attempt, quiz, "Left the test window %d times (the limit is %d)."
+                    .formatted(attempt.getViolationCount(), quiz.getMaxViolations()));
+            log.info("Attempt {} terminated after {} violations", attemptId, attempt.getViolationCount());
+        } else {
+            attemptRepository.save(attempt);
+        }
+        return outcome(attempt, quiz, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ViolationResponse.Entry> violations(Long attemptId) {
+        QuizAttempt attempt = requireAttempt(attemptId);
+        access.requireManagesQuiz(requireQuiz(attempt.getQuizId()));
+        return violations.findByAttemptIdOrderByOccurredAtAsc(attemptId).stream()
+                .map(ViolationResponse.Entry::from).toList();
+    }
+
+    private boolean mergesWithLastLeaving(QuizAttempt attempt, Instant now) {
+        return violations.findFirstByAttemptIdAndCountedTrueOrderByOccurredAtDesc(attempt.getId())
+                .map(last -> Duration.between(last.getOccurredAt(), now).compareTo(VIOLATION_MERGE_WINDOW) < 0)
+                .orElse(false);
+    }
+
+    private static ViolationResponse.Outcome outcome(QuizAttempt attempt, Quiz quiz, boolean counted) {
+        boolean terminated = attempt.getStatus() == AttemptStatus.TERMINATED;
+        // Further warnings before the attempt ends: with a limit of 2 the first violation is the warning
+        // and the second ends it, so after the first there are none left.
+        int warningsLeft = Math.max(0, quiz.getMaxViolations() - 1 - attempt.getViolationCount());
+        String message = null;
+        if (terminated) {
+            message = "Your test has been ended because you left the test window too many times.";
+        } else if (counted) {
+            message = warningsLeft == 0
+                    ? "Warning: Please do not leave the test window. This is your last warning."
+                    : "Warning: Please do not leave the test window.";
+        }
+        return new ViolationResponse.Outcome(counted, attempt.getViolationCount(), quiz.getMaxViolations(),
+                warningsLeft, terminated, message);
+    }
+
+    private static String trimToNull(String text) {
+        return text == null || text.isBlank() ? null : text.strip();
     }
 
     /**
@@ -309,7 +388,7 @@ public class AttemptServiceImpl implements AttemptService {
         Quiz quiz = requireQuiz(quizId);
         access.requireManagesQuiz(quiz);
         return attemptRepository.findByQuizIdAndStatusInOrderByScoreDesc(
-                        quizId, List.of(AttemptStatus.SUBMITTED, AttemptStatus.EXPIRED))
+                        quizId, List.of(AttemptStatus.SUBMITTED, AttemptStatus.EXPIRED, AttemptStatus.TERMINATED))
                 .stream()
                 .map(a -> AttemptResultResponse.of(a, quiz, true, null, List.of()))
                 .toList();

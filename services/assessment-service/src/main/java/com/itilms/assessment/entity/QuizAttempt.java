@@ -79,6 +79,14 @@ public class QuizAttempt extends AuditableEntity {
     @Builder.Default
     private AttemptStatus status = AttemptStatus.IN_PROGRESS;
 
+    /** Violations that counted toward ending a secure test. */
+    @Column(name = "violation_count", nullable = false)
+    @Builder.Default
+    private int violationCount = 0;
+
+    @Column(name = "terminated_reason", length = 200)
+    private String terminatedReason;
+
     public static Instant deadline(Instant startedAt, int durationMinutes) {
         return startedAt.plus(Duration.ofMinutes(durationMinutes));
     }
@@ -109,6 +117,16 @@ public class QuizAttempt extends AuditableEntity {
         this.passed = this.percentage >= passPercentage;
         this.submittedAt = at;
         this.status = expired ? AttemptStatus.EXPIRED : AttemptStatus.SUBMITTED;
+    }
+
+    /**
+     * Ends a scored attempt as terminated: whatever it scored stays on record, but it did not pass.
+     * Call after {@link #complete}.
+     */
+    public void terminate(String reason) {
+        this.status = AttemptStatus.TERMINATED;
+        this.passed = false;
+        this.terminatedReason = reason;
     }
 
     static int percentOf(int score, int totalMarks) {
