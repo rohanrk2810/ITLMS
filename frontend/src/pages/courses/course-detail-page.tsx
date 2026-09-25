@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronLeft, CircleDashed, FileText, Link2, PlayCircle, S
 import { Link, useParams } from 'react-router-dom'
 
 import { getCourseDetail, type LessonResponse } from '@/api/courses'
+import { RequestToJoinCard } from '@/components/request-to-join-card'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -64,13 +65,16 @@ export function CourseDetailPage() {
       )}
 
       {!enrolled && (
-        <Card>
-          <CardHeader>
-            <CardDescription>
-              You are not enrolled in this course, so lesson material is not shown - only the outline.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <>
+          <Card>
+            <CardHeader>
+              <CardDescription>
+                You are not enrolled in this course, so lesson material is not shown - only the outline.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <RequestToJoinCard courseId={course.id} courseTitle={course.title} />
+        </>
       )}
 
       <div className="flex flex-col gap-4">

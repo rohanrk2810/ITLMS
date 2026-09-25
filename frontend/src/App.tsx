@@ -101,6 +101,10 @@ const JobDetailIndexPage = lazy(() =>
 
 const FilesPage = lazy(() => import('@/pages/files/files-page').then((m) => ({ default: m.FilesPage })))
 
+const CourseRequestsIndexPage = lazy(() =>
+  import('@/pages/course-requests/course-requests-index-page').then((m) => ({ default: m.CourseRequestsIndexPage })),
+)
+
 const AnnouncementsPage = lazy(() =>
   import('@/pages/announcements/announcements-page').then((m) => ({ default: m.AnnouncementsPage })),
 )
@@ -123,6 +127,7 @@ const STUDENT_RECORD_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER'
 const BATCH_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 const USER_MANAGEMENT_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 const PLACEMENT_ROLES: readonly Role[] = ['ADMIN', 'PLACEMENT', 'STUDENT']
+const COURSE_REQUEST_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'STUDENT']
 
 // Nav items with a real page below - excluded from the generic placeholder loop.
 const BUILT_PATHS = new Set([
@@ -138,6 +143,7 @@ const BUILT_PATHS = new Set([
   '/app/placements',
   '/app/files',
   '/app/announcements',
+  '/app/course-requests',
 ])
 
 function PageFallback() {
@@ -211,6 +217,10 @@ export default function App() {
                   <Route element={<ProtectedRoute roles={FINANCE_ROLES} />}>
                     <Route path="/app/finance" element={<FinanceIndexPage />} />
                     <Route path="/app/finance/:feePlanId" element={<FeePlanDetailPage />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute roles={COURSE_REQUEST_ROLES} />}>
+                    <Route path="/app/course-requests" element={<CourseRequestsIndexPage />} />
                   </Route>
 
                   <Route element={<ProtectedRoute roles={CERTIFICATE_ROLES} />}>
