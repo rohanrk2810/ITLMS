@@ -4,7 +4,9 @@ import { KeyRound, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
+import { type CreateTrainerInput, type TrainerResponse, createTrainer } from '@/api/trainers'
 import { type CreateUserInput, createUser, resetUserPassword, searchUsers, updateUserStatus } from '@/api/users'
+import type { UserResponse } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -152,13 +154,28 @@ function NewUserDialog() {
   const [form, setForm] = useState<CreateUserInput>({ firstName: '', lastName: '', email: '', role: 'TRAINER' })
   const queryClient = useQueryClient()
 
-  const mutation = useMutation({
-    mutationFn: () => createUser(form),
+  const mutation = useMutation<UserResponse | TrainerResponse, unknown, void>({
+    mutationFn: () => {
+      if (form.role === 'TRAINER') {
+        // Trainers are a profile in admission-service, not just an identity
+        // account - /api/trainers creates the login and the profile together.
+        // See the Batches page's "New batch" trainer picker, which can only
+        // offer trainers created this way.
+        return createTrainer({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone ?? '',
+        } satisfies CreateTrainerInput)
+      }
+      return createUser(form)
+    },
     onSuccess: () => {
       toast.success('Account created. A temporary password has been emailed.')
       setOpen(false)
       setForm({ firstName: '', lastName: '', email: '', role: 'TRAINER' })
       void queryClient.invalidateQueries({ queryKey: ['users'] })
+      void queryClient.invalidateQueries({ queryKey: ['trainers'] })
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not create the account.')),
   })
@@ -212,8 +229,13 @@ function NewUserDialog() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" value={form.phone ?? ''} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+            <Label htmlFor="phone">Phone{form.role === 'TRAINER' && ' (required for trainers)'}</Label>
+            <Input
+              id="phone"
+              value={form.phone ?? ''}
+              onChange={(event) => setForm({ ...form, phone: event.target.value })}
+              required={form.role === 'TRAINER'}
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="role">Role</Label>
