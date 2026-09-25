@@ -188,6 +188,18 @@ spring:
         # ---------------------------------------------------------------
         # Assignments and tests
         # ---------------------------------------------------------------
+        # Running a coding question's tests, and submitting an attempt (which re-runs tests for
+        # code that changed), execute student code in the sandbox and can take a while. Declared
+        # before the general assessment route, with a long timeout and no circuit breaker (whose
+        # 30s time limit would cut a slow run off), the same way /api/code is.
+        - id: assessment-coding
+          uri: lb://assessment-service
+          predicates:
+            - Path=/api/quiz-attempts/*/questions/*/run-tests,/api/quiz-attempts/*/submit
+          metadata:
+            response-timeout: 90000
+            connect-timeout: 5000
+
         - id: assessment-service
           uri: lb://assessment-service
           predicates:

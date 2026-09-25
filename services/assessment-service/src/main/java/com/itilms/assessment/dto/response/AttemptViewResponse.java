@@ -2,10 +2,13 @@ package com.itilms.assessment.dto.response;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import com.itilms.assessment.entity.Quiz;
+import com.itilms.assessment.entity.QuizAnswer;
 import com.itilms.assessment.entity.QuizAttempt;
 import com.itilms.assessment.entity.QuizQuestion;
+import com.itilms.assessment.entity.QuizTestCase;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -37,29 +40,53 @@ public record AttemptViewResponse(
         Instant expiresAt,
 
         int secondsRemaining,
-        List<Question> questions
+        List<Question> questions,
+
+        @Schema(description = "What this attempt already has saved, so a resumed sitting shows it again")
+        List<SavedAnswer> savedAnswers
 ) {
 
     @Schema(description = "A question as the student sees it - no answer key")
-    public record Question(Long id, String questionText, String type, int marks, List<Option> options) {
+    public record Question(Long id, String questionText, String type, int marks, List<Option> options,
+                           @Schema(description = "CODING only") String codeLanguage,
+                           String starterCode,
+                           @Schema(description = "CODING only: the cases the student may see. Hidden ones are not sent.")
+                           List<SampleTest> sampleTests,
+                           int hiddenTestCount) {
+    }
+
+    public record SampleTest(String input, String expectedOutput) {
+    }
+
+    public record SavedAnswer(Long questionId, Set<Long> selectedOptionIds, String answerText,
+                              Integer testsPassed, Integer testsTotal) {
     }
 
     public record Option(Long id, String optionText) {
     }
 
     public static AttemptViewResponse of(QuizAttempt attempt, Quiz quiz,
-                                         List<QuizQuestion> questions, Instant now) {
+                                         List<QuizQuestion> questions, List<QuizAnswer> saved, Instant now) {
         List<Question> paper = questions.stream()
                 .map(q -> new Question(q.getId(), q.getQuestionText(), q.getType().name(), q.getMarks(),
                         q.getOptions().stream()
                                 .map(o -> new Option(o.getId(), o.getOptionText()))
-                                .toList()))
+                                .toList(),
+                        q.getCodeLanguage() == null ? null : q.getCodeLanguage().name(),
+                        q.getStarterCode(),
+                        q.getTestCases().stream().filter(c -> !c.isHidden())
+                                .map(c -> new SampleTest(c.getInput(), c.getExpectedOutput())).toList(),
+                        (int) q.getTestCases().stream().filter(QuizTestCase::isHidden).count()))
+                .toList();
+        List<SavedAnswer> savedAnswers = saved.stream()
+                .map(a -> new SavedAnswer(a.getQuestionId(), Set.copyOf(a.getSelectedOptionIds()), a.getAnswerText(),
+                        a.getTestsPassed(), a.getTestsTotal()))
                 .toList();
 
         return new AttemptViewResponse(
                 attempt.getId(), quiz.getId(), quiz.getTitle(), quiz.getInstructions(),
                 attempt.getAttemptNo(), quiz.getAttemptsAllowed(), quiz.getTotalMarks(),
                 quiz.getPassPercentage(), attempt.getStartedAt(), attempt.getExpiresAt(),
-                attempt.secondsRemaining(now), paper);
+                attempt.secondsRemaining(now), paper, savedAnswers);
     }
 }

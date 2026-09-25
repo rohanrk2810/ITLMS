@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { CodeLanguageCode } from './code'
 import type { PageResponse } from './types'
 
 /** A test as it appears on the student's list: no questions, just whether they can sit it and how they did. */
@@ -28,12 +29,41 @@ export interface AttemptOption {
   optionText: string
 }
 
+export type QuestionType = 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'CODING'
+
+export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
+  SINGLE_CHOICE: 'Single choice (MCQ)',
+  MULTI_CHOICE: 'Multiple select',
+  TRUE_FALSE: 'True / False',
+  SHORT_ANSWER: 'Short answer',
+  CODING: 'Coding',
+}
+
+export interface SampleTest {
+  input: string
+  expectedOutput: string
+}
+
 export interface AttemptQuestion {
   id: number
   questionText: string
-  type: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE'
+  type: QuestionType
   marks: number
   options: AttemptOption[]
+  /** CODING only. */
+  codeLanguage: CodeLanguageCode | null
+  starterCode: string | null
+  /** The cases the student may see. Hidden ones are never sent. */
+  sampleTests: SampleTest[]
+  hiddenTestCount: number
+}
+
+export interface SavedAnswer {
+  questionId: number
+  selectedOptionIds: number[]
+  answerText: string | null
+  testsPassed: number | null
+  testsTotal: number | null
 }
 
 /** The paper for a running attempt. Never carries the answer key (Doc S14). */
@@ -50,6 +80,8 @@ export interface AttemptViewResponse {
   expiresAt: string
   secondsRemaining: number
   questions: AttemptQuestion[]
+  /** What this attempt already has saved, so a resumed sitting shows it again. */
+  savedAnswers: SavedAnswer[]
 }
 
 export interface AnswerResult {
@@ -63,6 +95,11 @@ export interface AnswerResult {
   correct: boolean
   marksAwarded: number
   explanation: string | null
+  /** SHORT_ANSWER: what was typed. CODING: the submitted code. */
+  answerText: string | null
+  testsPassed: number | null
+  testsTotal: number | null
+  acceptedAnswers: string[]
 }
 
 export interface AttemptResultResponse {
@@ -92,7 +129,39 @@ export interface AnswerSaveResponse {
   secondsRemaining: number
 }
 
-export type SubmitAnswer = { questionId: number; selectedOptionIds: number[] }
+export type SubmitAnswer = { questionId: number; selectedOptionIds?: number[]; answerText?: string }
+
+export interface CodingCaseResult {
+  number: number
+  hidden: boolean
+  passed: boolean
+  /** Null for a hidden case. */
+  input: string | null
+  expectedOutput: string | null
+  actualOutput: string | null
+  error: string | null
+}
+
+export interface CodingRunResponse {
+  questionId: number
+  passed: number
+  total: number
+  compileError: string | null
+  cases: CodingCaseResult[]
+}
+
+/** Runs a coding question's test cases against the code, and keeps the code as the answer. */
+export async function runCodingTests(
+  attemptId: number | string,
+  questionId: number,
+  sourceCode: string,
+): Promise<CodingRunResponse> {
+  const { data } = await apiClient.post<CodingRunResponse>(
+    `/api/quiz-attempts/${attemptId}/questions/${questionId}/run-tests`,
+    { sourceCode },
+  )
+  return data
+}
 
 /** Tests I can take, with my attempts and best result so far. */
 export async function availableQuizzes(): Promise<StudentQuizResponse[]> {
@@ -158,6 +227,19 @@ export interface QuizQuestionWithKey {
   sequenceNo: number
   explanation: string | null
   options: QuizOption[]
+  codeLanguage: CodeLanguageCode | null
+  starterCode: string | null
+  acceptedAnswers: string[]
+  testCases: QuizTestCase[]
+}
+
+export interface QuizTestCase {
+  id: number
+  sequenceNo: number
+  input: string
+  expectedOutput: string
+  hidden: boolean
+  weight: number
 }
 
 export interface QuizResponse {
@@ -203,13 +285,28 @@ export interface QuestionOptionInput {
   correct: boolean
 }
 
+export interface TestCaseInput {
+  input: string
+  expectedOutput: string
+  hidden: boolean
+  weight: number
+}
+
 export interface QuestionInput {
   questionText: string
-  /** SINGLE_CHOICE, MULTI_CHOICE or TRUE_FALSE. Default SINGLE_CHOICE. */
-  type?: string
+  /** Default SINGLE_CHOICE. */
+  type?: QuestionType
   marks?: number
   explanation?: string
-  options: QuestionOptionInput[]
+  /** Choice types only. */
+  options?: QuestionOptionInput[]
+  /** CODING only. */
+  codeLanguage?: CodeLanguageCode
+  starterCode?: string
+  /** SHORT_ANSWER only. */
+  acceptedAnswers?: string[]
+  /** CODING only. */
+  testCases?: TestCaseInput[]
 }
 
 export async function listQuizzes(courseId?: number): Promise<PageResponse<QuizResponse>> {

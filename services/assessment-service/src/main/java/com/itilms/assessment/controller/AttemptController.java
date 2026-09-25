@@ -13,11 +13,14 @@ import com.itilms.assessment.dto.request.SubmitAttemptRequest;
 import com.itilms.assessment.dto.response.AnswerSaveResponse;
 import com.itilms.assessment.dto.response.AttemptResultResponse;
 import com.itilms.assessment.dto.response.AttemptViewResponse;
+import com.itilms.assessment.dto.response.CodingRunResponse;
 import com.itilms.assessment.service.AttemptService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 
 /** Sitting a test (Doc S6.11, S11). */
@@ -42,6 +45,20 @@ public class AttemptController {
     @PutMapping("/{id}/answers")
     public AnswerSaveResponse save(@PathVariable Long id, @Valid @RequestBody SubmitAttemptRequest request) {
         return attemptService.saveAnswers(id, request);
+    }
+
+    @Operation(summary = "Run a coding question's tests",
+            description = "Runs the code against every test case and remembers the result. Hidden cases show only pass or fail. "
+                    + "429 when running too often; the code is kept either way.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/{id}/questions/{questionId}/run-tests")
+    public CodingRunResponse runTests(@PathVariable Long id, @PathVariable Long questionId,
+                                      @Valid @RequestBody RunTestsRequest request) {
+        return attemptService.runTests(id, questionId, request.sourceCode());
+    }
+
+    /** The code to test. */
+    public record RunTestsRequest(@NotBlank @Size(max = 50000) String sourceCode) {
     }
 
     @Operation(summary = "Submit an attempt",

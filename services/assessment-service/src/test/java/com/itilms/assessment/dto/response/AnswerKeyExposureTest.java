@@ -49,7 +49,7 @@ class AnswerKeyExposureTest {
     @Test
     @DisplayName("The paper a student sits carries no correct flags and no explanations")
     void paperHasNoKey() throws Exception {
-        String body = json.writeValueAsString(AttemptViewResponse.of(attempt, quiz, List.of(question), Instant.now()));
+        String body = json.writeValueAsString(AttemptViewResponse.of(attempt, quiz, List.of(question), List.of(), Instant.now()));
 
         assertThat(body).contains("Which keyword makes a constant?", "\"final\"");
         assertThat(body).doesNotContain("correct").doesNotContain("explanation")
@@ -81,6 +81,47 @@ class AnswerKeyExposureTest {
             assertThat(a.correctOptionIds()).containsExactly(52L);
             assertThat(a.correct()).isTrue();
             assertThat(a.explanation()).isEqualTo("final prevents reassignment");
+        });
+    }
+
+    @Test
+    @DisplayName("The paper carries no accepted short answers and no hidden test case, input or output")
+    void paperHasNoTextKey() throws Exception {
+        QuizQuestion shortAnswer = QuizQuestion.builder().id(6L).quizId(1L).type(QuestionType.SHORT_ANSWER)
+                .marks(1).sequenceNo(2).questionText("Capital of France?").build();
+        shortAnswer.getAcceptedAnswers().add("Paris-secret");
+        QuizQuestion coding = QuizQuestion.builder().id(7L).quizId(1L).type(QuestionType.CODING)
+                .codeLanguage(com.itilms.common.code.CodeLanguage.PYTHON).starterCode("# write code")
+                .marks(3).sequenceNo(3).questionText("Add two numbers").build();
+        coding.getTestCases().add(com.itilms.assessment.entity.QuizTestCase.builder().sequenceNo(1)
+                .input("2 3").expectedOutput("5").build());
+        coding.getTestCases().add(com.itilms.assessment.entity.QuizTestCase.builder().sequenceNo(2)
+                .input("HIDDEN-IN 9").expectedOutput("HIDDEN-OUT").hidden(true).build());
+
+        String body = json.writeValueAsString(AttemptViewResponse.of(
+                attempt, quiz, List.of(shortAnswer, coding), List.of(), Instant.now()));
+
+        assertThat(body).contains("Capital of France?", "# write code", "\"sampleTests\"", "\"hiddenTestCount\":1");
+        assertThat(body).doesNotContain("Paris-secret").doesNotContain("HIDDEN-IN").doesNotContain("HIDDEN-OUT")
+                .doesNotContain("acceptedAnswers").doesNotContain("correct");
+    }
+
+    @Test
+    @DisplayName("Once released, a short-answer result shows the accepted answers; a held-back one does not")
+    void resultShowsAcceptedAnswersOnlyWhenReleased() throws Exception {
+        QuizQuestion shortAnswer = QuizQuestion.builder().id(6L).quizId(1L).type(QuestionType.SHORT_ANSWER)
+                .marks(1).sequenceNo(1).questionText("Capital of France?").build();
+        shortAnswer.getAcceptedAnswers().add("Paris-secret");
+        attempt.complete(0, 1, 50, Instant.now(), false);
+        QuizAnswer typed = QuizAnswer.builder().attemptId(9L).questionId(6L).answerText("Lyon").build();
+
+        String held = json.writeValueAsString(AttemptResultResponse.of(attempt, quiz, false, List.of(shortAnswer), List.of(typed)));
+        assertThat(held).doesNotContain("Paris-secret").doesNotContain("Lyon");
+
+        AttemptResultResponse released = AttemptResultResponse.of(attempt, quiz, true, List.of(shortAnswer), List.of(typed));
+        assertThat(released.answers()).singleElement().satisfies(a -> {
+            assertThat(a.acceptedAnswers()).containsExactly("Paris-secret");
+            assertThat(a.answerText()).isEqualTo("Lyon");
         });
     }
 }

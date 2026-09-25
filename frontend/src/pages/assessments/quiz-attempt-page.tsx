@@ -16,19 +16,39 @@ import { apiErrorMessage } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CodingQuestion } from '@/components/coding-question'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const AUTOSAVE_INTERVAL_MS = 20_000
 
 type Answers = Record<number, Set<number>>
+type Texts = Record<number, string>
+type Tested = Record<number, { passed: number; total: number }>
 
-function toSubmitAnswers(answers: Answers): SubmitAnswer[] {
-  return Object.entries(answers).map(([questionId, options]) => ({
-    questionId: Number(questionId),
-    selectedOptionIds: [...options],
-  }))
+/**
+ * Everything the student has answered, in the shape the API takes. A coding box still holding its untouched
+ * starter code is not an answer, and neither is blank text; choice questions send options, the rest text.
+ */
+function toSubmitAnswers(paper: AttemptViewResponse, answers: Answers, texts: Texts): SubmitAnswer[] {
+  const submit: SubmitAnswer[] = []
+  for (const question of paper.questions) {
+    if (question.type === 'SHORT_ANSWER' || question.type === 'CODING') {
+      const text = texts[question.id] ?? ''
+      const untouched = question.type === 'CODING' && text === (question.starterCode ?? '')
+      if (text.trim() && !untouched) submit.push({ questionId: question.id, answerText: text })
+    } else {
+      const options = answers[question.id]
+      if (options) submit.push({ questionId: question.id, selectedOptionIds: [...options] })
+    }
+  }
+  return submit
+}
+
+function countAnswered(paper: AttemptViewResponse, answers: Answers, texts: Texts): number {
+  return toSubmitAnswers(paper, answers, texts).filter((a) => (a.selectedOptionIds?.length ?? 0) > 0 || a.answerText).length
 }
 
 function formatClock(totalSeconds: number): string {
@@ -48,16 +68,20 @@ export function QuizAttemptPage() {
   const [result, setResult] = useState<AttemptResultResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [texts, setTexts] = useState<Texts>({})
+  const [tested, setTested] = useState<Tested>({})
   const answersRef = useRef<Answers>({})
+  const textsRef = useRef<Texts>({})
   useEffect(() => {
     answersRef.current = answers
-  }, [answers])
+    textsRef.current = texts
+  }, [answers, texts])
 
   const submitNow = useCallback(async () => {
     if (!paper || submitting) return
     setSubmitting(true)
     try {
-      const outcome = await submitAttempt(paper.attemptId, toSubmitAnswers(answersRef.current))
+      const outcome = await submitAttempt(paper.attemptId, toSubmitAnswers(paper, answersRef.current, textsRef.current))
       setResult(outcome)
       setView('results')
       toast.success('Test submitted')
@@ -77,7 +101,25 @@ export function QuizAttemptPage() {
         if (cancelled) return
         setPaper(view)
         setSecondsRemaining(view.secondsRemaining)
-        setAnswers({})
+        // A resumed sitting shows what was already saved, so nothing looks lost after a reload.
+        const restoredAnswers: Answers = {}
+        const restoredTexts: Texts = {}
+        const restoredTests: Tested = {}
+        for (const saved of view.savedAnswers) {
+          if (saved.selectedOptionIds.length > 0) restoredAnswers[saved.questionId] = new Set(saved.selectedOptionIds)
+          if (saved.answerText) restoredTexts[saved.questionId] = saved.answerText
+          if (saved.testsTotal != null) {
+            restoredTests[saved.questionId] = { passed: saved.testsPassed ?? 0, total: saved.testsTotal }
+          }
+        }
+        for (const question of view.questions) {
+          if (question.type === 'CODING' && restoredTexts[question.id] === undefined) {
+            restoredTexts[question.id] = question.starterCode ?? ''
+          }
+        }
+        setAnswers(restoredAnswers)
+        setTexts(restoredTexts)
+        setTested(restoredTests)
         setView('live')
       })
       .catch(() => {
@@ -103,7 +145,9 @@ export function QuizAttemptPage() {
     if (view !== 'live' || !paper) return
     const tick = setInterval(() => setSecondsRemaining((s) => Math.max(0, s - 1)), 1000)
     const save = setInterval(() => {
-      void saveAttemptAnswers(paper.attemptId, toSubmitAnswers(answersRef.current)).catch(() => undefined)
+      void saveAttemptAnswers(paper.attemptId, toSubmitAnswers(paper, answersRef.current, textsRef.current)).catch(
+        () => undefined,
+      )
     }, AUTOSAVE_INTERVAL_MS)
     return () => {
       clearInterval(tick)
@@ -206,10 +250,32 @@ export function QuizAttemptPage() {
             <CardDescription>
               {question.marks} {question.marks === 1 ? 'mark' : 'marks'}
               {question.type === 'MULTI_CHOICE' && ' · choose all that apply'}
+              {question.type === 'SHORT_ANSWER' && ' · type your answer'}
+              {question.type === 'CODING' && ' · write code'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {question.type === 'MULTI_CHOICE' ? (
+            {question.type === 'SHORT_ANSWER' ? (
+              <Input
+                aria-label={`Answer to question ${qIndex + 1}`}
+                value={texts[question.id] ?? ''}
+                maxLength={1000}
+                autoComplete="off"
+                onChange={(event) => setTexts((prev) => ({ ...prev, [question.id]: event.target.value }))}
+              />
+            ) : question.type === 'CODING' ? (
+              <CodingQuestion
+                attemptId={paper.attemptId}
+                question={question}
+                code={texts[question.id] ?? question.starterCode ?? ''}
+                onChange={(code) => setTexts((prev) => ({ ...prev, [question.id]: code }))}
+                savedPassed={tested[question.id]?.passed ?? null}
+                savedTotal={tested[question.id]?.total ?? null}
+                onTested={(questionId, passed, total) =>
+                  setTested((prev) => ({ ...prev, [questionId]: { passed, total } }))
+                }
+              />
+            ) : question.type === 'MULTI_CHOICE' ? (
               <div className="flex flex-col gap-2">
                 {question.options.map((option) => (
                   <label key={option.id} className="flex items-center gap-2 text-sm">
@@ -240,10 +306,10 @@ export function QuizAttemptPage() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {Object.keys(answers).length} of {paper.questions.length} answered
+          {countAnswered(paper, answers, texts)} of {paper.questions.length} answered
         </p>
         <Button onClick={() => void submitNow()} disabled={submitting}>
-          {submitting ? 'Submitting...' : 'Submit test'}
+          {submitting ? 'Submitting (running your tests)...' : 'Submit test'}
         </Button>
       </div>
     </div>
@@ -315,6 +381,30 @@ function ResultCard({ attempt }: { attempt: AttemptResultResponse }) {
                 )
               })}
             </div>
+            {a.type === 'SHORT_ANSWER' && (
+              <div className="mt-1 flex flex-col gap-1">
+                <span className={a.marksAwarded > 0 ? 'text-emerald-600' : 'text-destructive'}>
+                  Your answer: {a.answerText || '(none)'}
+                </span>
+                {a.marksAwarded === 0 && a.acceptedAnswers.length > 0 && (
+                  <span className="text-muted-foreground">Accepted: {a.acceptedAnswers.join(' / ')}</span>
+                )}
+              </div>
+            )}
+            {a.type === 'CODING' && (
+              <div className="mt-1 flex flex-col gap-1">
+                <span className={a.testsPassed === a.testsTotal ? 'text-emerald-600' : 'text-destructive'}>
+                  {a.testsTotal == null
+                    ? 'Your tests were not run.'
+                    : `${a.testsPassed ?? 0} of ${a.testsTotal} tests passed`}
+                </span>
+                {a.answerText && (
+                  <pre className="max-h-48 overflow-auto rounded-md border bg-muted/40 px-3 py-2 font-mono text-xs whitespace-pre-wrap">
+                    {a.answerText}
+                  </pre>
+                )}
+              </div>
+            )}
             <p className="mt-1 text-xs text-muted-foreground">
               {a.marksAwarded}/{a.marks} marks
             </p>

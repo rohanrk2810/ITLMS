@@ -6,6 +6,7 @@ import com.itilms.assessment.dto.request.SubmitAttemptRequest;
 import com.itilms.assessment.dto.response.AnswerSaveResponse;
 import com.itilms.assessment.dto.response.AttemptResultResponse;
 import com.itilms.assessment.dto.response.AttemptViewResponse;
+import com.itilms.assessment.dto.response.CodingRunResponse;
 
 /** Sitting a test (Doc S6.11, S11). */
 public interface AttemptService {
@@ -29,6 +30,12 @@ public interface AttemptService {
      * so the page saves as they go rather than only at the end.
      */
     AnswerSaveResponse saveAnswers(Long attemptId, SubmitAttemptRequest request);
+
+    /**
+     * Runs a coding question's test cases against the student's code, keeps the code as their answer and
+     * remembers the verdict. Nothing is marked yet: the marks are taken from this verdict when the attempt ends.
+     */
+    CodingRunResponse runTests(Long attemptId, Long questionId, String sourceCode);
 
     AttemptResultResponse submit(Long attemptId, SubmitAttemptRequest request);
 

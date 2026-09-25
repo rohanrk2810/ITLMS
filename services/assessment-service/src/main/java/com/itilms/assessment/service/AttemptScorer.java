@@ -65,7 +65,7 @@ public class AttemptScorer {
         int score = 0;
         for (QuizAnswer answer : answers) {
             QuizQuestion question = questions.get(answer.getQuestionId());
-            int marks = question == null ? 0 : question.scoreFor(answer.getSelectedOptionIds());
+            int marks = question == null ? 0 : marksFor(question, answer);
             answer.setMarksAwarded(marks);
             answer.setCorrect(question != null && marks == question.getMarks());
             score += marks;
@@ -87,6 +87,20 @@ public class AttemptScorer {
                 expired ? "expired" : "submitted", attempt.getScore(), quiz.getTotalMarks(),
                 attempt.getPercentage());
         return attempt;
+    }
+
+    /**
+     * A coding answer is scored from the verdict stored when its tests last ran, never by running code here:
+     * this method also runs from the expiry job and when a trainer closes a test, where nobody is signed in to
+     * run anything. A submission runs the tests first (see AttemptServiceImpl); an answer whose tests never ran
+     * scores nothing.
+     */
+    static int marksFor(QuizQuestion question, QuizAnswer answer) {
+        return switch (question.getType()) {
+            case SHORT_ANSWER -> question.scoreText(answer.getAnswerText());
+            case CODING -> answer.getTestedMarks() == null ? 0 : answer.getTestedMarks();
+            default -> question.scoreFor(answer.getSelectedOptionIds());
+        };
     }
 
     /** Ends every running attempt on a test - used when the trainer closes it. */

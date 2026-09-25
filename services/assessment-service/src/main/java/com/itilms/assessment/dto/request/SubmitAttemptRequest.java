@@ -6,6 +6,7 @@ import java.util.Set;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * What the student chose.
@@ -26,8 +27,12 @@ public record SubmitAttemptRequest(
             @NotNull(message = "Question id is required")
             Long questionId,
 
-            @Schema(description = "Option ids the student ticked. Empty means unanswered.")
-            Set<Long> selectedOptionIds
+            @Schema(description = "Choice questions: option ids the student ticked. Empty means unanswered.")
+            Set<Long> selectedOptionIds,
+
+            @Schema(description = "SHORT_ANSWER: what was typed. CODING: the source code. Blank means unanswered.")
+            @Size(max = 50000, message = "An answer is limited to 50000 characters")
+            String answerText
     ) {
     }
 }
