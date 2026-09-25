@@ -1,12 +1,20 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarPlus, CheckCircle2, ChevronLeft, ClipboardList } from 'lucide-react'
+import { CalendarPlus, CheckCircle2, ChevronLeft, ClipboardList, UserPlus } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getBatchAssignments } from '@/api/assignments'
-import { type CreateSessionInput, createSession, getBatch, getBatchSessions, getRoster } from '@/api/batches'
+import {
+  type CreateSessionInput,
+  createSession,
+  enrollStudents,
+  getBatch,
+  getBatchSessions,
+  getRoster,
+} from '@/api/batches'
 import { apiErrorMessage } from '@/api/client'
+import { type StudentSummaryResponse, searchStudents } from '@/api/students'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +24,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDate } from '@/lib/format'
+import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const SESSION_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   SCHEDULED: 'secondary',
@@ -26,6 +35,9 @@ const SESSION_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline'
 export function BatchDetailPage() {
   const { batchId } = useParams<{ batchId: string }>()
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
+  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false)
+  const role = useAuthStore((state) => state.user?.role)
+  const canManage = hasRole(role, ['ADMIN', 'COORDINATOR'])
 
   const batchQuery = useQuery({ queryKey: ['batches', batchId], queryFn: () => getBatch(batchId!), enabled: !!batchId })
   const rosterQuery = useQuery({
@@ -170,7 +182,12 @@ export function BatchDetailPage() {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Roster</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">Roster</h2>
+          {canManage && (
+            <EnrollStudentDialog batchId={batch.id} open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen} />
+          )}
+        </div>
         <Card>
           <CardContent className="pt-6">
             <Table>
@@ -283,6 +300,115 @@ function AddSessionDialog({
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EnrollStudentDialog({
+  batchId,
+  open,
+  onOpenChange,
+}: {
+  batchId: number
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState<StudentSummaryResponse | null>(null)
+  const queryClient = useQueryClient()
+
+  const resultsQuery = useQuery({
+    queryKey: ['students', 'search', query],
+    queryFn: () => searchStudents({ query, status: 'ACTIVE' }),
+    enabled: open && query.trim().length > 1,
+  })
+
+  const mutation = useMutation({
+    mutationFn: () => enrollStudents(batchId, [selected!.id]),
+    onSuccess: (result) => {
+      const outcome = result.outcomes[0]
+      if (outcome?.success) {
+        toast.success(`${selected?.fullName} enrolled`)
+        onOpenChange(false)
+        setQuery('')
+        setSelected(null)
+        void queryClient.invalidateQueries({ queryKey: ['batches', String(batchId), 'roster'] })
+        void queryClient.invalidateQueries({ queryKey: ['batches', String(batchId)] })
+      } else {
+        toast.error(outcome?.message ?? 'Could not enrol the student.')
+      }
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not enrol the student.')),
+  })
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next)
+        if (!next) {
+          setQuery('')
+          setSelected(null)
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <UserPlus className="size-3.5" />
+          Enrol student
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Enrol a student</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="studentQuery">Search by name, code or email</Label>
+            <Input
+              id="studentQuery"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setSelected(null)
+              }}
+              placeholder="Asha Patil, STU-2026-0004..."
+              autoFocus
+            />
+          </div>
+
+          {resultsQuery.isFetching && <p className="text-sm text-muted-foreground">Searching...</p>}
+
+          {resultsQuery.data && (
+            <div className="flex max-h-56 flex-col overflow-y-auto rounded-md border">
+              {resultsQuery.data.content.length === 0 && (
+                <p className="p-3 text-sm text-muted-foreground">No matching student.</p>
+              )}
+              {resultsQuery.data.content.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => setSelected(student)}
+                  className={`flex flex-col gap-0.5 border-b p-2 text-left text-sm last:border-b-0 hover:bg-accent ${
+                    selected?.id === student.id ? 'bg-accent' : ''
+                  }`}
+                >
+                  <span className="font-medium">{student.fullName}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {student.studentCode} &middot; {student.email}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" disabled={!selected || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Enrolling...' : selected ? `Enrol ${selected.fullName}` : 'Select a student'}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

@@ -96,6 +96,21 @@ export interface AttendanceResponse {
   topic: string | null
 }
 
+export interface CreateBatchInput {
+  name?: string
+  courseId: number
+  trainerId?: number
+  startDate: string
+  endDate?: string
+  startTime: string
+  endTime: string
+  classDays?: string[]
+  mode?: string
+  capacity?: number
+  classroom?: string
+  meetingUrl?: string
+}
+
 export interface CreateSessionInput {
   batchId: number
   sessionDate: string
@@ -117,6 +132,11 @@ export async function searchBatches(params: {
   return data
 }
 
+export async function createBatch(input: CreateBatchInput): Promise<BatchResponse> {
+  const { data } = await apiClient.post<BatchResponse>('/api/batches', input)
+  return data
+}
+
 export async function getBatch(id: number | string): Promise<BatchResponse> {
   const { data } = await apiClient.get<BatchResponse>(`/api/batches/${id}`)
   return data
@@ -124,6 +144,30 @@ export async function getBatch(id: number | string): Promise<BatchResponse> {
 
 export async function getRoster(batchId: number | string): Promise<EnrollmentResponse[]> {
   const { data } = await apiClient.get<EnrollmentResponse[]>(`/api/batches/${batchId}/students`)
+  return data
+}
+
+export interface EnrollmentOutcome {
+  studentId: number
+  success: boolean
+  message: string
+}
+
+export interface EnrollmentResultResponse {
+  batchId: number
+  enrolled: number
+  skipped: number
+  seatsRemaining: number
+  outcomes: EnrollmentOutcome[]
+}
+
+/** Reports per student rather than failing the whole call on one problem - a student
+ * already enrolled elsewhere, for example, does not block the rest of the batch. */
+export async function enrollStudents(
+  batchId: number | string,
+  studentIds: number[],
+): Promise<EnrollmentResultResponse> {
+  const { data } = await apiClient.post<EnrollmentResultResponse>(`/api/batches/${batchId}/students`, { studentIds })
   return data
 }
 
