@@ -283,7 +283,7 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | PUT | /api/quizzes/{id} | ACADEMIC | Change a draft's settings |
 | GET | /api/quizzes/{id} | ACADEMIC | A test **with its answer key** — never served to a student |
 | GET | /api/quizzes | ACADEMIC | List tests |
-| POST | /api/quizzes/{id}/questions | ACADEMIC | Add a question |
+| POST | /api/quizzes/{id}/questions | ACADEMIC | Add a question. `type` is SINGLE_CHOICE, MULTI_CHOICE, TRUE_FALSE (options), SHORT_ANSWER (`acceptedAnswers`, matched ignoring case and extra spaces) or CODING (`codeLanguage`, `starterCode`, 1-10 `testCases` with input, expected output, weight, hidden). A field that does not belong to the type is refused |
 | PUT | /api/quizzes/questions/{questionId} | ACADEMIC | Edit a question |
 | DELETE | /api/quizzes/questions/{questionId} | ACADEMIC | Remove a question |
 | POST | /api/quizzes/{id}/publish | ACADEMIC | Publish — refuses at zero total marks |
@@ -297,8 +297,9 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | Method | Path | Role | Does |
 |---|---|---|---|
 | GET | /api/quiz-attempts/{id} | STUDENT | The paper for a running attempt — **no `correct` field anywhere in the payload** |
-| PUT | /api/quiz-attempts/{id}/answers | STUDENT | Autosave answers so far |
-| POST | /api/quiz-attempts/{id}/submit | STUDENT | Submit — scored server-side; resubmitting a finished attempt is a harmless repeat, same result |
+| PUT | /api/quiz-attempts/{id}/answers | STUDENT | Autosave answers so far — chosen options, or `answerText` for a short answer or code |
+| POST | /api/quiz-attempts/{id}/questions/{questionId}/run-tests | STUDENT | Run a coding question's test cases against the code and keep it as the answer. Hidden cases return pass or fail only. 429 when running too often; the code is kept either way |
+| POST | /api/quiz-attempts/{id}/submit | STUDENT | Submit — scored server-side; re-runs the tests for code changed since its last run; resubmitting a finished attempt is a harmless repeat, same result |
 | GET | /api/quiz-attempts/{id}/result | any signed-in user | An attempt's result |
 
 ### `ResultController` — `/api/results`
@@ -439,6 +440,7 @@ Stateless - no database. Runs practice-editor code in a Judge0 sandbox. Set-up a
 |---|---|---|---|
 | GET | /api/code/languages | any signed-in user | Languages switched on in configuration |
 | POST | /api/code/run | any signed-in user | Run code; a compile error or crash is a `200` with an `outcome` |
+| POST | /api/code/run-batch | any signed-in user | One program against several inputs (for grading): one rate-limit unit however many inputs, at most `limits.max-batch-cases` (10) |
 | GET | /api/code/status | ADMIN_ONLY | Judge0 configured / reachable, and which language ids it does not know |
 
 ---
