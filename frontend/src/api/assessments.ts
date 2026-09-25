@@ -17,6 +17,9 @@ export interface StudentQuizResponse {
   availableFrom: string | null
   availableUntil: string | null
   mandatory: boolean
+  /** Secure test mode: leaving the test window is reported, and too many reports end the attempt. */
+  secureMode: boolean
+  maxViolations: number
   openNow: boolean
   canStart: boolean
   inProgressAttemptId: number | null
@@ -79,6 +82,10 @@ export interface AttemptViewResponse {
   startedAt: string
   expiresAt: string
   secondsRemaining: number
+  secureMode: boolean
+  maxViolations: number
+  /** Violations that have counted so far in this attempt. */
+  violationCount: number
   questions: AttemptQuestion[]
   /** What this attempt already has saved, so a resumed sitting shows it again. */
   savedAnswers: SavedAnswer[]
@@ -118,7 +125,68 @@ export interface AttemptResultResponse {
   percentage: number | null
   passed: boolean | null
   passPercentage: number
+  violationCount: number
+  /** Set when the attempt was ended by the secure-test rules. */
+  terminatedReason: string | null
   answers: AnswerResult[] | null
+}
+
+export type ViolationType =
+  | 'TAB_SWITCH'
+  | 'WINDOW_BLUR'
+  | 'FULLSCREEN_EXIT'
+  | 'COPY_ATTEMPT'
+  | 'PASTE_ATTEMPT'
+  | 'RIGHT_CLICK'
+  | 'SHORTCUT_BLOCKED'
+
+export const VIOLATION_LABEL: Record<ViolationType, string> = {
+  TAB_SWITCH: 'Left the test tab',
+  WINDOW_BLUR: 'Left the test window',
+  FULLSCREEN_EXIT: 'Left fullscreen',
+  COPY_ATTEMPT: 'Tried to copy',
+  PASTE_ATTEMPT: 'Pasted',
+  RIGHT_CLICK: 'Right-clicked',
+  SHORTCUT_BLOCKED: 'Used a blocked shortcut',
+}
+
+export interface ViolationOutcome {
+  counted: boolean
+  violationCount: number
+  maxViolations: number
+  /** Further warnings before the attempt ends. */
+  warningsLeft: number
+  terminated: boolean
+  message: string | null
+}
+
+export interface ViolationEntry {
+  id: number
+  type: ViolationType
+  counted: boolean
+  detail: string | null
+  occurredAt: string
+  clientAt: string | null
+}
+
+/** Tells the server what the browser noticed. The server decides whether it counts and whether the attempt ends. */
+export async function reportViolation(
+  attemptId: number | string,
+  type: ViolationType,
+  detail?: string,
+): Promise<ViolationOutcome> {
+  const { data } = await apiClient.post<ViolationOutcome>(`/api/quiz-attempts/${attemptId}/violations`, {
+    type,
+    detail,
+    clientAt: new Date().toISOString(),
+  })
+  return data
+}
+
+/** Everything the browser reported for one attempt - trainers of the test and staff. */
+export async function listViolations(attemptId: number | string): Promise<ViolationEntry[]> {
+  const { data } = await apiClient.get<ViolationEntry[]>(`/api/quiz-attempts/${attemptId}/violations`)
+  return data
 }
 
 export interface AnswerSaveResponse {
@@ -257,6 +325,8 @@ export interface QuizResponse {
   shuffleQuestions: boolean
   showResultImmediately: boolean
   mandatory: boolean
+  secureMode: boolean
+  maxViolations: number
   status: string
   trainerId: number | null
   publishedAt: string | null
@@ -278,6 +348,8 @@ export interface QuizInput {
   shuffleQuestions?: boolean
   showResultImmediately?: boolean
   mandatory?: boolean
+  secureMode?: boolean
+  maxViolations?: number
 }
 
 export interface QuestionOptionInput {

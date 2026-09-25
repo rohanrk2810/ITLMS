@@ -54,6 +54,20 @@ public class AttemptScorer {
      */
     @Transactional
     public QuizAttempt finish(QuizAttempt attempt, Quiz quiz, boolean expired) {
+        return close(attempt, quiz, expired, null);
+    }
+
+    /**
+     * Ends an attempt because a secure test's rules were broken. It is scored on what was answered, for
+     * the record, and marked failed; the completion event carries that verdict, so nothing downstream
+     * (progress, certificates) treats a terminated attempt as a pass.
+     */
+    @Transactional
+    public QuizAttempt terminate(QuizAttempt attempt, Quiz quiz, String reason) {
+        return close(attempt, quiz, false, reason);
+    }
+
+    private QuizAttempt close(QuizAttempt attempt, Quiz quiz, boolean expired, String terminatedReason) {
         if (attempt.getStatus().isFinished()) {
             return attempt;
         }
@@ -74,6 +88,9 @@ public class AttemptScorer {
 
         Instant now = Instant.now();
         attempt.complete(score, quiz.getTotalMarks(), quiz.getPassPercentage(), now, expired);
+        if (terminatedReason != null) {
+            attempt.terminate(terminatedReason);
+        }
         attempt = attemptRepository.save(attempt);
 
         events.publishAfterCommit(KafkaTopics.QUIZ_ATTEMPT_COMPLETED, String.valueOf(attempt.getStudentId()),
@@ -84,7 +101,8 @@ public class AttemptScorer {
                         Boolean.TRUE.equals(attempt.getPassed()), attempt.getAttemptNo()));
 
         log.info("Attempt {} on test {} {}: {}/{} ({}%)", attempt.getId(), quiz.getId(),
-                expired ? "expired" : "submitted", attempt.getScore(), quiz.getTotalMarks(),
+                terminatedReason != null ? "terminated" : expired ? "expired" : "submitted",
+                attempt.getScore(), quiz.getTotalMarks(),
                 attempt.getPercentage());
         return attempt;
     }

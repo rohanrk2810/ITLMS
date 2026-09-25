@@ -10,6 +10,7 @@ import {
   deleteQuestion,
   getQuiz,
   getQuizResults,
+  listViolations,
   publishQuiz,
   QUESTION_TYPE_LABEL,
   type QuestionInput,
@@ -17,6 +18,7 @@ import {
   type QuestionType,
   type QuizQuestionWithKey,
   type TestCaseInput,
+  VIOLATION_LABEL,
 } from '@/api/assessments'
 import { CODE_LANGUAGES, type CodeLanguageCode, codeLanguageLabel } from '@/api/code'
 import { apiErrorMessage } from '@/api/client'
@@ -24,7 +26,15 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -151,6 +161,7 @@ export function QuizEditorPage() {
                 <TableHead>Student</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Result</TableHead>
+                {quiz.secureMode && <TableHead>Violations</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -162,9 +173,14 @@ export function QuizEditorPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={result.passed ? 'default' : 'destructive'}>
-                      {result.passed ? 'Passed' : 'Not passed'}
+                      {result.status === 'TERMINATED' ? 'Terminated' : result.passed ? 'Passed' : 'Not passed'}
                     </Badge>
                   </TableCell>
+                  {quiz.secureMode && (
+                    <TableCell>
+                      <ViolationsButton attemptId={result.attemptId} count={result.violationCount} />
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -172,6 +188,52 @@ export function QuizEditorPage() {
         </div>
       )}
     </div>
+  )
+}
+
+/** How many times a student left the test window, and a way to see every event the browser reported. */
+function ViolationsButton({ attemptId, count }: { attemptId: number; count: number }) {
+  const [open, setOpen] = useState(false)
+  const query = useQuery({
+    queryKey: ['quiz-attempts', attemptId, 'violations'],
+    queryFn: () => listViolations(attemptId),
+    enabled: open,
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant={count > 0 ? 'outline' : 'ghost'}>
+          {count} counted &middot; review
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>What the browser reported</DialogTitle>
+          <DialogDescription>
+            Everything the student&apos;s browser reported, oldest first. Only the events marked counted add to the limit.
+          </DialogDescription>
+        </DialogHeader>
+        {query.isLoading && <Skeleton className="h-24" />}
+        {query.isSuccess && query.data.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nothing was reported during this attempt.</p>
+        )}
+        <ul className="flex flex-col gap-2 text-sm">
+          {query.data?.map((event) => (
+            <li key={event.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+              <span>
+                {VIOLATION_LABEL[event.type] ?? event.type}
+                {event.detail && <span className="text-muted-foreground"> &middot; {event.detail}</span>}
+              </span>
+              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                {new Date(event.occurredAt).toLocaleTimeString()}
+                <Badge variant={event.counted ? 'destructive' : 'secondary'}>{event.counted ? 'Counted' : 'Recorded'}</Badge>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
   )
 }
 

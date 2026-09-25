@@ -49,6 +49,15 @@ public record CreateQuizRequest(
         Boolean showResultImmediately,
 
         @Schema(description = "Counts toward course completion. Default true.")
-        Boolean mandatory
+        Boolean mandatory,
+
+        @Schema(description = "Secure test mode: the student's browser reports leaving the test window, "
+                + "and too many reports end the attempt. Default false.")
+        Boolean secureMode,
+
+        @Schema(description = "Secure mode: the counted violation that ends the attempt (2 = one warning, "
+                + "then termination). Default 2.")
+        @Min(value = 1, message = "At least 1") @Max(value = 10, message = "At most 10")
+        Integer maxViolations
 ) {
 }

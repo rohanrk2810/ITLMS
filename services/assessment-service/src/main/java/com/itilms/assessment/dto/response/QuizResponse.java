@@ -34,6 +34,8 @@ public record QuizResponse(
         boolean shuffleQuestions,
         boolean showResultImmediately,
         boolean mandatory,
+        boolean secureMode,
+        int maxViolations,
         String status,
         Long trainerId,
         Instant publishedAt,
@@ -87,7 +89,8 @@ public record QuizResponse(
                 q.getId(), q.getCourseId(), q.getBatchId(), q.getTitle(), q.getInstructions(),
                 q.getDurationMinutes(), q.getPassPercentage(), q.getAttemptsAllowed(), q.getTotalMarks(),
                 q.getAvailableFrom(), q.getAvailableUntil(), q.isShuffleQuestions(),
-                q.isShowResultImmediately(), q.isMandatory(), q.getStatus().name(), q.getTrainerId(),
+                q.isShowResultImmediately(), q.isMandatory(), q.isSecureMode(), q.getMaxViolations(),
+                q.getStatus().name(), q.getTrainerId(),
                 q.getPublishedAt(), questionCount, questions);
     }
 }
