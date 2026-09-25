@@ -1,5 +1,6 @@
 package com.itilms.codeexec.service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.itilms.codeexec.config.CodeExecProperties;
 import com.itilms.codeexec.dto.LanguageResponse;
+import com.itilms.codeexec.dto.RunBatchRequest;
 import com.itilms.codeexec.dto.RunCodeRequest;
 import com.itilms.codeexec.dto.RunCodeResponse;
 import com.itilms.codeexec.dto.RunnerStatusResponse;
@@ -48,37 +50,86 @@ public class CodeExecService {
 
     public RunCodeResponse run(RunCodeRequest request) {
         long userId = SecurityUtils.requirePrincipal().userId();
+        CodeLanguage language = checkedLanguage(request.language());
+        checkSize(request.sourceCode(), request.stdin());
 
-        CodeLanguage language = CodeLanguage.parse(request.language()).orElseThrow(() ->
+        rateLimiter.acquire(userId);
+        acquirePermit();
+        try {
+            log.info("Run by user {} language {} ({} chars)", userId, language, request.sourceCode().length());
+            return toResponse(language, runner.run(language, request.sourceCode(), request.stdin()));
+        } finally {
+            inFlight.release();
+        }
+    }
+
+    /**
+     * The same program against several inputs, for grading. It counts as ONE run against the caller's
+     * rate limit and holds ONE place in the runner, however many inputs there are: a test with eight
+     * cases would otherwise use up a student's minute on a single click. A program that does not
+     * compile is reported once for every input without being compiled again.
+     */
+    public List<RunCodeResponse> runBatch(RunBatchRequest request) {
+        long userId = SecurityUtils.requirePrincipal().userId();
+        CodeLanguage language = checkedLanguage(request.language());
+        int maxCases = properties.getLimits().getMaxBatchCases();
+        if (request.stdins().size() > maxCases) {
+            throw new BusinessRuleException("At most " + maxCases + " inputs can be run at once.");
+        }
+        request.stdins().forEach(stdin -> checkSize(request.sourceCode(), stdin));
+
+        rateLimiter.acquire(userId);
+        acquirePermit();
+        try {
+            log.info("Batch run by user {} language {} ({} chars, {} inputs)",
+                    userId, language, request.sourceCode().length(), request.stdins().size());
+            List<RunCodeResponse> responses = new ArrayList<>(request.stdins().size());
+            RunCodeResponse compileFailure = null;
+            for (String stdin : request.stdins()) {
+                if (compileFailure != null) {
+                    responses.add(compileFailure);
+                    continue;
+                }
+                RunCodeResponse response = toResponse(language, runner.run(language, request.sourceCode(), stdin));
+                if (CodeRunner.Outcome.COMPILE_ERROR.name().equals(response.outcome())) {
+                    compileFailure = response;
+                }
+                responses.add(response);
+            }
+            return responses;
+        } finally {
+            inFlight.release();
+        }
+    }
+
+    private CodeLanguage checkedLanguage(String value) {
+        CodeLanguage language = CodeLanguage.parse(value).orElseThrow(() ->
                 new BusinessRuleException("Language must be " + CodeLanguage.allowedList()));
         if (!isEnabled(language)) {
             throw new BusinessRuleException("LANGUAGE_NOT_ENABLED", language.label() + " is not enabled on this server.");
         }
+        return language;
+    }
 
+    private void checkSize(String sourceCode, String stdin) {
         CodeExecProperties.Limits limits = properties.getLimits();
-        if (request.sourceCode().length() > limits.getMaxSourceChars()) {
+        if (sourceCode.length() > limits.getMaxSourceChars()) {
             throw new BusinessRuleException("Code is limited to " + limits.getMaxSourceChars() + " characters.");
         }
-        if (request.stdin() != null && request.stdin().length() > limits.getMaxStdinChars()) {
+        if (stdin != null && stdin.length() > limits.getMaxStdinChars()) {
             throw new BusinessRuleException("Input is limited to " + limits.getMaxStdinChars() + " characters.");
         }
+    }
 
-        rateLimiter.acquire(userId);
-
-        // No queue: a student waiting behind eight others sees a spinner for a minute and clicks
-        // again, which makes it worse. Better to say "busy" straight away.
+    /** No queue: a student waiting behind eight others sees a spinner for a minute and clicks again, which makes it worse. */
+    private void acquirePermit() {
         if (!inFlight.tryAcquire()) {
             throw new RunLimitException("RUNNER_BUSY", "The code runner is busy. Try again in a few seconds.");
         }
-        CodeRunner.RunResult result;
-        try {
-            log.info("Run by user {} language {} ({} chars)", userId, language, request.sourceCode().length());
-            result = runner.run(language, request.sourceCode(), request.stdin());
-        } finally {
-            inFlight.release();
-        }
+    }
 
-        int max = limits.getMaxOutputChars();
+    private RunCodeResponse toResponse(CodeLanguage language, CodeRunner.RunResult result) {
+        int max = properties.getLimits().getMaxOutputChars();
         boolean truncated = isLonger(result.stdout(), max) || isLonger(result.stderr(), max)
                 || isLonger(result.compileOutput(), max);
         return new RunCodeResponse(
