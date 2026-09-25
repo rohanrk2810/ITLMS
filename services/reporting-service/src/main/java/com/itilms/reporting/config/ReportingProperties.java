@@ -19,4 +19,7 @@ public class ReportingProperties {
     private int auditRetentionDays = 1095;
 
     private int dashboardCacheSeconds = 60;
+
+    /** Attendance below this percentage is called out in a student's progress report. The same line batch-service alerts on. */
+    private int attendanceThreshold = 75;
 }

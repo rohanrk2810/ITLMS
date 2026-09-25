@@ -101,6 +101,10 @@ const JobDetailIndexPage = lazy(() =>
 
 const FilesPage = lazy(() => import('@/pages/files/files-page').then((m) => ({ default: m.FilesPage })))
 
+const MyProgressPage = lazy(() =>
+  import('@/pages/progress/my-progress-page').then((m) => ({ default: m.MyProgressPage })),
+)
+
 const CourseRequestsIndexPage = lazy(() =>
   import('@/pages/course-requests/course-requests-index-page').then((m) => ({ default: m.CourseRequestsIndexPage })),
 )
@@ -144,6 +148,7 @@ const BUILT_PATHS = new Set([
   '/app/files',
   '/app/announcements',
   '/app/course-requests',
+  '/app/my-progress',
 ])
 
 function PageFallback() {
@@ -217,6 +222,10 @@ export default function App() {
                   <Route element={<ProtectedRoute roles={FINANCE_ROLES} />}>
                     <Route path="/app/finance" element={<FinanceIndexPage />} />
                     <Route path="/app/finance/:feePlanId" element={<FeePlanDetailPage />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute roles={['STUDENT']} />}>
+                    <Route path="/app/my-progress" element={<MyProgressPage />} />
                   </Route>
 
                   <Route element={<ProtectedRoute roles={COURSE_REQUEST_ROLES} />}>

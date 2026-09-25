@@ -16,7 +16,9 @@ import com.itilms.common.security.Roles;
 import com.itilms.liveclass.dto.response.JoinTokenResponse;
 import com.itilms.liveclass.dto.response.LiveParticipantResponse;
 import com.itilms.liveclass.dto.response.LiveSessionResponse;
+import com.itilms.liveclass.dto.response.StudentParticipationResponse;
 import com.itilms.liveclass.service.LiveClassService;
+import com.itilms.liveclass.service.StudentParticipationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,6 +41,17 @@ import lombok.RequiredArgsConstructor;
 public class LiveClassController {
 
     private final LiveClassService liveClassService;
+    private final StudentParticipationService participationService;
+
+    @Operation(summary = "Internal: how often one student joined their batches' live classes",
+            description = "For reporting-service's student progress report. Not reachable through the gateway; "
+                    + "reporting-service decides who may see which student.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/internal/students/{studentId}/participation")
+    public StudentParticipationResponse participation(@PathVariable Long studentId,
+                                                      @RequestParam(defaultValue = "") List<Long> batchIds) {
+        return participationService.of(studentId, batchIds);
+    }
 
     @Operation(summary = "Join a live class",
             description = "Returns a short-lived LiveKit token. Students must be enrolled in the batch; "

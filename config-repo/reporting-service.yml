@@ -25,3 +25,5 @@ itilms:
     max-export-rows: ${MAX_EXPORT_ROWS:50000}
     audit-retention-days: ${AUDIT_RETENTION_DAYS:1095}
     dashboard-cache-seconds: 60
+    # Below this attendance percentage a student's progress report says so, and suggests improving it.
+    attendance-threshold: ${ATTENDANCE_ALERT_THRESHOLD:75}

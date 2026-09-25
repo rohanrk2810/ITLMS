@@ -5,9 +5,17 @@ import java.util.List;
 import com.itilms.common.event.EnrollmentCreatedEvent;
 import com.itilms.course.dto.request.LessonProgressRequest;
 import com.itilms.course.dto.response.ProgressResponse;
+import com.itilms.course.dto.response.StudentCourseProgressResponse;
 
 /** Tracking how far students have got (Doc S7.2, S7.3). */
 public interface ProgressService {
+
+    /**
+     * Every course a student is taking, module by module, for their progress report. Internal: no ownership
+     * check here, because only reporting-service reaches it (the gateway hides /internal/), and it decides
+     * who may see which student's report.
+     */
+    List<StudentCourseProgressResponse> courseProgressOf(Long studentId);
 
     /**
      * Records watch time or a completion tick against a lesson.

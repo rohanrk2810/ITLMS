@@ -26,6 +26,7 @@ import com.itilms.batch.dto.response.BatchResponse;
 import com.itilms.batch.dto.response.BatchSummaryResponse;
 import com.itilms.batch.dto.response.EnrollmentResponse;
 import com.itilms.batch.dto.response.EnrollmentResultResponse;
+import com.itilms.batch.dto.response.StudentEnrollmentResponse;
 import com.itilms.batch.service.BatchService;
 import com.itilms.common.dto.PageResponse;
 import com.itilms.common.exception.ForbiddenOperationException;
@@ -144,6 +145,15 @@ public class BatchController {
     @GetMapping("/stats/counts")
     public Map<String, Long> counts() {
         return batchService.counts();
+    }
+
+    @Operation(summary = "Internal: every enrolment one student has",
+            description = "For reporting-service's student progress report. Not reachable through the gateway; "
+                    + "reporting-service decides who may see which student.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/internal/students/{studentId}/enrollments")
+    public List<StudentEnrollmentResponse> enrollmentsOf(@PathVariable Long studentId) {
+        return batchService.enrollmentsOf(studentId);
     }
 
     @Operation(summary = "Resolve many batch ids", description = "Internal bulk lookup.")
