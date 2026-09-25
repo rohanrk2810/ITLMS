@@ -32,7 +32,9 @@ export function ManageTestsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Tests</h1>
-          <p className="text-muted-foreground">Every MCQ test across your courses.</p>
+          <p className="text-muted-foreground">
+            Set a test, add questions (choice, short answer or code), publish it, and see how your students did.
+          </p>
         </div>
         <NewQuizDialog />
       </div>
