@@ -35,7 +35,9 @@ public final class NotificationDtos {
             @Schema(description = "Required when audience is ROLE, e.g. STUDENT or TRAINER") String targetRole,
             @Schema(description = "The batch or course id, when audience is BATCH or COURSE") Long targetId,
             @Schema(description = "Also email everyone it reaches") Boolean sendEmail,
-            @Schema(description = "Hidden from the list after this moment") Instant expiresAt) {
+            @Schema(description = "Hidden from the list after this moment") Instant expiresAt,
+            @Schema(description = "What it is about: GENERAL (default), COURSE, BATCH, LIVE_CLASS, TEST, ASSIGNMENT or INSTITUTE")
+            Announcement.Category category) {
     }
 
     @Schema(description = "Who it goes to cannot change: it has already been delivered.")
@@ -45,15 +47,17 @@ public final class NotificationDtos {
             Instant expiresAt) {
     }
 
-    public record AnnouncementResponse(Long id, String title, String message, String audience, String targetRole,
+    public record AnnouncementResponse(Long id, String title, String message, String audience, String category,
+                                       String targetRole,
                                        Long targetId, boolean sendEmail, Instant expiresAt, boolean withdrawn,
                                        @Schema(description = "Shown to staff only") Integer recipientCount,
                                        Long createdBy, Instant createdAt, Instant updatedAt) {
 
         public static AnnouncementResponse from(Announcement a, boolean forStaff) {
             return new AnnouncementResponse(a.getId(), a.getTitle(), a.getMessage(), a.getAudience().name(),
-                    a.getTargetRole(), a.getTargetId(), a.isSendEmail(), a.getExpiresAt(), a.isWithdrawn(),
-                    forStaff ? a.getRecipientCount() : null, a.getCreatedBy(), a.getCreatedAt(), a.getUpdatedAt());
+                    a.getCategory().name(), a.getTargetRole(), a.getTargetId(), a.isSendEmail(), a.getExpiresAt(),
+                    a.isWithdrawn(), forStaff ? a.getRecipientCount() : null, a.getCreatedBy(), a.getCreatedAt(),
+                    a.getUpdatedAt());
         }
     }
 }

@@ -33,6 +33,11 @@ public class Announcement extends AuditableEntity {
         ALL, ROLE, BATCH, COURSE
     }
 
+    /** What an announcement is about, so a student can tell a test notice from a fee reminder. Independent of who it reaches. */
+    public enum Category {
+        GENERAL, COURSE, BATCH, LIVE_CLASS, TEST, ASSIGNMENT, INSTITUTE
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -46,6 +51,11 @@ public class Announcement extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private Audience audience;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Category category = Category.GENERAL;
 
     @Column(name = "target_role", length = 20)
     private String targetRole;

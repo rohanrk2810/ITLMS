@@ -1,11 +1,29 @@
 import { apiClient } from './client'
 import type { PageResponse } from './types'
 
+/** Must match Announcement.Category in notification-service. */
+export const ANNOUNCEMENT_CATEGORIES = [
+  { code: 'GENERAL', label: 'General' },
+  { code: 'COURSE', label: 'Course' },
+  { code: 'BATCH', label: 'Batch' },
+  { code: 'LIVE_CLASS', label: 'Live class' },
+  { code: 'TEST', label: 'Test' },
+  { code: 'ASSIGNMENT', label: 'Assignment' },
+  { code: 'INSTITUTE', label: 'Institute' },
+] as const
+
+export type AnnouncementCategory = (typeof ANNOUNCEMENT_CATEGORIES)[number]['code']
+
+export function announcementCategoryLabel(code: string): string {
+  return ANNOUNCEMENT_CATEGORIES.find((c) => c.code === code)?.label ?? code
+}
+
 export interface AnnouncementResponse {
   id: number
   title: string
   message: string
   audience: 'ALL' | 'ROLE' | 'BATCH' | 'COURSE'
+  category: AnnouncementCategory
   targetRole: string | null
   targetId: number | null
   sendEmail: boolean
@@ -22,6 +40,7 @@ export interface AnnouncementInput {
   title: string
   message: string
   audience: AnnouncementResponse['audience']
+  category?: AnnouncementCategory
   targetRole?: string
   targetId?: number
   sendEmail?: boolean
