@@ -42,6 +42,7 @@ import com.itilms.course.entity.CourseEnrollment;
 import com.itilms.course.entity.EnrollmentStatus;
 import com.itilms.course.entity.LessonProgress;
 import com.itilms.course.repository.CourseEnrollmentRepository;
+import com.itilms.course.repository.CourseModuleRepository;
 import com.itilms.course.repository.CourseRepository;
 import com.itilms.course.repository.LessonProgressRepository;
 import com.itilms.course.repository.LessonRepository;
@@ -61,13 +62,15 @@ class ProgressServiceImplTest {
     @Mock CourseEnrollmentRepository enrollmentRepository;
     @Mock LessonProgressRepository progressRepository;
     @Mock EventPublisher events;
+    @Mock CourseModuleRepository moduleRepository;
 
     ProgressServiceImpl service;
     CourseEnrollment enrollment;
 
     @BeforeEach
     void setUp() {
-        service = new ProgressServiceImpl(courseRepository, lessonRepository, enrollmentRepository, progressRepository, events);
+        service = new ProgressServiceImpl(courseRepository, lessonRepository, enrollmentRepository, progressRepository, events,
+                moduleRepository);
         enrollment = CourseEnrollment.builder().id(60L).enrollmentId(5L).studentId(10L).userId(1L).courseId(COURSE).batchId(7L).build();
 
         lenient().when(lessonRepository.existsById(LESSON)).thenReturn(true);
@@ -95,6 +98,45 @@ class ProgressServiceImplTest {
     }
 
     // ------------------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("The report breaks a course into modules, showing which are unfinished, and counts watched videos")
+    void courseProgressShowsUnfinishedModulesAndVideos() {
+        enrollment.setStatus(EnrollmentStatus.ACTIVE);
+        enrollment.setProgressPercent(java.math.BigDecimal.valueOf(50));
+        enrollment.setCompletedLessons(2);
+        enrollment.setTotalLessons(4);
+        when(enrollmentRepository.findByStudentId(10L)).thenReturn(List.of(enrollment));
+        when(courseRepository.findById(COURSE)).thenReturn(Optional.of(
+                com.itilms.course.entity.Course.builder().id(COURSE).title("Java").build()));
+        when(moduleRepository.findByCourseIdOrderBySequenceNo(COURSE)).thenReturn(List.of(
+                com.itilms.course.entity.CourseModule.builder().id(1L).courseId(COURSE).title("Basics").sequenceNo(1).build(),
+                com.itilms.course.entity.CourseModule.builder().id(2L).courseId(COURSE).title("OOP").sequenceNo(2).build()));
+        when(lessonRepository.findByModuleIdInOrderByModuleIdAscSequenceNoAsc(List.of(1L, 2L))).thenReturn(List.of(
+                lesson(10L, 1L, com.itilms.course.entity.LessonType.VIDEO, true),
+                lesson(11L, 1L, com.itilms.course.entity.LessonType.NOTE, true),
+                lesson(20L, 2L, com.itilms.course.entity.LessonType.VIDEO, true),
+                lesson(21L, 2L, com.itilms.course.entity.LessonType.VIDEO, false)));
+        when(progressRepository.findCompletedLessonIds(60L)).thenReturn(List.of(10L, 11L, 21L));
+
+        var courses = service.courseProgressOf(10L);
+
+        assertThat(courses).singleElement().satisfies(c -> {
+            assertThat(c.courseTitle()).isEqualTo("Java");
+            assertThat(c.progressPercent()).isEqualTo(50);
+            assertThat(c.videoLessons()).isEqualTo(3);
+            assertThat(c.videoLessonsCompleted()).isEqualTo(2);   // lessons 10 and 21
+            assertThat(c.modules()).extracting(m -> m.title() + ":" + m.completed() + "/" + m.lessons())
+                    .containsExactly("Basics:2/2", "OOP:0/1");    // 21 is optional, so it is not part of the module
+            assertThat(c.modules().get(0).isComplete()).isTrue();
+            assertThat(c.modules().get(1).isComplete()).isFalse();
+        });
+    }
+
+    private static com.itilms.course.entity.Lesson lesson(Long id, Long moduleId, com.itilms.course.entity.LessonType type,
+                                                          boolean mandatory) {
+        return com.itilms.course.entity.Lesson.builder().id(id).moduleId(moduleId).type(type).mandatory(mandatory).build();
+    }
 
     @Nested
     @DisplayName("Recording progress")

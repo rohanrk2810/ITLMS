@@ -24,6 +24,7 @@ import com.itilms.batch.dto.response.BatchResponse;
 import com.itilms.batch.dto.response.BatchSummaryResponse;
 import com.itilms.batch.dto.response.EnrollmentResponse;
 import com.itilms.batch.dto.response.EnrollmentResultResponse;
+import com.itilms.batch.dto.response.StudentEnrollmentResponse;
 import com.itilms.batch.entity.Batch;
 import com.itilms.batch.entity.BatchMode;
 import com.itilms.batch.entity.BatchStatus;
@@ -174,6 +175,19 @@ public class BatchServiceImpl implements BatchService {
         List<Long> shared = batchTrainerRepository.findBatchIdsForTrainer(trainerId);
 
         return java.util.stream.Stream.concat(primary.stream(), shared.stream()).distinct().toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentEnrollmentResponse> enrollmentsOf(Long studentId) {
+        List<Enrollment> enrollments = enrollmentRepository.findByStudentId(studentId);
+        Map<Long, Batch> batches = new HashMap<>();
+        batchRepository.findAllById(enrollments.stream().map(Enrollment::getBatchId).filter(Objects::nonNull).toList())
+                .forEach(batch -> batches.put(batch.getId(), batch));
+        return enrollments.stream()
+                .sorted(java.util.Comparator.comparing(Enrollment::getEnrolledAt).reversed())
+                .map(e -> StudentEnrollmentResponse.of(e, batches.get(e.getBatchId())))
+                .toList();
     }
 
     @Override

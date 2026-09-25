@@ -19,6 +19,16 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
     Page<Quiz> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+    /** Published tests set for any of the batches, or for the whole of any of the courses, soonest closing first. */
+    @Query("""
+            SELECT q FROM Quiz q
+            WHERE q.status = com.itilms.assessment.entity.QuizStatus.PUBLISHED
+              AND (q.batchId IN :batchIds OR (q.batchId IS NULL AND q.courseId IN :courseIds))
+            ORDER BY q.availableUntil ASC NULLS LAST, q.id ASC
+            """)
+    List<Quiz> findPublishedFor(@Param("batchIds") Collection<Long> batchIds,
+                                @Param("courseIds") Collection<Long> courseIds);
+
     /**
      * The tests a trainer may manage: those set for one of their batches, and those set for a whole course
      * they teach a batch of. The same rule as {@code AssessmentAccess.requireManagesCourseOrBatch}.

@@ -34,5 +34,10 @@ public interface StudentSessionAttendanceRepository extends JpaRepository<Studen
 
     long countByStatus(String status);
 
+    /** One student's register, as (batch id, status, number of sessions). */
+    @Query("SELECT s.batchId, s.status, COUNT(s) FROM StudentSessionAttendance s WHERE s.studentId = :studentId "
+            + "GROUP BY s.batchId, s.status")
+    java.util.List<Object[]> countsByBatchAndStatus(@Param("studentId") Long studentId);
+
     long countByStudentIdAndStatus(Long studentId, String status);
 }

@@ -4,7 +4,9 @@ import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
+import { getStudentProgress } from '@/api/progress'
 import { getStudent, updateStudentStatus } from '@/api/students'
+import { ProgressReportView } from '@/components/progress-report'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -43,7 +45,7 @@ export function StudentDetailPage() {
   if (!student) return null
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="flex max-w-5xl flex-col gap-6">
       <Link to="/app/students" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="size-4" />
         Students
@@ -99,7 +101,27 @@ export function StudentDetailPage() {
           <CardContent className="text-sm text-muted-foreground">{student.remarks}</CardContent>
         </Card>
       )}
+
+      <StudentProgress studentId={student.id} />
     </div>
+  )
+}
+
+/** The student's complete record and progress, for the staff and trainers who may see it. */
+function StudentProgress({ studentId }: { studentId: number }) {
+  const query = useQuery({ queryKey: ['progress', 'student', studentId], queryFn: () => getStudentProgress(studentId) })
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-lg font-semibold">Progress report</h2>
+      {query.isLoading && <Skeleton className="h-64" />}
+      {query.isError && (
+        <p className="text-sm text-muted-foreground">
+          {apiErrorMessage(query.error, 'The progress report could not be loaded.')}
+        </p>
+      )}
+      {query.data && <ProgressReportView report={query.data} />}
+    </section>
   )
 }
 
