@@ -37,7 +37,9 @@ import com.itilms.liveclass.livekit.LiveRoomProvisioner;
 import com.itilms.liveclass.repository.LiveParticipantRepository;
 import com.itilms.liveclass.repository.LiveSessionRepository;
 import com.itilms.liveclass.service.LiveAttendanceService;
+import com.itilms.liveclass.service.HostAccess;
 import com.itilms.liveclass.service.LiveClassService;
+import com.itilms.liveclass.service.RoomPermissions;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +78,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final EventPublisher events;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final HostAccess hostAccess;
 
     // -----------------------------------------------------------------
     // Provisioning
@@ -195,11 +198,14 @@ public class LiveClassServiceImpl implements LiveClassService {
         participantRepository.insertIfAbsent(session.getId(), identity, caller.userId(), studentId,
                 caller.fullName(), role.name());
 
-        boolean canPublish = true;
+        LiveParticipant me = participantRepository.findByLiveSessionIdAndUserId(session.getId(), caller.userId())
+                .orElse(null);
+        RoomPermissions.Effective allowed = RoomPermissions.of(role, session, me);
+        boolean canPublish = allowed.canPublishAnything();
         boolean roomAdmin = role.isRoomAdmin() || role == ParticipantRole.STAFF;
 
         String token = liveKit.mintJoinToken(session.getRoomName(), identity, caller.fullName(),
-                participantMetadata(caller, role, studentId), canPublish, roomAdmin);
+                participantMetadata(caller, role, studentId), allowed.sources(), roomAdmin);
 
         log.info("Issued {} join token for session {} to user {}", role, session.getId(), caller.userId());
 
@@ -207,7 +213,8 @@ public class LiveClassServiceImpl implements LiveClassService {
                 session.getId(), session.getClassSessionId(), session.getBatchId(),
                 session.getBatchCode(), session.getCourseTitle(), session.getTopic(),
                 session.getRoomName(), liveKit.wsUrl(), token, identity, caller.fullName(),
-                role.name(), canPublish, roomAdmin, session.isRecordingEnabled(),
+                role.name(), canPublish, roomAdmin,
+                allowed.microphone(), allowed.camera(), allowed.screenShare(), session.isRecordingEnabled(),
                 session.getScheduledStartAt(), session.getScheduledEndAt(),
                 liveKit.expiryFrom(now));
     }
@@ -226,50 +233,14 @@ public class LiveClassServiceImpl implements LiveClassService {
             return ParticipantRole.STAFF;
         }
         if (caller.isTrainer()) {
-            requireTeaches(caller, session);
+            hostAccess.requireTeaches(caller, session);
             return ParticipantRole.TRAINER;
         }
         if (caller.isStudent()) {
-            if (caller.profileId() == null) {
-                throw new ForbiddenOperationException("Your account is not linked to a student profile yet.");
-            }
-            var check = batchClient.isEnrolled(session.getBatchId(), caller.profileId());
-            if (check == null || !check.enrolled()) {
-                throw new ForbiddenOperationException("You are not enrolled in the batch this class belongs to.");
-            }
+            hostAccess.requireEnrolled(caller, session);
             return ParticipantRole.STUDENT;
         }
         throw new ForbiddenOperationException("Your role does not take part in live classes.");
-    }
-
-    /**
-     * Staff pass; a trainer must teach the batch; anyone else is refused.
-     *
-     * <p>The named trainer on the session is checked first because it needs no
-     * network call. Co-trainers are then confirmed against the caller's own
-     * batch list, which batch-service scopes by their token - and which comes
-     * back empty, refusing them, if batch-service cannot be reached.
-     */
-    private void requireHostOf(LiveSession session) {
-        AppPrincipal caller = SecurityUtils.requirePrincipal();
-        if (caller.isStaff()) {
-            return;
-        }
-        if (!caller.isTrainer()) {
-            throw new ForbiddenOperationException("Only the class trainer or staff can do this.");
-        }
-        requireTeaches(caller, session);
-    }
-
-    private void requireTeaches(AppPrincipal trainer, LiveSession session) {
-        if (trainer.profileId() != null && trainer.profileId().equals(session.getTrainerId())) {
-            return;
-        }
-        boolean coTrainer = batchClient.myBatches().stream()
-                .anyMatch(batch -> session.getBatchId().equals(batch.id()));
-        if (!coTrainer) {
-            throw new ForbiddenOperationException("This class belongs to a batch you do not teach.");
-        }
     }
 
     private String joinWindowMessage(LiveSession session, Instant now, int earlyMinutes) {
@@ -289,7 +260,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     @Override
     public LiveSessionResponse get(Long liveSessionId) {
         LiveSession session = requireSession(liveSessionId);
-        requireHostOf(session);
+        hostAccess.requireHostOf(session);
         return detailOf(session);
     }
 
@@ -359,7 +330,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     @Override
     public LiveSessionResponse endClass(Long liveSessionId) {
         LiveSession session = requireSession(liveSessionId);
-        requireHostOf(session);
+        hostAccess.requireHostOf(session);
 
         if (session.getStatus() == LiveSessionStatus.CANCELLED) {
             throw new BusinessRuleException("SESSION_CANCELLED", "This class was cancelled and has nothing to end.");
@@ -382,7 +353,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     @Override
     public void removeParticipant(Long liveSessionId, Long userId) {
         LiveSession session = requireSession(liveSessionId);
-        requireHostOf(session);
+        hostAccess.requireHostOf(session);
 
         LiveParticipant participant = participantRepository.findByLiveSessionIdAndUserId(liveSessionId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("That person has not joined this class"));

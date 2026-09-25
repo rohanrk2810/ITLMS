@@ -46,6 +46,15 @@ public record JoinTokenResponse(
         @Schema(description = "May this participant mute or remove others")
         boolean roomAdmin,
 
+        @Schema(description = "May this participant switch on a microphone")
+        boolean canMic,
+
+        @Schema(description = "May this participant switch on a camera")
+        boolean canCamera,
+
+        @Schema(description = "May this participant share their screen")
+        boolean canScreenShare,
+
         @Schema(description = "Whether the room is being recorded")
         boolean recording,
 

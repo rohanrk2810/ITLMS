@@ -82,6 +82,16 @@ public class LiveParticipant extends AuditableEntity {
     @Column(name = "computed_status", length = 20)
     private String computedStatus;
 
+    /** A host's override of the room policy for this one person. Null means follow the room. */
+    @Column(name = "mic_allowed")
+    private Boolean micAllowed;
+
+    @Column(name = "camera_allowed")
+    private Boolean cameraAllowed;
+
+    @Column(name = "screen_allowed")
+    private Boolean screenAllowed;
+
     public boolean inRoom() {
         return currentJoinAt != null;
     }

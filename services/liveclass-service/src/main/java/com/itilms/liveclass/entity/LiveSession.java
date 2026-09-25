@@ -103,6 +103,20 @@ public class LiveSession extends AuditableEntity {
     @Column(name = "recording_url", length = 600)
     private String recordingUrl;
 
+    /** What students may switch on in this room. Trainers and staff always may; see {@code RoomPermissions}. */
+    @Column(name = "students_can_mic", nullable = false)
+    @Builder.Default
+    private boolean studentsCanMic = true;
+
+    @Column(name = "students_can_camera", nullable = false)
+    @Builder.Default
+    private boolean studentsCanCamera = true;
+
+    /** Off unless a host turns it on: sharing a screen is a host-level control. */
+    @Column(name = "students_can_share_screen", nullable = false)
+    @Builder.Default
+    private boolean studentsCanShareScreen = false;
+
     @Column(name = "attendance_computed", nullable = false)
     @Builder.Default
     private boolean attendanceComputed = false;
