@@ -11,9 +11,14 @@ import {
   getQuiz,
   getQuizResults,
   publishQuiz,
+  QUESTION_TYPE_LABEL,
   type QuestionInput,
   type QuestionOptionInput,
+  type QuestionType,
+  type QuizQuestionWithKey,
+  type TestCaseInput,
 } from '@/api/assessments'
+import { CODE_LANGUAGES, type CodeLanguageCode, codeLanguageLabel } from '@/api/code'
 import { apiErrorMessage } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,8 +29,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-
-const QUESTION_TYPES = ['SINGLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE']
 
 export function QuizEditorPage() {
   const { quizId } = useParams<{ quizId: string }>()
@@ -128,14 +131,10 @@ export function QuizEditorPage() {
                     </Button>
                   )}
                 </div>
-                <ul className="flex flex-col gap-1 text-sm">
-                  {question.options.map((option) => (
-                    <li key={option.id} className={option.correct ? 'font-medium text-emerald-600' : 'text-muted-foreground'}>
-                      {option.correct ? '✓ ' : '○ '}
-                      {option.optionText}
-                    </li>
-                  ))}
-                </ul>
+                <p className="text-xs text-muted-foreground">
+                  {QUESTION_TYPE_LABEL[question.type as QuestionType] ?? question.type}
+                </p>
+                <QuestionKey question={question} />
               </CardContent>
             </Card>
           ))}
@@ -176,32 +175,112 @@ export function QuizEditorPage() {
   )
 }
 
+/** What a trainer sees under a question: the key, whatever shape it takes. */
+function QuestionKey({ question }: { question: QuizQuestionWithKey }) {
+  if (question.type === 'SHORT_ANSWER') {
+    return (
+      <p className="text-sm text-emerald-600">
+        Accepted: {question.acceptedAnswers.length > 0 ? question.acceptedAnswers.join(' / ') : '(none)'}
+      </p>
+    )
+  }
+  if (question.type === 'CODING') {
+    return (
+      <div className="flex flex-col gap-1 text-sm">
+        <p className="text-muted-foreground">
+          {question.codeLanguage ? codeLanguageLabel(question.codeLanguage) : 'No language'} &middot;{' '}
+          {question.testCases.length} test case{question.testCases.length === 1 ? '' : 's'}
+        </p>
+        {question.starterCode && (
+          <pre className="max-h-32 overflow-auto rounded-md border bg-muted/40 px-2 py-1 font-mono text-xs">{question.starterCode}</pre>
+        )}
+        <ul className="flex flex-col gap-1 text-xs">
+          {question.testCases.map((c) => (
+            <li key={c.id} className="rounded-md border px-2 py-1 font-mono">
+              <span className="font-sans text-muted-foreground">
+                #{c.sequenceNo} &middot; weight {c.weight}
+                {c.hidden ? ' · hidden' : ''}:{' '}
+              </span>
+              {JSON.stringify(c.input)} &rarr; {JSON.stringify(c.expectedOutput)}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+  return (
+    <ul className="flex flex-col gap-1 text-sm">
+      {question.options.map((option) => (
+        <li key={option.id} className={option.correct ? 'font-medium text-emerald-600' : 'text-muted-foreground'}>
+          {option.correct ? '✓ ' : '○ '}
+          {option.optionText}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const TYPES: QuestionType[] = ['SINGLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE', 'SHORT_ANSWER', 'CODING']
+const BLANK_OPTIONS: QuestionOptionInput[] = [
+  { optionText: '', correct: true },
+  { optionText: '', correct: false },
+]
+const TRUE_FALSE_OPTIONS: QuestionOptionInput[] = [
+  { optionText: 'True', correct: true },
+  { optionText: 'False', correct: false },
+]
+const BLANK_CASE: TestCaseInput = { input: '', expectedOutput: '', hidden: false, weight: 1 }
+
 function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () => void }) {
   const [open, setOpen] = useState(false)
   const [questionText, setQuestionText] = useState('')
-  const [type, setType] = useState('SINGLE_CHOICE')
+  const [type, setType] = useState<QuestionType>('SINGLE_CHOICE')
   const [marks, setMarks] = useState(1)
-  const [options, setOptions] = useState<QuestionOptionInput[]>([
-    { optionText: '', correct: true },
-    { optionText: '', correct: false },
-  ])
+  const [options, setOptions] = useState<QuestionOptionInput[]>(BLANK_OPTIONS)
+  const [accepted, setAccepted] = useState('')
+  const [codeLanguage, setCodeLanguage] = useState<CodeLanguageCode>('JAVA')
+  const [starterCode, setStarterCode] = useState('')
+  const [testCases, setTestCases] = useState<TestCaseInput[]>([BLANK_CASE])
+
+  const isChoice = type === 'SINGLE_CHOICE' || type === 'MULTI_CHOICE' || type === 'TRUE_FALSE'
+
+  function reset() {
+    setQuestionText('')
+    setOptions(BLANK_OPTIONS)
+    setAccepted('')
+    setStarterCode('')
+    setTestCases([BLANK_CASE])
+  }
+
+  function buildInput(): QuestionInput {
+    const base = { questionText, type, marks }
+    if (isChoice) return { ...base, options }
+    if (type === 'SHORT_ANSWER') {
+      return { ...base, acceptedAnswers: accepted.split('\n').map((a) => a.trim()).filter(Boolean) }
+    }
+    return { ...base, codeLanguage, starterCode: starterCode || undefined, testCases }
+  }
 
   const mutation = useMutation({
-    mutationFn: () => {
-      const input: QuestionInput = { questionText, type, marks, options }
-      return addQuestion(quizId, input)
-    },
+    mutationFn: () => addQuestion(quizId, buildInput()),
     onSuccess: () => {
       setOpen(false)
-      setQuestionText('')
-      setOptions([
-        { optionText: '', correct: true },
-        { optionText: '', correct: false },
-      ])
+      reset()
       onAdded()
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not add the question.')),
   })
+
+  function changeType(next: QuestionType) {
+    setType(next)
+    if (next === 'TRUE_FALSE') setOptions(TRUE_FALSE_OPTIONS)
+    else if (type === 'TRUE_FALSE' || options.length === 0) setOptions(BLANK_OPTIONS)
+    else if (next === 'SINGLE_CHOICE') {
+      // Only one option can be right; keep the first ticked one.
+      const first = options.findIndex((o) => o.correct)
+      setOptions((prev) => prev.map((o, i) => ({ ...o, correct: i === Math.max(first, 0) })))
+    }
+  }
 
   function updateOption(index: number, patch: Partial<QuestionOptionInput>) {
     setOptions((prev) => prev.map((o, i) => (i === index ? { ...o, ...patch } : o)))
@@ -225,6 +304,10 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
     setOptions((prev) => prev.filter((_, i) => i !== index))
   }
 
+  function updateCase(index: number, patch: Partial<TestCaseInput>) {
+    setTestCases((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     mutation.mutate()
@@ -238,7 +321,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
           Add question
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add a question</DialogTitle>
         </DialogHeader>
@@ -260,12 +343,12 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
               <select
                 id="type"
                 value={type}
-                onChange={(event) => setType(event.target.value)}
+                onChange={(event) => changeType(event.target.value as QuestionType)}
                 className="h-9 rounded-md border bg-transparent px-3 text-sm"
               >
-                {QUESTION_TYPES.map((t) => (
+                {TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {QUESTION_TYPE_LABEL[t]}
                   </option>
                 ))}
               </select>
@@ -276,31 +359,144 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>Options - tick the correct one(s)</Label>
-            {options.map((option, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Checkbox checked={option.correct} onCheckedChange={() => toggleCorrect(index)} />
-                <Input
-                  value={option.optionText}
-                  placeholder={`Option ${index + 1}`}
-                  onChange={(event) => updateOption(index, { optionText: event.target.value })}
-                  required
+          {isChoice && (
+            <div className="flex flex-col gap-2">
+              <Label>Options - tick the correct one{type === 'MULTI_CHOICE' ? 's' : ''}</Label>
+              {options.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Checkbox checked={option.correct} onCheckedChange={() => toggleCorrect(index)} />
+                  <Input
+                    value={option.optionText}
+                    placeholder={`Option ${index + 1}`}
+                    onChange={(event) => updateOption(index, { optionText: event.target.value })}
+                    readOnly={type === 'TRUE_FALSE'}
+                    required
+                  />
+                  {type !== 'TRUE_FALSE' && options.length > 2 && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => removeOption(index)}>
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              {type !== 'TRUE_FALSE' && options.length < 8 && (
+                <Button type="button" size="sm" variant="ghost" className="self-start" onClick={addOption}>
+                  <Plus className="size-3.5" />
+                  Add option
+                </Button>
+              )}
+            </div>
+          )}
+
+          {type === 'SHORT_ANSWER' && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="accepted">Accepted answers - one per line</Label>
+              <textarea
+                id="accepted"
+                rows={3}
+                required
+                className="rounded-md border bg-transparent px-3 py-2 text-sm"
+                value={accepted}
+                onChange={(event) => setAccepted(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                A typed answer is right if it equals one of these, ignoring capital letters and extra spaces.
+              </p>
+            </div>
+          )}
+
+          {type === 'CODING' && (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="codeLanguage">Language</Label>
+                <select
+                  id="codeLanguage"
+                  value={codeLanguage}
+                  onChange={(event) => setCodeLanguage(event.target.value as CodeLanguageCode)}
+                  className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                >
+                  {CODE_LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="starterCode">Starter code (optional)</Label>
+                <textarea
+                  id="starterCode"
+                  rows={4}
+                  spellCheck={false}
+                  className="rounded-md border bg-transparent px-3 py-2 font-mono text-xs"
+                  value={starterCode}
+                  onChange={(event) => setStarterCode(event.target.value)}
                 />
-                {options.length > 2 && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => removeOption(index)}>
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                {codeLanguage === 'JAVA' && (
+                  <p className="text-xs text-muted-foreground">Java runs the first class in the file, so put the class with main first.</p>
                 )}
               </div>
-            ))}
-            {options.length < 8 && (
-              <Button type="button" size="sm" variant="ghost" className="self-start" onClick={addOption}>
-                <Plus className="size-3.5" />
-                Add option
-              </Button>
-            )}
-          </div>
+              <div className="flex flex-col gap-2">
+                <Label>Test cases - what the program reads, and what it must print</Label>
+                {testCases.map((c, index) => (
+                  <div key={index} className="flex flex-col gap-2 rounded-md border p-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <textarea
+                        aria-label={`Test ${index + 1} input`}
+                        rows={2}
+                        placeholder="Input (leave empty if the program reads nothing)"
+                        spellCheck={false}
+                        className="rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
+                        value={c.input}
+                        onChange={(event) => updateCase(index, { input: event.target.value })}
+                      />
+                      <textarea
+                        aria-label={`Test ${index + 1} expected output`}
+                        rows={2}
+                        required
+                        placeholder="Expected output"
+                        spellCheck={false}
+                        className="rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
+                        value={c.expectedOutput}
+                        onChange={(event) => updateCase(index, { expectedOutput: event.target.value })}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <label className="flex items-center gap-2">
+                        <Checkbox checked={c.hidden} onCheckedChange={(v) => updateCase(index, { hidden: v === true })} />
+                        Hidden (students see only pass or fail)
+                      </label>
+                      <label className="flex items-center gap-2">
+                        Weight
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100}
+                          className="h-8 w-16"
+                          value={c.weight}
+                          onChange={(event) => updateCase(index, { weight: Math.max(1, Number(event.target.value)) })}
+                        />
+                      </label>
+                      {testCases.length > 1 && (
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setTestCases((prev) => prev.filter((_, i) => i !== index))}>
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {testCases.length < 10 && (
+                  <Button type="button" size="sm" variant="ghost" className="self-start" onClick={() => setTestCases((prev) => [...prev, BLANK_CASE])}>
+                    <Plus className="size-3.5" />
+                    Add test case
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Marks follow the weight of the cases a student&apos;s program passes. Output is compared ignoring trailing spaces and blank lines.
+                </p>
+              </div>
+            </>
+          )}
 
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>

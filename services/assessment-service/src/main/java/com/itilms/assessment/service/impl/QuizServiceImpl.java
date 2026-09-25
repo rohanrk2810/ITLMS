@@ -19,6 +19,7 @@ import com.itilms.assessment.dto.response.QuizResponse;
 import com.itilms.assessment.dto.response.StudentQuizResponse;
 import com.itilms.assessment.entity.AttemptStatus;
 import com.itilms.assessment.entity.QuestionType;
+import com.itilms.assessment.entity.QuizTestCase;
 import com.itilms.assessment.entity.Quiz;
 import com.itilms.assessment.entity.QuizAttempt;
 import com.itilms.assessment.entity.QuizOption;
@@ -31,6 +32,7 @@ import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
 import com.itilms.assessment.service.QuizService;
 import com.itilms.common.dto.PageResponse;
+import com.itilms.common.code.CodeLanguage;
 import com.itilms.common.event.EventPublisher;
 import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.exception.ResourceNotFoundException;
@@ -152,8 +154,10 @@ public class QuizServiceImpl implements QuizService {
         access.requireManagesQuiz(quiz);
 
         question.getOptions().clear();
+        question.getTestCases().clear();
+        question.getAcceptedAnswers().clear();
         // Flush the removals before re-adding, so the unique (question, sequence)
-        // index never sees the old and new option 1 at the same moment.
+        // index never sees the old and new option 1 (or test case 1) at the same moment.
         questionRepository.saveAndFlush(question);
         apply(question, request);
         questionRepository.save(question);
@@ -320,17 +324,41 @@ public class QuizServiceImpl implements QuizService {
      */
     private void apply(QuizQuestion question, QuestionRequest request) {
         QuestionType type = parseType(request.type());
-        long correctCount = request.options().stream().filter(o -> Boolean.TRUE.equals(o.correct())).count();
+        List<QuestionRequest.OptionRequest> options = request.options() == null ? List.of() : request.options();
+        List<String> accepted = request.acceptedAnswers() == null ? List.of() : request.acceptedAnswers().stream()
+                .filter(a -> a != null && !a.isBlank()).map(String::trim).distinct().toList();
+        List<QuestionRequest.TestCaseRequest> cases = request.testCases() == null ? List.of() : request.testCases();
 
-        if (correctCount == 0) {
-            throw new BusinessRuleException("Mark at least one option as correct.");
-        }
-        if (type != QuestionType.MULTI_CHOICE && correctCount > 1) {
-            throw new BusinessRuleException(
-                    "A %s question has exactly one correct option; use MULTI_CHOICE for more.".formatted(type));
-        }
-        if (type == QuestionType.TRUE_FALSE && request.options().size() != 2) {
-            throw new BusinessRuleException("A true/false question has exactly two options.");
+        if (type.isChoice()) {
+            requireOnlyChoiceFields(type, accepted, cases, request);
+            long correctCount = options.stream().filter(o -> Boolean.TRUE.equals(o.correct())).count();
+            if (options.size() < 2) {
+                throw new BusinessRuleException("A %s question needs between 2 and 8 options.".formatted(type));
+            }
+            if (correctCount == 0) {
+                throw new BusinessRuleException("Mark at least one option as correct.");
+            }
+            if (type != QuestionType.MULTI_CHOICE && correctCount > 1) {
+                throw new BusinessRuleException(
+                        "A %s question has exactly one correct option; use MULTI_CHOICE for more.".formatted(type));
+            }
+            if (type == QuestionType.TRUE_FALSE && options.size() != 2) {
+                throw new BusinessRuleException("A true/false question has exactly two options.");
+            }
+        } else if (type == QuestionType.SHORT_ANSWER) {
+            if (!options.isEmpty() || !cases.isEmpty() || request.codeLanguage() != null || request.starterCode() != null) {
+                throw new BusinessRuleException("A short-answer question takes accepted answers only.");
+            }
+            if (accepted.isEmpty()) {
+                throw new BusinessRuleException("Give at least one accepted answer, so the question can be marked.");
+            }
+        } else {
+            if (!options.isEmpty() || !accepted.isEmpty()) {
+                throw new BusinessRuleException("A coding question takes a language, starter code and test cases only.");
+            }
+            if (cases.isEmpty()) {
+                throw new BusinessRuleException("Add at least one test case, so the code can be marked.");
+            }
         }
 
         question.setQuestionText(request.questionText().trim());
@@ -339,13 +367,41 @@ public class QuizServiceImpl implements QuizService {
         question.setExplanation(trim(request.explanation()));
 
         int sequence = 1;
-        for (QuestionRequest.OptionRequest option : request.options()) {
+        for (QuestionRequest.OptionRequest option : options) {
             question.addOption(QuizOption.builder()
                     .optionText(option.optionText().trim())
                     .correct(Boolean.TRUE.equals(option.correct()))
                     .sequenceNo(sequence++)
                     .build());
         }
+
+        question.getAcceptedAnswers().clear();
+        question.getAcceptedAnswers().addAll(accepted);
+
+        question.setCodeLanguage(type == QuestionType.CODING ? parseLanguage(request.codeLanguage()) : null);
+        question.setStarterCode(type == QuestionType.CODING ? trim(request.starterCode()) : null);
+        sequence = 1;
+        for (QuestionRequest.TestCaseRequest testCase : cases) {
+            question.getTestCases().add(QuizTestCase.builder()
+                    .sequenceNo(sequence++)
+                    .input(testCase.input() == null ? "" : testCase.input())
+                    .expectedOutput(testCase.expectedOutput())
+                    .hidden(Boolean.TRUE.equals(testCase.hidden()))
+                    .weight(testCase.weight() == null ? 1 : testCase.weight())
+                    .build());
+        }
+    }
+
+    private static void requireOnlyChoiceFields(QuestionType type, List<String> accepted,
+                                                List<QuestionRequest.TestCaseRequest> cases, QuestionRequest request) {
+        if (!accepted.isEmpty() || !cases.isEmpty() || request.codeLanguage() != null || request.starterCode() != null) {
+            throw new BusinessRuleException("A %s question takes options only.".formatted(type));
+        }
+    }
+
+    private static CodeLanguage parseLanguage(String value) {
+        return CodeLanguage.parse(value).orElseThrow(() ->
+                new BusinessRuleException("Choose the coding language: " + CodeLanguage.allowedList() + "."));
     }
 
     private QuestionType parseType(String value) {
@@ -355,7 +411,8 @@ public class QuizServiceImpl implements QuizService {
         try {
             return QuestionType.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException ex) {
-            throw new BusinessRuleException("Question type must be SINGLE_CHOICE, MULTI_CHOICE or TRUE_FALSE.");
+            throw new BusinessRuleException(
+                    "Question type must be SINGLE_CHOICE, MULTI_CHOICE, TRUE_FALSE, SHORT_ANSWER or CODING.");
         }
     }
 
