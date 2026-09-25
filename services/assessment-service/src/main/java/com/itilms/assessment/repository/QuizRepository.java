@@ -19,6 +19,18 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
     Page<Quiz> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+    /**
+     * The tests a trainer may manage: those set for one of their batches, and those set for a whole course
+     * they teach a batch of. The same rule as {@code AssessmentAccess.requireManagesCourseOrBatch}.
+     */
+    @Query("""
+            SELECT q FROM Quiz q
+            WHERE q.batchId IN :batchIds OR (q.batchId IS NULL AND q.courseId IN :courseIds)
+            ORDER BY q.createdAt DESC
+            """)
+    Page<Quiz> findManagedBy(@Param("batchIds") java.util.Collection<Long> batchIds,
+                             @Param("courseIds") java.util.Collection<Long> courseIds, Pageable pageable);
+
     long countByCourseIdAndStatus(Long courseId, QuizStatus status);
 
     /**
