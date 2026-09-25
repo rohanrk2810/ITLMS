@@ -19,7 +19,9 @@ import com.itilms.assessment.dto.request.SubmitAttemptRequest;
 import com.itilms.assessment.dto.response.AnswerSaveResponse;
 import com.itilms.assessment.dto.response.AttemptResultResponse;
 import com.itilms.assessment.dto.response.AttemptViewResponse;
+import com.itilms.assessment.dto.response.CodingRunResponse;
 import com.itilms.assessment.entity.AttemptStatus;
+import com.itilms.assessment.entity.QuestionType;
 import com.itilms.assessment.entity.Quiz;
 import com.itilms.assessment.entity.QuizAnswer;
 import com.itilms.assessment.entity.QuizAttempt;
@@ -32,12 +34,14 @@ import com.itilms.assessment.repository.QuizRepository;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
 import com.itilms.assessment.service.AttemptService;
+import com.itilms.assessment.service.CodingJudge;
 import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.exception.ForbiddenOperationException;
 import com.itilms.common.exception.ResourceNotFoundException;
 import com.itilms.common.security.AppPrincipal;
 import com.itilms.common.security.SecurityUtils;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,12 +59,15 @@ public class AttemptServiceImpl implements AttemptService {
      */
     static final Duration SUBMIT_GRACE = Duration.ofSeconds(60);
 
+    private static final int MAX_SHORT_ANSWER = 1000;
+
     private final QuizRepository quizRepository;
     private final QuizQuestionRepository questionRepository;
     private final QuizAttemptRepository attemptRepository;
     private final QuizAnswerRepository answerRepository;
     private final AssessmentAccess access;
     private final AttemptScorer scorer;
+    private final CodingJudge judge;
 
     // -----------------------------------------------------------------
     // Sitting the test
@@ -157,6 +164,75 @@ public class AttemptServiceImpl implements AttemptService {
     }
 
     /**
+     * Runs the tests for one coding question, keeps the code as the student's answer and stores the verdict
+     * beside the exact code it came from.
+     *
+     * <p>Refused runs (runner busy, over the limit, down) throw before anything is written, so the code the
+     * student already had saved and its earlier verdict are untouched.
+     */
+    @Override
+    @Transactional(noRollbackFor = BusinessRuleException.class)
+    public CodingRunResponse runTests(Long attemptId, Long questionId, String sourceCode) {
+        QuizAttempt attempt = requireOwnAttempt(attemptId);
+        Quiz quiz = requireQuiz(attempt.getQuizId());
+        Instant now = Instant.now();
+        requireRunning(attempt, quiz, now, Duration.ZERO);
+
+        QuizQuestion question = questionRepository.findWithOptions(quiz.getId()).stream()
+                .filter(q -> q.getId().equals(questionId)).findFirst()
+                .orElseThrow(() -> new BusinessRuleException("INVALID_ANSWER",
+                        "Question %d is not part of this test.".formatted(questionId)));
+        if (question.getType() != QuestionType.CODING) {
+            throw new BusinessRuleException("INVALID_ANSWER", "Question %d is not a coding question.".formatted(questionId));
+        }
+
+        CodingJudge.Verdict verdict = judge.judge(question, sourceCode);
+        recordVerdict(attempt, question, sourceCode, verdict, now);
+        return CodingRunResponse.of(questionId, verdict);
+    }
+
+    private void recordVerdict(QuizAttempt attempt, QuizQuestion question, String sourceCode,
+                               CodingJudge.Verdict verdict, Instant now) {
+        QuizAnswer row = answerRepository.findByAttemptId(attempt.getId()).stream()
+                .filter(a -> a.getQuestionId().equals(question.getId())).findFirst()
+                .orElseGet(() -> QuizAnswer.builder().attemptId(attempt.getId()).questionId(question.getId()).build());
+        row.setAnswerText(sourceCode);
+        row.setTestsPassed(verdict.passedCount());
+        row.setTestsTotal(verdict.cases().size());
+        row.setTestedSourceHash(CodingJudge.sha256(sourceCode));
+        row.setTestedMarks(question.codingMarks(verdict.passedWeight()));
+        row.setAnsweredAt(now);
+        answerRepository.save(row);
+    }
+
+    /**
+     * Before a submission is scored, runs the tests for any coding answer whose code has changed since its
+     * last run (or never ran). A run that is refused leaves the earlier verdict in place: the student is not
+     * marked down for the runner being busy, they are marked on the last version that was tested.
+     */
+    private void refreshCodingVerdicts(QuizAttempt attempt, List<QuizQuestion> questions, Instant now) {
+        Map<Long, QuizQuestion> coding = questions.stream().filter(q -> q.getType() == QuestionType.CODING)
+                .collect(Collectors.toMap(QuizQuestion::getId, Function.identity()));
+        if (coding.isEmpty()) {
+            return;
+        }
+        for (QuizAnswer answer : answerRepository.findByAttemptId(attempt.getId())) {
+            QuizQuestion question = coding.get(answer.getQuestionId());
+            String code = answer.getAnswerText();
+            if (question == null || code == null || code.isBlank()
+                    || CodingJudge.sha256(code).equals(answer.getTestedSourceHash())) {
+                continue;
+            }
+            try {
+                recordVerdict(attempt, question, code, judge.judge(question, code), now);
+            } catch (BusinessRuleException | FeignException e) {
+                log.warn("Tests for question {} of attempt {} could not be run at submission: {}",
+                        question.getId(), attempt.getId(), e.getMessage());
+            }
+        }
+    }
+
+    /**
      * Stores the final answers and scores the attempt.
      *
      * <p>A submission arriving within {@link #SUBMIT_GRACE} of the deadline is
@@ -179,6 +255,7 @@ public class AttemptServiceImpl implements AttemptService {
         boolean inTime = !now.isAfter(attempt.getExpiresAt().plus(SUBMIT_GRACE));
         if (inTime) {
             store(attempt, questions, request, now);
+            refreshCodingVerdicts(attempt, questions, now);
             scorer.finish(attempt, quiz, false);
         } else {
             log.info("Attempt {} submitted {}s after its deadline; scored on answers saved before it",
@@ -269,6 +346,37 @@ public class AttemptServiceImpl implements AttemptService {
                         .formatted(answer.questionId()));
             }
             Set<Long> selected = answer.selectedOptionIds() == null ? Set.of() : answer.selectedOptionIds();
+
+            if (question.getType().isText()) {
+                if (!selected.isEmpty()) {
+                    throw new BusinessRuleException("INVALID_ANSWER",
+                            "Question %d is answered in text, not by choosing options.".formatted(question.getId()));
+                }
+                String text = answer.answerText();
+                if (question.getType() == QuestionType.SHORT_ANSWER && text != null && text.length() > MAX_SHORT_ANSWER) {
+                    throw new BusinessRuleException("INVALID_ANSWER",
+                            "A short answer is limited to %d characters.".formatted(MAX_SHORT_ANSWER));
+                }
+                QuizAnswer existing = saved.get(question.getId());
+                if (text == null || text.isBlank()) {
+                    if (existing != null) {
+                        toDelete.add(existing);
+                        saved.remove(question.getId());
+                    }
+                    continue;
+                }
+                QuizAnswer row = existing != null ? existing
+                        : QuizAnswer.builder().attemptId(attempt.getId()).questionId(question.getId()).build();
+                row.setAnswerText(text);
+                row.setAnsweredAt(now);
+                toSave.add(row);
+                saved.put(question.getId(), row);
+                continue;
+            }
+            if (answer.answerText() != null && !answer.answerText().isBlank()) {
+                throw new BusinessRuleException("INVALID_ANSWER",
+                        "Question %d is answered by choosing options, not with text.".formatted(question.getId()));
+            }
             if (!question.owns(selected)) {
                 throw new BusinessRuleException("INVALID_ANSWER",
                         "An option chosen for question %d does not belong to it.".formatted(question.getId()));
@@ -324,7 +432,7 @@ public class AttemptServiceImpl implements AttemptService {
         if (quiz.isShuffleQuestions()) {
             Collections.shuffle(questions, new Random(attempt.getId()));
         }
-        return AttemptViewResponse.of(attempt, quiz, questions, now);
+        return AttemptViewResponse.of(attempt, quiz, questions, answerRepository.findByAttemptId(attempt.getId()), now);
     }
 
     private AttemptResultResponse resultFor(QuizAttempt attempt, Quiz quiz, boolean staffView) {

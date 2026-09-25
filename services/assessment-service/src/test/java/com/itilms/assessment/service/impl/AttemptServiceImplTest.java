@@ -27,16 +27,19 @@ import com.itilms.assessment.dto.request.SubmitAttemptRequest;
 import com.itilms.assessment.entity.AttemptStatus;
 import com.itilms.assessment.entity.QuestionType;
 import com.itilms.assessment.entity.Quiz;
+import com.itilms.assessment.entity.QuizAnswer;
 import com.itilms.assessment.entity.QuizAttempt;
 import com.itilms.assessment.entity.QuizOption;
 import com.itilms.assessment.entity.QuizQuestion;
 import com.itilms.assessment.entity.QuizStatus;
+import com.itilms.assessment.entity.QuizTestCase;
 import com.itilms.assessment.repository.QuizAnswerRepository;
 import com.itilms.assessment.repository.QuizAttemptRepository;
 import com.itilms.assessment.repository.QuizQuestionRepository;
 import com.itilms.assessment.repository.QuizRepository;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
+import com.itilms.assessment.service.CodingJudge;
 import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.exception.ResourceNotFoundException;
 import com.itilms.common.security.AppPrincipal;
@@ -57,6 +60,7 @@ class AttemptServiceImplTest {
     @Mock private QuizAnswerRepository answerRepository;
     @Mock private AssessmentAccess access;
     @Mock private AttemptScorer scorer;
+    @Mock private CodingJudge judge;
 
     private AttemptServiceImpl service;
     private Quiz quiz;
@@ -66,7 +70,7 @@ class AttemptServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new AttemptServiceImpl(quizRepository, questionRepository, attemptRepository,
-                answerRepository, access, scorer);
+                answerRepository, access, scorer, judge);
 
         quiz = Quiz.builder().id(1L).courseId(1L).title("t").durationMinutes(30).totalMarks(2)
                 .attemptsAllowed(1).status(QuizStatus.PUBLISHED).build();
@@ -96,7 +100,7 @@ class AttemptServiceImplTest {
     }
 
     private static SubmitAttemptRequest answers(long questionId, Long... options) {
-        return new SubmitAttemptRequest(List.of(new SubmitAttemptRequest.Answer(questionId, Set.of(options))));
+        return new SubmitAttemptRequest(List.of(new SubmitAttemptRequest.Answer(questionId, Set.of(options), null)));
     }
 
     @Test
@@ -172,5 +176,187 @@ class AttemptServiceImplTest {
         verify(answerRepository).saveAll(anyList());
         verify(scorer).finish(justLate, quiz, false);
         assertThat(result.status()).isEqualTo("SUBMITTED");
+    }
+
+    // ------------------------------------------------------------------
+    // Typed answers and coding questions
+    // ------------------------------------------------------------------
+
+    private QuizQuestion shortAnswer(long id) {
+        QuizQuestion q = QuizQuestion.builder().id(id).quizId(1L).type(QuestionType.SHORT_ANSWER)
+                .marks(2).sequenceNo((int) id).questionText("capital of France?").build();
+        q.getAcceptedAnswers().add("Paris");
+        return q;
+    }
+
+    private QuizQuestion coding(long id) {
+        QuizQuestion q = QuizQuestion.builder().id(id).quizId(1L).type(QuestionType.CODING)
+                .codeLanguage(com.itilms.common.code.CodeLanguage.PYTHON)
+                .marks(4).sequenceNo((int) id).questionText("print the sum").build();
+        q.getTestCases().add(QuizTestCase.builder().sequenceNo(1).input("1 2").expectedOutput("3").weight(1).build());
+        q.getTestCases().add(QuizTestCase.builder().sequenceNo(2).input("2 2").expectedOutput("4").weight(3).hidden(true).build());
+        return q;
+    }
+
+    private static SubmitAttemptRequest text(long questionId, String answerText) {
+        return new SubmitAttemptRequest(List.of(new SubmitAttemptRequest.Answer(questionId, null, answerText)));
+    }
+
+    private static CodingJudge.Verdict verdict(boolean first, boolean second) {
+        return new CodingJudge.Verdict(null, List.of(
+                new CodingJudge.CaseResult(1, false, first, 1, "1 2", "3", "3", null),
+                new CodingJudge.CaseResult(2, true, second, 3, "2 2", "4", "4", null)));
+    }
+
+    @Test
+    @DisplayName("A typed answer is saved against a short-answer question, and blank text takes it back")
+    void typedAnswerSavedAndCleared() {
+        QuizQuestion sa = shortAnswer(30L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, sa));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        service.saveAnswers(9L, text(30L, "  paris "));
+
+        org.mockito.ArgumentCaptor<List<QuizAnswer>> saved = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(answerRepository).saveAll(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(a -> assertThat(a.getAnswerText()).isEqualTo("  paris "));
+
+        QuizAnswer existing = QuizAnswer.builder().attemptId(9L).questionId(30L).answerText("paris").build();
+        when(answerRepository.findByAttemptId(9L)).thenReturn(List.of(existing));
+        service.saveAnswers(9L, text(30L, "   "));
+        verify(answerRepository).deleteAll(List.of(existing));
+    }
+
+    @Test
+    @DisplayName("Options on a text question, and text on a choice question, are refused")
+    void answerShapeMustMatchTheQuestion() {
+        QuizQuestion sa = shortAnswer(30L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, sa));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        assertThatThrownBy(() -> service.saveAnswers(9L, answers(30L, 100L)))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("answered in text");
+        assertThatThrownBy(() -> service.saveAnswers(9L, text(10L, "hello")))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("choosing options");
+        verify(answerRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("Running tests keeps the code, the verdict and the marks it earned, tied to that exact code")
+    void runTestsStoresTheVerdict() {
+        QuizQuestion cq = coding(40L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+        when(judge.judge(cq, "print(1+2)")).thenReturn(verdict(true, false));
+
+        var response = service.runTests(9L, 40L, "print(1+2)");
+
+        org.mockito.ArgumentCaptor<QuizAnswer> saved = org.mockito.ArgumentCaptor.forClass(QuizAnswer.class);
+        verify(answerRepository).save(saved.capture());
+        QuizAnswer row = saved.getValue();
+        assertThat(row.getAnswerText()).isEqualTo("print(1+2)");
+        assertThat(row.getTestsPassed()).isEqualTo(1);
+        assertThat(row.getTestsTotal()).isEqualTo(2);
+        assertThat(row.getTestedMarks()).isEqualTo(1);   // weight 1 of 4, on a 4-mark question
+        assertThat(row.getTestedSourceHash()).isEqualTo(CodingJudge.sha256("print(1+2)"));
+
+        // The hidden case tells the student pass or fail and nothing about it.
+        assertThat(response.passed()).isEqualTo(1);
+        assertThat(response.cases().get(1)).satisfies(c -> {
+            assertThat(c.hidden()).isTrue();
+            assertThat(c.input()).isNull();
+            assertThat(c.expectedOutput()).isNull();
+            assertThat(c.actualOutput()).isNull();
+        });
+    }
+
+    @Test
+    @DisplayName("A refused run (runner busy) saves nothing and leaves the earlier answer alone")
+    void refusedRunChangesNothing() {
+        QuizQuestion cq = coding(40L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+        when(judge.judge(any(), any())).thenThrow(new BusinessRuleException("CODE_RUNNER_UNAVAILABLE", "busy"));
+
+        assertThatThrownBy(() -> service.runTests(9L, 40L, "x")).isInstanceOf(BusinessRuleException.class);
+        verify(answerRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Tests can only be run on a coding question of this test, by the attempt's owner")
+    void runTestsGuards() {
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        assertThatThrownBy(() -> service.runTests(9L, 10L, "x"))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("not a coding question");
+        assertThatThrownBy(() -> service.runTests(9L, 999L, "x"))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("not part of this test");
+        verify(judge, never()).judge(any(), any());
+
+        attempt(99L, Instant.now().plusSeconds(600));
+        assertThatThrownBy(() -> service.runTests(9L, 10L, "x")).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Submitting re-runs the tests for code that changed since its last run")
+    void submitRefreshesStaleVerdicts() {
+        QuizQuestion cq = coding(40L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+        QuizAnswer stale = QuizAnswer.builder().attemptId(9L).questionId(40L).answerText("print(3)")
+                .testedSourceHash(CodingJudge.sha256("print(2)")).testedMarks(0).build();
+        when(answerRepository.findByAttemptId(9L)).thenReturn(List.of(stale));
+        when(judge.judge(cq, "print(3)")).thenReturn(verdict(true, true));
+        when(scorer.finish(any(), any(), eq(false))).thenAnswer(inv -> {
+            a.complete(4, 4, 40, Instant.now(), false);
+            return a;
+        });
+
+        service.submit(9L, new SubmitAttemptRequest(List.of()));
+
+        assertThat(stale.getTestedMarks()).isEqualTo(4);
+        assertThat(stale.getTestedSourceHash()).isEqualTo(CodingJudge.sha256("print(3)"));
+    }
+
+    @Test
+    @DisplayName("Submitting when the runner refuses still submits, on the last tested version")
+    void submitSurvivesARefusedRun() {
+        QuizQuestion cq = coding(40L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+        QuizAnswer stale = QuizAnswer.builder().attemptId(9L).questionId(40L).answerText("print(3)")
+                .testedSourceHash(CodingJudge.sha256("print(2)")).testedMarks(2).build();
+        when(answerRepository.findByAttemptId(9L)).thenReturn(List.of(stale));
+        when(judge.judge(any(), any())).thenThrow(new BusinessRuleException("CODE_RUNNER_UNAVAILABLE", "busy"));
+        when(scorer.finish(any(), any(), eq(false))).thenAnswer(inv -> {
+            a.complete(2, 4, 40, Instant.now(), false);
+            return a;
+        });
+
+        var result = service.submit(9L, new SubmitAttemptRequest(List.of()));
+
+        assertThat(result.status()).isEqualTo("SUBMITTED");
+        assertThat(stale.getTestedMarks()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("A resumed paper carries what was already saved, and never a hidden test case")
+    void paperCarriesSavedAnswersButNotHiddenCases() {
+        QuizQuestion cq = coding(40L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+        when(answerRepository.findByAttemptId(9L)).thenReturn(List.of(
+                QuizAnswer.builder().attemptId(9L).questionId(40L).answerText("print(1)").testsPassed(1).testsTotal(2).build()));
+
+        var paper = service.paper(9L);
+
+        var codingQuestion = paper.questions().stream().filter(q -> q.id() == 40L).findFirst().orElseThrow();
+        assertThat(codingQuestion.sampleTests()).hasSize(1);
+        assertThat(codingQuestion.sampleTests().get(0).expectedOutput()).isEqualTo("3");
+        assertThat(codingQuestion.hiddenTestCount()).isEqualTo(1);
+        assertThat(paper.savedAnswers()).singleElement().satisfies(s -> {
+            assertThat(s.answerText()).isEqualTo("print(1)");
+            assertThat(s.testsPassed()).isEqualTo(1);
+        });
     }
 }

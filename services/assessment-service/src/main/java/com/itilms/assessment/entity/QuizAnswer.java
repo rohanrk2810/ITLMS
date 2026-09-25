@@ -52,6 +52,25 @@ public class QuizAnswer {
     @Builder.Default
     private Set<Long> selectedOptionIds = new LinkedHashSet<>();
 
+    /** SHORT_ANSWER: what was typed. CODING: the source code. Null for choice questions. */
+    @Column(name = "answer_text", columnDefinition = "text")
+    private String answerText;
+
+    /** CODING: test cases passed in the last run, and how many there were. */
+    @Column(name = "tests_passed")
+    private Integer testsPassed;
+
+    @Column(name = "tests_total")
+    private Integer testsTotal;
+
+    /** CODING: SHA-256 of the code that last run tested. When it differs from the saved code, the code has changed since. */
+    @Column(name = "tested_source_hash", length = 64)
+    private String testedSourceHash;
+
+    /** CODING: the marks that last run earned. Scoring uses this, so ending an attempt never has to run code. */
+    @Column(name = "tested_marks")
+    private Integer testedMarks;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean correct = false;

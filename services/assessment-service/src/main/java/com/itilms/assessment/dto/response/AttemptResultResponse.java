@@ -58,7 +58,14 @@ public record AttemptResultResponse(
             Set<Long> correctOptionIds,
             boolean correct,
             int marksAwarded,
-            String explanation
+            String explanation,
+            @Schema(description = "SHORT_ANSWER: what was typed. CODING: the submitted code.")
+            String answerText,
+            @Schema(description = "CODING: test cases passed and how many there were")
+            Integer testsPassed,
+            Integer testsTotal,
+            @Schema(description = "SHORT_ANSWER: the accepted answers, shown once results are released")
+            List<String> acceptedAnswers
     ) {
     }
 
@@ -79,7 +86,12 @@ public record AttemptResultResponse(
                         q.correctOptionIds(),
                         a != null && a.isCorrect(),
                         a == null ? 0 : a.getMarksAwarded(),
-                        q.getExplanation());
+                        q.getExplanation(),
+                        a == null ? null : a.getAnswerText(),
+                        a == null ? null : a.getTestsPassed(),
+                        a == null ? null : a.getTestsTotal(),
+                        q.getType() == com.itilms.assessment.entity.QuestionType.SHORT_ANSWER
+                                ? List.copyOf(q.getAcceptedAnswers()) : List.of());
             }).toList();
         }
 

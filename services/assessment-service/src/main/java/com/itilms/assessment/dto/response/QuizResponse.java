@@ -6,6 +6,7 @@ import java.util.List;
 import com.itilms.assessment.entity.Quiz;
 import com.itilms.assessment.entity.QuizOption;
 import com.itilms.assessment.entity.QuizQuestion;
+import com.itilms.assessment.entity.QuizTestCase;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -44,12 +45,25 @@ public record QuizResponse(
 
     @Schema(description = "A question with its answer key")
     public record Question(Long id, String questionText, String type, int marks,
-                           int sequenceNo, String explanation, List<Option> options) {
+                           int sequenceNo, String explanation, List<Option> options,
+                           String codeLanguage, String starterCode, List<String> acceptedAnswers,
+                           List<TestCase> testCases) {
 
         static Question from(QuizQuestion q) {
             return new Question(q.getId(), q.getQuestionText(), q.getType().name(), q.getMarks(),
                     q.getSequenceNo(), q.getExplanation(),
-                    q.getOptions().stream().map(Option::from).toList());
+                    q.getOptions().stream().map(Option::from).toList(),
+                    q.getCodeLanguage() == null ? null : q.getCodeLanguage().name(), q.getStarterCode(),
+                    List.copyOf(q.getAcceptedAnswers()),
+                    q.getTestCases().stream().map(TestCase::from).toList());
+        }
+    }
+
+    public record TestCase(Long id, int sequenceNo, String input, String expectedOutput, boolean hidden, int weight) {
+
+        static TestCase from(QuizTestCase c) {
+            return new TestCase(c.getId(), c.getSequenceNo(), c.getInput(), c.getExpectedOutput(), c.isHidden(),
+                    c.getWeight());
         }
     }
 
