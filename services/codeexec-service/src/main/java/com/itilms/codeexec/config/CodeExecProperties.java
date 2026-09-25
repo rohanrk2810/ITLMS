@@ -88,6 +88,8 @@ public class CodeExecProperties {
         private int memoryKb = 256_000;
         /** Runs in flight at once. More than this are told to retry rather than queued. */
         private int maxConcurrentRuns = 8;
+        /** Inputs in one grading run. A coding question's test cases must fit, and the request has to finish in one go. */
+        private int maxBatchCases = 10;
     }
 
     @Getter

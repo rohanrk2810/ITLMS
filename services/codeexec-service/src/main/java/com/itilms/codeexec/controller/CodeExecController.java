@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.itilms.codeexec.dto.LanguageResponse;
+import com.itilms.codeexec.dto.RunBatchRequest;
 import com.itilms.codeexec.dto.RunCodeRequest;
 import com.itilms.codeexec.dto.RunCodeResponse;
 import com.itilms.codeexec.dto.RunnerStatusResponse;
@@ -46,6 +47,14 @@ public class CodeExecController {
     @PostMapping("/run")
     public RunCodeResponse run(@Valid @RequestBody RunCodeRequest request) {
         return codeExecService.run(request);
+    }
+
+    @Operation(summary = "Run code against several inputs",
+            description = "For grading. One rate-limit unit however many inputs; answers come back in the order sent.")
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/run-batch")
+    public List<RunCodeResponse> runBatch(@Valid @RequestBody RunBatchRequest request) {
+        return codeExecService.runBatch(request);
     }
 
     @Operation(summary = "Sandbox health",

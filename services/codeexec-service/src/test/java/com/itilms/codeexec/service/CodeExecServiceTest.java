@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.itilms.codeexec.config.CodeExecProperties;
+import com.itilms.codeexec.dto.RunBatchRequest;
 import com.itilms.codeexec.dto.RunCodeRequest;
 import com.itilms.codeexec.exception.CodeRunnerUnavailableException;
 import com.itilms.codeexec.exception.RunLimitException;
@@ -91,6 +93,41 @@ class CodeExecServiceTest {
 
         assertThat(response.outcome()).isEqualTo("COMPILE_ERROR");
         assertThat(response.compileOutput()).contains("error");
+    }
+
+    @Test
+    void aBatchRunsEveryInputInOrderAndCountsAsOneRun() {
+        when(runner.run(CodeLanguage.PYTHON, "print(input())", "a")).thenReturn(ok("a\n"));
+        when(runner.run(CodeLanguage.PYTHON, "print(input())", "b")).thenReturn(ok("b\n"));
+
+        for (int i = 0; i < 2; i++) {
+            var responses = service.runBatch(new RunBatchRequest("PYTHON", "print(input())", List.of("a", "b")));
+            assertThat(responses).extracting(r -> r.stdout()).containsExactly("a\n", "b\n");
+        }
+
+        // Two batches of two inputs used two runs, the whole minute's allowance - not four.
+        assertThatThrownBy(() -> service.runBatch(new RunBatchRequest("PYTHON", "x", List.of("a"))))
+                .isInstanceOf(RunLimitException.class);
+    }
+
+    @Test
+    void aBatchThatDoesNotCompileIsCompiledOnceAndReportedForEveryInput() {
+        when(runner.run(any(), any(), any())).thenReturn(new CodeRunner.RunResult(
+                CodeRunner.Outcome.COMPILE_ERROR, "Compilation Error", null, null, "error: ';' expected", null, null, null));
+
+        var responses = service.runBatch(new RunBatchRequest("JAVA", "class", List.of("1", "2", "3")));
+
+        assertThat(responses).hasSize(3).allMatch(r -> r.outcome().equals("COMPILE_ERROR"));
+        verify(runner, org.mockito.Mockito.times(1)).run(any(), any(), any());
+    }
+
+    @Test
+    void aBatchLargerThanTheConfiguredCeilingIsRefusedBeforeItRuns() {
+        properties.getLimits().setMaxBatchCases(2);
+
+        assertThatThrownBy(() -> service.runBatch(new RunBatchRequest("JAVA", "x", List.of("1", "2", "3"))))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("At most 2");
+        verify(runner, never()).run(any(), any(), any());
     }
 
     @Test
