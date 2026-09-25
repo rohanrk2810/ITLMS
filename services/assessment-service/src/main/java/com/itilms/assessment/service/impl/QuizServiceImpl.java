@@ -262,11 +262,21 @@ public class QuizServiceImpl implements QuizService {
     public PageResponse<QuizResponse> list(Long courseId, Pageable pageable) {
         Page<Quiz> page;
         if (courseId == null) {
-            // Every test in the institute is a staff view; a trainer lists by course.
-            if (!SecurityUtils.requirePrincipal().isStaff()) {
-                throw new BusinessRuleException("Choose a course to list its tests.");
+            if (SecurityUtils.requirePrincipal().isStaff()) {
+                // Every test in the institute.
+                page = quizRepository.findAllByOrderByCreatedAtDesc(pageable);
+            } else {
+                // A trainer sees the tests of the batches they teach, and of the courses those batches belong to.
+                var mine = access.myBatches();
+                if (mine == null) {
+                    throw new BusinessRuleException("Your batches could not be checked just now. Please try again shortly.");
+                }
+                page = mine.isEmpty()
+                        ? Page.empty(pageable)
+                        : quizRepository.findManagedBy(
+                                mine.stream().map(b -> b.id()).toList(),
+                                mine.stream().map(b -> b.courseId()).distinct().toList(), pageable);
             }
-            page = quizRepository.findAllByOrderByCreatedAtDesc(pageable);
         } else {
             access.requireManagesCourseOrBatch(courseId, null);
             page = quizRepository.findByCourseIdOrderByCreatedAtDesc(courseId, pageable);
