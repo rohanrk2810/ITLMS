@@ -44,6 +44,8 @@ public record AttemptViewResponse(
         @Schema(description = "Secure test mode is on: the browser must report leaving the window")
         boolean secureMode,
         int maxViolations,
+        @Schema(description = "The camera must stay on and show the student's face")
+        boolean requireCamera,
         @Schema(description = "Violations that have counted so far in this attempt")
         int violationCount,
         List<Question> questions,
@@ -94,6 +96,6 @@ public record AttemptViewResponse(
                 attempt.getAttemptNo(), quiz.getAttemptsAllowed(), quiz.getTotalMarks(),
                 quiz.getPassPercentage(), attempt.getStartedAt(), attempt.getExpiresAt(),
                 attempt.secondsRemaining(now), quiz.isSecureMode(), quiz.getMaxViolations(),
-                attempt.getViolationCount(), paper, savedAnswers);
+                quiz.isRequireCamera(), attempt.getViolationCount(), paper, savedAnswers);
     }
 }

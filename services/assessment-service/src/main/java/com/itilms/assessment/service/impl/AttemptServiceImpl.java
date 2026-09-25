@@ -1,4 +1,4 @@
-package com.itilms.assessment.service.impl;
+    package com.itilms.assessment.service.impl;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,6 +30,7 @@ import com.itilms.assessment.entity.QuizAttempt;
 import com.itilms.assessment.entity.QuizQuestion;
 import com.itilms.assessment.entity.QuizStatus;
 import com.itilms.assessment.entity.QuizViolation;
+import com.itilms.assessment.entity.ViolationType;
 import com.itilms.assessment.repository.QuizAnswerRepository;
 import com.itilms.assessment.repository.QuizAttemptRepository;
 import com.itilms.assessment.repository.QuizQuestionRepository;
@@ -180,10 +181,12 @@ public class AttemptServiceImpl implements AttemptService {
         Quiz quiz = requireQuiz(attempt.getQuizId());
         Instant now = Instant.now();
 
-        // Not a secure test, or the sitting is already over: nothing to enforce, and no reason to make the
-        // page handle an error for a report it had every right to send.
-        if (!quiz.isSecureMode() || attempt.getStatus().isFinished() || attempt.hasExpired(now)) {
-            return outcome(attempt, quiz, false);
+        // A report the test does not ask for (window events on a test that is not secure, camera events on
+        // one that does not need the camera), or a sitting already over: nothing to enforce, and no reason
+        // to make the page handle an error for a report it had every right to send.
+        boolean applies = request.type().isCamera() ? quiz.isRequireCamera() : quiz.isSecureMode();
+        if (!applies || attempt.getStatus().isFinished() || attempt.hasExpired(now)) {
+            return outcome(attempt, quiz, false, null);
         }
 
         boolean counts = request.type().counts() && !mergesWithLastLeaving(attempt, now);
@@ -192,7 +195,8 @@ public class AttemptServiceImpl implements AttemptService {
                     .detail(trimToNull(request.detail())).occurredAt(now).clientAt(request.clientAt()).build());
         }
         if (!counts) {
-            return outcome(attempt, quiz, false);
+            // Recorded only - but a camera event still warns the student.
+            return outcome(attempt, quiz, false, request.type());
         }
 
         attempt.setViolationCount(attempt.getViolationCount() + 1);
@@ -203,7 +207,7 @@ public class AttemptServiceImpl implements AttemptService {
         } else {
             attemptRepository.save(attempt);
         }
-        return outcome(attempt, quiz, true);
+        return outcome(attempt, quiz, true, request.type());
     }
 
     @Override
@@ -221,7 +225,8 @@ public class AttemptServiceImpl implements AttemptService {
                 .orElse(false);
     }
 
-    private static ViolationResponse.Outcome outcome(QuizAttempt attempt, Quiz quiz, boolean counted) {
+    private static ViolationResponse.Outcome outcome(QuizAttempt attempt, Quiz quiz, boolean counted,
+                                                     ViolationType reported) {
         boolean terminated = attempt.getStatus() == AttemptStatus.TERMINATED;
         // Further warnings before the attempt ends: with a limit of 2 the first violation is the warning
         // and the second ends it, so after the first there are none left.
@@ -233,6 +238,8 @@ public class AttemptServiceImpl implements AttemptService {
             message = warningsLeft == 0
                     ? "Warning: Please do not leave the test window. This is your last warning."
                     : "Warning: Please do not leave the test window.";
+        } else if (reported != null) {
+            message = reported.warning();
         }
         return new ViolationResponse.Outcome(counted, attempt.getViolationCount(), quiz.getMaxViolations(),
                 warningsLeft, terminated, message);
@@ -387,10 +394,20 @@ public class AttemptServiceImpl implements AttemptService {
     public List<AttemptResultResponse> quizResults(Long quizId) {
         Quiz quiz = requireQuiz(quizId);
         access.requireManagesQuiz(quiz);
-        return attemptRepository.findByQuizIdAndStatusInOrderByScoreDesc(
-                        quizId, List.of(AttemptStatus.SUBMITTED, AttemptStatus.EXPIRED, AttemptStatus.TERMINATED))
-                .stream()
-                .map(a -> AttemptResultResponse.of(a, quiz, true, null, List.of()))
+        List<QuizAttempt> finished = attemptRepository.findByQuizIdAndStatusInOrderByScoreDesc(
+                quizId, List.of(AttemptStatus.SUBMITTED, AttemptStatus.EXPIRED, AttemptStatus.TERMINATED));
+
+        // Camera events per attempt in one query, only when the test watches the camera at all.
+        Map<Long, Integer> cameraEvents = new HashMap<>();
+        if (quiz.isRequireCamera() && !finished.isEmpty()) {
+            List<ViolationType> cameraTypes = java.util.Arrays.stream(ViolationType.values())
+                    .filter(ViolationType::isCamera).toList();
+            violations.countByAttemptAndTypes(finished.stream().map(QuizAttempt::getId).toList(), cameraTypes)
+                    .forEach(row -> cameraEvents.put((Long) row[0], ((Number) row[1]).intValue()));
+        }
+        return finished.stream()
+                .map(a -> AttemptResultResponse.of(a, quiz, true, null, List.of())
+                        .withCameraEventCount(cameraEvents.getOrDefault(a.getId(), 0)))
                 .toList();
     }
 

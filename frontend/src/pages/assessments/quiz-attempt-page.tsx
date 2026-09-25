@@ -21,11 +21,14 @@ import { apiErrorMessage } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CameraCheck, CameraPreview } from '@/components/camera-panel'
 import { CodingQuestion } from '@/components/coding-question'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CAMERA_PROBLEM_TEXT, CameraError, openCamera, stopStream } from '@/lib/face-detector'
+import { useCameraMonitor } from '@/lib/use-camera-monitor'
 import { enterFullscreen, leaveFullscreen, useTestGuard } from '@/lib/use-test-guard'
 import { cn } from '@/lib/utils'
 
@@ -168,7 +171,7 @@ export function QuizAttemptPage() {
       .then((list) => {
         if (!mounted.current) return
         const quiz = list.find((q) => String(q.id) === quizId)
-        if (quiz?.secureMode && (quiz.canStart || quiz.inProgressAttemptId)) {
+        if ((quiz?.secureMode || quiz?.requireCamera) && (quiz.canStart || quiz.inProgressAttemptId)) {
           setIntro(quiz)
           setView('intro')
         } else {
@@ -207,6 +210,36 @@ export function QuizAttemptPage() {
     onViolation: handleViolation,
     onFullscreenChange: (fullscreen) => setNeedFullscreen(!fullscreen && document.fullscreenEnabled),
   })
+
+  // Camera tests: the camera is opened on the rules screen (that needs a click) and kept for the sitting.
+  // Each problem the monitor notices goes to the server the same way a window event does, and the server
+  // answers with the warning to show.
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [cameraReady, setCameraReady] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const watchingCamera = view === 'live' && paper?.requireCamera === true
+  const cameraStatus = useCameraMonitor({
+    enabled: watchingCamera,
+    stream: cameraStream,
+    video: videoRef,
+    onEvent: handleViolation,
+  })
+  const cameraBlocked =
+    watchingCamera && (!cameraStream || cameraStatus === 'off' || cameraStatus === 'denied')
+
+  async function reopenCamera() {
+    try {
+      setCameraStream(await openCamera())
+    } catch (error) {
+      toast.error(CAMERA_PROBLEM_TEXT[error instanceof CameraError ? error.problem : 'other'])
+    }
+  }
+
+  // The camera belongs to the sitting: let it go when the page is left, replaced or finished.
+  useEffect(() => () => stopStream(cameraStream), [cameraStream])
+  useEffect(() => {
+    if (view === 'results') stopStream(cameraStream)
+  }, [view, cameraStream])
 
   // Leave fullscreen once the test is over, however it ended.
   useEffect(() => {
@@ -264,30 +297,52 @@ export function QuizAttemptPage() {
               {intro.title}
             </CardTitle>
             <CardDescription>
-              This is a secure test. {intro.durationMinutes} minutes &middot; {intro.totalMarks} marks
+              {intro.secureMode ? 'This is a secure test.' : 'This test uses your camera.'} {intro.durationMinutes}{' '}
+              minutes &middot; {intro.totalMarks} marks
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 text-sm">
             <ul className="flex list-disc flex-col gap-1 pl-5">
-              <li>The test opens in fullscreen, and {resuming ? 'your clock is already running' : 'the clock starts as soon as you begin'}.</li>
-              <li>
-                Do not switch to another tab or window.{' '}
-                {intro.maxViolations <= 1
-                  ? 'Doing so ends your test at once.'
-                  : `The first time you get a warning; the ${ordinal(intro.maxViolations)} time ends your test and it is marked failed.`}
-              </li>
-              <li>Copying, right-click and shortcuts such as print and developer tools are blocked.</li>
+              <li>The clock {resuming ? 'is already running' : 'starts as soon as you begin'}.</li>
+              {intro.secureMode && (
+                <>
+                  <li>The test opens in fullscreen.</li>
+                  <li>
+                    Do not switch to another tab or window.{' '}
+                    {intro.maxViolations <= 1
+                      ? 'Doing so ends your test at once.'
+                      : `The first time you get a warning; the ${ordinal(intro.maxViolations)} time ends your test and it is marked failed.`}
+                  </li>
+                  <li>Copying, right-click and shortcuts such as print and developer tools are blocked.</li>
+                </>
+              )}
+              {intro.requireCamera && (
+                <li>
+                  Your camera must stay on with your face visible. You are warned if it is not; nothing is failed
+                  automatically for this, but it is recorded for your trainer.
+                </li>
+              )}
               <li>Everything above is recorded, with the time, for your trainer to review.</li>
             </ul>
             {intro.instructions && <p className="text-muted-foreground">{intro.instructions}</p>}
+            {intro.requireCamera && (
+              <CameraCheck stream={cameraStream} onStream={setCameraStream} onReady={setCameraReady} />
+            )}
             <Button
               className="self-start"
+              disabled={intro.requireCamera && !cameraReady}
               onClick={() => {
-                void enterFullscreen().then(() => startAttempt())
+                // Fullscreen must be asked for from this click, so it comes first.
+                void (intro.secureMode ? enterFullscreen() : Promise.resolve(true)).then(() => startAttempt())
               }}
             >
-              {resuming ? 'Resume secure test' : 'Start secure test'}
+              {resuming ? 'Resume test' : 'Start test'}
             </Button>
+            {intro.requireCamera && !cameraReady && (
+              <p className="text-xs text-muted-foreground">
+                You can start once your camera is on and your face is visible.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -354,6 +409,26 @@ export function QuizAttemptPage() {
             </CardHeader>
             <CardContent>
               <Button onClick={() => setWarning(null)}>I understand, continue the test</Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {paper.requireCamera && cameraStream && (
+        <CameraPreview stream={cameraStream} video={videoRef} status={cameraStatus} />
+      )}
+
+      {cameraBlocked && !warning && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-background p-4" role="alertdialog" aria-modal>
+          <Card className="w-full max-w-md border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Your camera is off</CardTitle>
+              <CardDescription>
+                This test needs your camera on. Turn it back on to continue. Your time is still running.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => void reopenCamera()}>Turn camera on</Button>
             </CardContent>
           </Card>
         </div>
