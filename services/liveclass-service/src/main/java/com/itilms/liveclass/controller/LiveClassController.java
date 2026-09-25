@@ -8,22 +8,30 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.itilms.common.security.Roles;
+import com.itilms.liveclass.dto.request.MuteRequest;
+import com.itilms.liveclass.dto.request.ParticipantPermissionRequest;
+import com.itilms.liveclass.dto.request.RoomPolicyRequest;
 import com.itilms.liveclass.dto.response.JoinTokenResponse;
 import com.itilms.liveclass.dto.response.LiveParticipantResponse;
 import com.itilms.liveclass.dto.response.LiveSessionResponse;
+import com.itilms.liveclass.dto.response.RoomControlsResponse;
 import com.itilms.liveclass.dto.response.StudentParticipationResponse;
 import com.itilms.liveclass.service.LiveClassService;
+import com.itilms.liveclass.service.RoomControlService;
 import com.itilms.liveclass.service.StudentParticipationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -42,6 +50,7 @@ public class LiveClassController {
 
     private final LiveClassService liveClassService;
     private final StudentParticipationService participationService;
+    private final RoomControlService controlService;
 
     @Operation(summary = "Internal: how often one student joined their batches' live classes",
             description = "For reporting-service's student progress report. Not reachable through the gateway; "
@@ -116,6 +125,53 @@ public class LiveClassController {
     @PostMapping("/sessions/{id}/end")
     public LiveSessionResponse end(@PathVariable Long id) {
         return liveClassService.endClass(id);
+    }
+
+    @Operation(summary = "Who may use a microphone, camera or screen share in this class",
+            description = "The room policy and, for everyone who has joined, what they may switch on now. "
+                    + "The class trainer and staff only.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping("/sessions/{id}/controls")
+    public RoomControlsResponse controls(@PathVariable Long id) {
+        return controlService.controls(id);
+    }
+
+    @Operation(summary = "Set what students may switch on",
+            description = "Applies at once to students in the room and to anyone who joins later. A host's override "
+                    + "for one student still wins. Screen sharing is off for students unless turned on here.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PutMapping("/sessions/{id}/policy")
+    public RoomControlsResponse updatePolicy(@PathVariable Long id, @RequestBody RoomPolicyRequest request) {
+        return controlService.updatePolicy(id, request);
+    }
+
+    @Operation(summary = "Allow or deny one student's microphone, camera or screen share",
+            description = "Overrides the room policy for that student; `followRoom` clears the overrides.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PutMapping("/sessions/{id}/participants/{userId}/permissions")
+    public RoomControlsResponse updateParticipant(@PathVariable Long id, @PathVariable Long userId,
+                                                  @RequestBody ParticipantPermissionRequest request) {
+        return controlService.updateParticipant(id, userId, request);
+    }
+
+    @Operation(summary = "Switch off one student's microphone, camera or screen share",
+            description = "They may switch it on again if the policy still allows it; deny it as well to keep it off.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/sessions/{id}/participants/{userId}/mute")
+    public MuteResult mute(@PathVariable Long id, @PathVariable Long userId, @Valid @RequestBody MuteRequest request) {
+        return new MuteResult(controlService.mute(id, userId, request));
+    }
+
+    @Operation(summary = "Mute every student's microphone",
+            description = "Hosts' microphones are left alone. Students who are still permitted may unmute.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/sessions/{id}/mute-all")
+    public MuteResult muteAll(@PathVariable Long id) {
+        return new MuteResult(controlService.muteAll(id));
+    }
+
+    /** How many tracks were switched off. */
+    public record MuteResult(int muted) {
     }
 
     @Operation(summary = "Remove a student from the class",

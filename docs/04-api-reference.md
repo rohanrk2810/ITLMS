@@ -247,6 +247,11 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | GET | /api/liveclass/batches/{batchId} | ACADEMIC | A batch's live classes |
 | POST | /api/liveclass/sessions/{id}/end | ACADEMIC | End the class early |
 | DELETE | /api/liveclass/sessions/{id}/participants/{userId} | ACADEMIC | Remove a participant |
+| GET | /api/liveclass/sessions/{id}/controls | ACADEMIC, host of the class | Room policy and what each participant may switch on |
+| PUT | /api/liveclass/sessions/{id}/policy | ACADEMIC, host | What students may switch on (mic, camera, screen share); applied at once to those in the room. Defaults: mic and camera on, screen share off |
+| PUT | /api/liveclass/sessions/{id}/participants/{userId}/permissions | ACADEMIC, host | Allow/deny one student's mic, camera or screen; `followRoom` clears the override. Trainers/staff cannot be restricted |
+| POST | /api/liveclass/sessions/{id}/participants/{userId}/mute | ACADEMIC, host | Switch off one student's MICROPHONE, CAMERA or SCREEN_SHARE |
+| POST | /api/liveclass/sessions/{id}/mute-all | ACADEMIC, host | Mute every student microphone (hosts left alone) |
 
 ### Webhook — `/api/liveclass/webhook`
 | Method | Path | Role | Does |

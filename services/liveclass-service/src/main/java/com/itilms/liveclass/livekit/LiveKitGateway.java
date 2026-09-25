@@ -10,10 +10,12 @@ import org.springframework.stereotype.Component;
 
 import com.itilms.common.exception.ApiException;
 import com.itilms.liveclass.config.LiveKitProperties;
+import com.itilms.liveclass.service.RoomPermissions;
 
 import io.livekit.server.AccessToken;
 import io.livekit.server.CanPublish;
 import io.livekit.server.CanPublishData;
+import io.livekit.server.CanPublishSources;
 import io.livekit.server.CanSubscribe;
 import io.livekit.server.RoomAdmin;
 import io.livekit.server.RoomJoin;
@@ -138,7 +140,7 @@ public class LiveKitGateway {
      * {@code roomAdmin} is what lets a trainer mute or remove someone.
      */
     public String mintJoinToken(String roomName, String identity, String displayName,
-                                String metadata, boolean canPublish, boolean roomAdmin) {
+                                String metadata, List<String> publishSources, boolean roomAdmin) {
         AccessToken token = new AccessToken(properties.getApiKey(), properties.getApiSecret());
         token.setIdentity(identity);
         token.setName(displayName);
@@ -147,22 +149,105 @@ public class LiveKitGateway {
         }
         token.setExpiration(Date.from(expiryFrom(Instant.now())));
 
-        token.addGrants(grantsFor(roomName, canPublish, roomAdmin));
+        token.addGrants(grantsFor(roomName, publishSources, roomAdmin));
         return token.toJwt();
     }
 
-    private VideoGrant[] grantsFor(String roomName, boolean canPublish, boolean roomAdmin) {
+    /**
+     * {@code publishSources} is what this person may switch on: any of microphone, camera, screen_share and
+     * screen_share_audio. An empty list is an observer who can watch and listen but not be seen or heard.
+     */
+    private VideoGrant[] grantsFor(String roomName, List<String> publishSources, boolean roomAdmin) {
         return new VideoGrant[]{
                 new RoomJoin(true),
                 new RoomName(roomName),
                 // Everyone subscribes - an observer with no audio or video is
                 // attending a class they cannot see.
                 new CanSubscribe(true),
-                new CanPublish(canPublish),
+                new CanPublish(!publishSources.isEmpty()),
+                new CanPublishSources(publishSources),
                 // Chat and the raise-hand signal ride on the data channel, so
                 // even a non-publishing observer keeps it.
                 new CanPublishData(true),
                 new RoomAdmin(roomAdmin)
+        };
+    }
+
+    // -----------------------------------------------------------------
+    // Moderation while the class is running
+    // -----------------------------------------------------------------
+
+    /**
+     * Changes what one person present in the room may publish, at once.
+     *
+     * <p>Their join token still says what it said when they entered; LiveKit's own per-participant permission
+     * overrides it from now on, and takes anything they are currently publishing that is no longer allowed off air.
+     */
+    public void updatePublishPermissions(String roomName, String identity, List<String> publishSources) {
+        LivekitModels.ParticipantPermission permission = LivekitModels.ParticipantPermission.newBuilder()
+                .setCanSubscribe(true)
+                .setCanPublish(!publishSources.isEmpty())
+                .setCanPublishData(true)
+                .addAllCanPublishSources(publishSources.stream().map(LiveKitGateway::trackSource).toList())
+                .build();
+        execute(roomService.updateParticipant(roomName, identity, null, null, permission),
+                "update permissions of " + identity + " in " + roomName);
+    }
+
+    /** Mutes what one person is publishing from the given sources. They may unmute again if still permitted. */
+    public int muteSources(String roomName, String identity, List<String> sources) {
+        LivekitModels.ParticipantInfo info = execute(roomService.getParticipant(roomName, identity),
+                "look up " + identity + " in " + roomName);
+        return info == null ? 0 : muteTracksOf(roomName, info, sources);
+    }
+
+    /** Mutes the microphone of everyone in the room except the given identities (the hosts). Returns how many. */
+    public int muteMicrophonesExcept(String roomName, java.util.Set<String> keep) {
+        int muted = 0;
+        for (LivekitModels.ParticipantInfo participant : listParticipants(roomName)) {
+            if (!keep.contains(participant.getIdentity())) {
+                muted += muteTracksOf(roomName, participant, List.of(RoomPermissions.MICROPHONE));
+            }
+        }
+        return muted;
+    }
+
+    private int muteTracksOf(String roomName, LivekitModels.ParticipantInfo participant, List<String> sources) {
+        java.util.Set<LivekitModels.TrackSource> wanted = sources.stream().map(LiveKitGateway::trackSource)
+                .collect(java.util.stream.Collectors.toSet());
+        int muted = 0;
+        for (LivekitModels.TrackInfo track : participant.getTracksList()) {
+            if (wanted.contains(track.getSource()) && !track.getMuted()) {
+                execute(roomService.mutePublishedTrack(roomName, participant.getIdentity(), track.getSid(), true),
+                        "mute a track of " + participant.getIdentity());
+                muted++;
+            }
+        }
+        return muted;
+    }
+
+    /**
+     * Sends a small message to everyone in the room (or the listed identities) over the data channel. Used to tell
+     * browsers "a question was asked" the moment it is; they then fetch it. Best effort: browsers also poll, so a
+     * missed message delays a question by seconds and never loses it.
+     */
+    public void sendDataQuietly(String roomName, String topic, String json, List<String> toIdentities) {
+        try {
+            execute(roomService.sendData(roomName, json.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                            LivekitModels.DataPacket.Kind.RELIABLE, List.of(), toIdentities, topic),
+                    "send " + topic + " message to " + roomName);
+        } catch (Exception ex) {
+            log.warn("Could not send a {} message to room {}: {}", topic, roomName, ex.getMessage());
+        }
+    }
+
+    static LivekitModels.TrackSource trackSource(String source) {
+        return switch (source) {
+            case RoomPermissions.MICROPHONE -> LivekitModels.TrackSource.MICROPHONE;
+            case RoomPermissions.CAMERA -> LivekitModels.TrackSource.CAMERA;
+            case RoomPermissions.SCREEN_SHARE -> LivekitModels.TrackSource.SCREEN_SHARE;
+            case RoomPermissions.SCREEN_SHARE_AUDIO -> LivekitModels.TrackSource.SCREEN_SHARE_AUDIO;
+            default -> throw new IllegalArgumentException("Unknown track source " + source);
         };
     }
 
