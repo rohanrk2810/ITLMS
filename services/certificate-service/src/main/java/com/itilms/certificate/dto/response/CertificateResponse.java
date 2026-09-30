@@ -20,6 +20,7 @@ public record CertificateResponse(
         Long courseId,
         String courseTitle,
         Long batchId,
+        String batchName,
         LocalDate issueDate,
         String status,
         Instant revokedAt,
@@ -29,6 +30,6 @@ public record CertificateResponse(
     public static CertificateResponse from(Certificate c, String verificationUrl) {
         return new CertificateResponse(c.getId(), c.getCertificateNo(), c.getVerificationCode(), verificationUrl,
                 c.getStudentId(), c.getStudentCode(), c.getStudentName(), c.getCourseId(), c.getCourseTitle(),
-                c.getBatchId(), c.getIssueDate(), c.getStatus().name(), c.getRevokedAt(), c.getRevokedReason());
+                c.getBatchId(), c.getBatchName(), c.getIssueDate(), c.getStatus().name(), c.getRevokedAt(), c.getRevokedReason());
     }
 }

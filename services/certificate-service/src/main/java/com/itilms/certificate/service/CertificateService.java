@@ -18,9 +18,6 @@ public interface CertificateService {
     /** Issues a certificate, re-checking every criterion first (Doc S14). */
     CertificateResponse issue(Long studentId, Long courseId);
 
-    /** A student claiming their own certificate once they are eligible. */
-    CertificateResponse claim(Long courseId);
-
     /** Doc S11: GET /api/certificates/me. */
     List<CertificateResponse> mine();
 

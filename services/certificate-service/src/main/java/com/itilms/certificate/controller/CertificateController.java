@@ -52,26 +52,18 @@ public class CertificateController {
         return certificateService.eligibility(studentId, courseId);
     }
 
-    @Operation(summary = "Issue a certificate",
-            description = "Every condition is checked again at the moment of issue (Doc S14).")
+    @Operation(summary = "Issue a certificate directly (admin)",
+            description = "Bypasses the request step, for an admin issuing on a student's behalf. Every condition is checked again at the moment of issue (Doc S14).")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Issued"),
             @ApiResponse(responseCode = "409", description = "Already holds one for this course"),
             @ApiResponse(responseCode = "422", description = "Not eligible; the message says why")
     })
-    @PreAuthorize(Roles.STAFF)
+    @PreAuthorize(Roles.ADMIN_ONLY)
     @PostMapping
     public ResponseEntity<CertificateResponse> issue(@Valid @RequestBody IssueCertificateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(certificateService.issue(request.studentId(), request.courseId()));
-    }
-
-    @Operation(summary = "Claim my certificate",
-            description = "For a student who has met every condition. Same checks as a staff issue.")
-    @PreAuthorize("hasRole('STUDENT')")
-    @PostMapping("/claim")
-    public ResponseEntity<CertificateResponse> claim(@Valid @RequestBody IssueCertificateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(certificateService.claim(request.courseId()));
     }
 
     @Operation(summary = "My certificates")

@@ -170,4 +170,13 @@ public final class EligibilityRules {
                 ? Criterion.met("FEES", name, "Nothing outstanding")
                 : Criterion.notMet("FEES", name, "%s %s outstanding".formatted(symbol, owed.toPlainString()));
     }
+
+    /** The unmet criteria as one sentence, for a refusal message. */
+    public static String unmetSummary(List<Criterion> criteria) {
+        return criteria.stream()
+                .filter(c -> c.outcome() == Outcome.NOT_MET
+                        || c.outcome() == Outcome.UNAVAILABLE)
+                .map(c -> c.name() + (c.detail() == null ? "" : " (" + c.detail() + ")"))
+                .reduce((a, b) -> a + "; " + b).orElse("");
+    }
 }

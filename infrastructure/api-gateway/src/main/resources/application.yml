@@ -106,7 +106,12 @@ spring:
         - id: identity-branding
           uri: lb://identity-service
           predicates:
-            - Path=/api/public/branding/**,/api/branding/**
+            - Path=/api/public/branding/**
+
+        - id: identity-branding-admin
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/branding/**
 
         - id: identity-auth
           uri: lb://identity-service

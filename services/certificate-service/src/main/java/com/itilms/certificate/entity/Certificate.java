@@ -60,6 +60,13 @@ public class Certificate extends AuditableEntity {
     @Column(name = "batch_id")
     private Long batchId;
 
+    @Column(name = "batch_name", length = 160)
+    private String batchName;
+
+    /** The request this certificate answers; null for one an admin issued directly. */
+    @Column(name = "request_id")
+    private Long requestId;
+
     @Column(name = "issue_date", nullable = false)
     private LocalDate issueDate;
 

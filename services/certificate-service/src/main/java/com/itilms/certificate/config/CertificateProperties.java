@@ -20,6 +20,12 @@ public class CertificateProperties {
 
     private Criteria criteria = new Criteria();
 
+    /**
+     * Whether TRAINERs may see certificate requests (read only; deciding is always ADMIN only).
+     * Off unless an administrator turns it on.
+     */
+    private boolean trainerAccess = false;
+
     /** Where the printed QR code and link point, e.g. https://institute.example/verify. */
     private String verificationBaseUrl = "http://localhost:5173/verify";
 
