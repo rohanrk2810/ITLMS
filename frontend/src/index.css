@@ -2,65 +2,73 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Brand: warm orange, a cream light mode and a near-black dark mode. Both
+ * reuse the same orange hue (~41) for primary/ring/sidebar-primary so buttons,
+ * focus rings and the active nav item read as one accent color in either mode;
+ * only lightness/chroma shift between them. Everything else (badges, status
+ * colors like PRESENT/ABSENT, destructive) is unchanged - this is a palette
+ * swap, not a redesign.
+ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.99 0.01 75);
+  --foreground: oklch(0.205 0.01 40);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.205 0.01 40);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.205 0.01 40);
+  --primary: oklch(0.646 0.222 41.116);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.954 0.038 75.164);
+  --secondary-foreground: oklch(0.47 0.157 37.304);
+  --muted: oklch(0.97 0.015 75);
+  --muted-foreground: oklch(0.5 0.03 45);
+  --accent: oklch(0.954 0.038 75.164);
+  --accent-foreground: oklch(0.47 0.157 37.304);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --border: oklch(0.93 0.025 70);
+  --input: oklch(0.93 0.025 70);
+  --ring: oklch(0.705 0.213 47.604);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.205 0.01 40);
+  --sidebar-primary: oklch(0.646 0.222 41.116);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.96 0.03 75);
+  --sidebar-accent-foreground: oklch(0.47 0.157 37.304);
+  --sidebar-border: oklch(0.93 0.025 70);
+  --sidebar-ring: oklch(0.705 0.213 47.604);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.145 0.005 60);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.205 0.008 50);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.205 0.008 50);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --primary: oklch(0.705 0.213 47.604);
+  --primary-foreground: oklch(0.145 0.01 40);
+  --secondary: oklch(0.269 0.012 50);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0.012 50);
+  --muted-foreground: oklch(0.708 0.02 60);
+  --accent: oklch(0.3 0.06 45);
+  --accent-foreground: oklch(0.98 0.02 75);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
+  --ring: oklch(0.705 0.213 47.604);
+  --sidebar: oklch(0.17 0.008 50);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-primary: oklch(0.705 0.213 47.604);
+  --sidebar-primary-foreground: oklch(0.145 0.01 40);
+  --sidebar-accent: oklch(0.269 0.012 50);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.705 0.213 47.604);
 }
 
 @theme inline {

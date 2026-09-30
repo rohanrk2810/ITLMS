@@ -20,6 +20,7 @@ public class Mailer {
 
     private final JavaMailSender sender;
     private final EmailProperties props;
+    private final InstituteName institute;
 
     public boolean isEnabled() {
         return props.isEnabled();
@@ -29,7 +30,7 @@ public class Mailer {
         MimeMessage message = sender.createMimeMessage();
         try {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(props.getFrom(), props.getFromName());
+            helper.setFrom(props.getFrom(), institute.get());
             helper.setTo(to);
             helper.setSubject(email.subject());
             helper.setText(email.text(), email.html());

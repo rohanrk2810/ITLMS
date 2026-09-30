@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 
 import type { Role } from '@/api/types'
 import { bootstrapSession } from '@/api/auth'
+import { BrandingEffect } from '@/components/branding-effect'
 import { NAV_ITEMS } from '@/components/nav-items'
 import { Toaster } from '@/components/ui/sonner'
 import { AppLayout } from '@/layouts/app-layout'
@@ -112,6 +113,8 @@ const CourseRequestsIndexPage = lazy(() =>
   import('@/pages/course-requests/course-requests-index-page').then((m) => ({ default: m.CourseRequestsIndexPage })),
 )
 
+const BrandingPage = lazy(() => import('@/pages/branding-page').then((m) => ({ default: m.BrandingPage })))
+
 const AnnouncementsPage = lazy(() =>
   import('@/pages/announcements/announcements-page').then((m) => ({ default: m.AnnouncementsPage })),
 )
@@ -187,6 +190,7 @@ function SessionBootstrap({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <BrandingEffect />
       <SessionBootstrap>
         <BrowserRouter>
           <Suspense fallback={<PageFallback />}>
@@ -265,6 +269,7 @@ export default function App() {
 
                   <Route element={<ProtectedRoute roles={['ADMIN']} />}>
                     <Route path="/app/audit-logs" element={<AuditLogsPage />} />
+                    <Route path="/app/branding" element={<BrandingPage />} />
                   </Route>
 
                   <Route element={<ProtectedRoute roles={PLACEMENT_ROLES} />}>
