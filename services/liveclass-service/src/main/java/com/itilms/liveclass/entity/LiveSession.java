@@ -103,6 +103,17 @@ public class LiveSession extends AuditableEntity {
     @Column(name = "recording_url", length = 600)
     private String recordingUrl;
 
+    /** The LiveKit Egress id of the capture in progress, if any; cleared once it finishes, successfully or not. */
+    @Column(name = "egress_id", length = 64)
+    private String egressId;
+
+    @Column(name = "recording_started_at")
+    private Instant recordingStartedAt;
+
+    /** Where Egress is writing the file on the volume this service and Egress both mount. Not exposed to callers. */
+    @Column(name = "recording_file_path", length = 500)
+    private String recordingFilePath;
+
     /** What students may switch on in this room. Trainers and staff always may; see {@code RoomPermissions}. */
     @Column(name = "students_can_mic", nullable = false)
     @Builder.Default

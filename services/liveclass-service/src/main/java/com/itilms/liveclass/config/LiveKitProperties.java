@@ -57,6 +57,12 @@ public class LiveKitProperties {
      */
     private String webhookApiKey;
 
+    /**
+     * Where a class recording is written - a directory this container and the {@code livekit-egress} container both
+     * mount from the same volume, so a file Egress just finished writing is one this service can read at once.
+     */
+    private String recordingStoragePath = "/recordings";
+
     public String webhookKeyOrApiKey() {
         return webhookApiKey == null || webhookApiKey.isBlank() ? apiKey : webhookApiKey;
     }

@@ -17,11 +17,13 @@ import io.livekit.server.CanPublish;
 import io.livekit.server.CanPublishData;
 import io.livekit.server.CanPublishSources;
 import io.livekit.server.CanSubscribe;
+import io.livekit.server.EgressServiceClient;
 import io.livekit.server.RoomAdmin;
 import io.livekit.server.RoomJoin;
 import io.livekit.server.RoomName;
 import io.livekit.server.RoomServiceClient;
 import io.livekit.server.VideoGrant;
+import livekit.LivekitEgress;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,10 +53,13 @@ public class LiveKitGateway {
     private final LiveKitProperties properties;
 
     private RoomServiceClient roomService;
+    private EgressServiceClient egressService;
 
     @PostConstruct
     void init() {
         this.roomService = RoomServiceClient.createClient(
+                properties.getUrl(), properties.getApiKey(), properties.getApiSecret());
+        this.egressService = EgressServiceClient.createClient(
                 properties.getUrl(), properties.getApiKey(), properties.getApiSecret());
         log.info("LiveKit room service configured for {}", properties.getUrl());
     }
@@ -171,6 +176,40 @@ public class LiveKitGateway {
                 new CanPublishData(true),
                 new RoomAdmin(roomAdmin)
         };
+    }
+
+    // -----------------------------------------------------------------
+    // Recording
+    // -----------------------------------------------------------------
+
+    /**
+     * Starts a room-composite capture (everyone's video and audio, mixed into one file) and returns the Egress id
+     * that identifies it. Egress writes to {@code filepath} on its own container's disk - a volume this service also
+     * mounts, at the same path - since no cloud upload target is configured; a self-hosted deployment has nowhere
+     * else to put it by default.
+     */
+    public String startRoomCompositeEgress(String roomName, String filepath) {
+        LivekitEgress.EncodedFileOutput output = LivekitEgress.EncodedFileOutput.newBuilder()
+                .setFilepath(filepath)
+                .build();
+        LivekitEgress.EgressInfo info = execute(
+                egressService.startRoomCompositeEgress(roomName, output),
+                "start recording of " + roomName);
+        return info == null ? null : info.getEgressId();
+    }
+
+    /**
+     * Asks Egress to finish and finalise the file. Not thrown on failure: this is called from class-ending code
+     * paths (the End button, the sweep) that must not fail just because the media server could not be reached -
+     * Egress also stops on its own once the room it is capturing closes.
+     */
+    public void stopEgressQuietly(String egressId) {
+        try {
+            execute(egressService.stopEgress(egressId), "stop recording " + egressId);
+        } catch (Exception ex) {
+            log.warn("Could not stop egress {} - it will stop on its own once the room closes: {}",
+                    egressId, ex.getMessage());
+        }
     }
 
     // -----------------------------------------------------------------

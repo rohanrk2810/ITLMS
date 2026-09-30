@@ -2,6 +2,7 @@ package com.itilms.liveclass.service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class LiveKitWebhookHandler {
+
+    private static final String SERVICE_NAME = "liveclass-service";
 
     private final LiveSessionRepository sessionRepository;
     private final LiveParticipantRepository participantRepository;
@@ -78,6 +81,7 @@ public class LiveKitWebhookHandler {
             case WebhookNotice.PARTICIPANT_JOINED -> onJoined(session, notice);
             case WebhookNotice.PARTICIPANT_LEFT -> onLeft(session, notice);
             case WebhookNotice.ROOM_FINISHED -> onRoomFinished(session, notice);
+            case WebhookNotice.EGRESS_ENDED -> onEgressEnded(session, notice);
             default -> {
                 // isHandled() already filtered everything else out.
             }
@@ -123,6 +127,32 @@ public class LiveKitWebhookHandler {
         sessionRepository.save(session);
         log.info("Room {} closed at {} before the class finished; it will be recreated on the next join",
                 session.getRoomName(), notice.occurredAt());
+    }
+
+    /**
+     * A capture has finished, one way or another. Matched on the Egress id rather than acted on unconditionally,
+     * because a class can be recorded more than once in its lifetime (stopped and started again) and a late webhook
+     * for a capture that was already superseded must not overwrite what replaced it.
+     */
+    private void onEgressEnded(LiveSession session, WebhookNotice notice) {
+        if (notice.egressId() == null || !notice.egressId().equals(session.getEgressId())) {
+            log.debug("Ignoring egress_ended for {} - not the capture live session {} is tracking",
+                    notice.egressId(), session.getId());
+            return;
+        }
+
+        boolean complete = "EGRESS_COMPLETE".equals(notice.egressStatus());
+        session.setEgressId(null);
+        if (complete && session.getRecordingFilePath() != null) {
+            session.setRecordingUrl("/api/liveclass/sessions/" + session.getId() + "/recording");
+            events.audit(SERVICE_NAME, "LIVE_RECORDING_READY", "LiveSession", session.getId(), null,
+                    Map.of("classSessionId", session.getClassSessionId()));
+        } else {
+            log.warn("Recording of live session {} did not complete (status {})", session.getId(), notice.egressStatus());
+            events.audit(SERVICE_NAME, "LIVE_RECORDING_FAILED", "LiveSession", session.getId(), null,
+                    Map.of("status", String.valueOf(notice.egressStatus())));
+        }
+        sessionRepository.save(session);
     }
 
     private void onJoined(LiveSession session, WebhookNotice notice) {

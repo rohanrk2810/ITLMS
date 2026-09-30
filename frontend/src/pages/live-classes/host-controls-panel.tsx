@@ -15,6 +15,7 @@ import {
   updateRoomPolicy,
 } from '@/api/live-classes'
 import { Button } from '@/components/ui/button'
+import { RecordingControl } from './recording-control'
 
 /**
  * The class trainer's and staff's controls over what students may switch on. Every button calls the server, which
@@ -74,6 +75,7 @@ export function RoomControlsBody({ liveSessionId }: { liveSessionId: number }) {
         <h2 className="font-semibold">Class controls</h2>
         <p className="text-xs text-muted-foreground">What students may switch on. Applies at once.</p>
       </div>
+      <RecordingControl liveSessionId={liveSessionId} />
       <div className="flex flex-wrap gap-2">
         {policyToggle('studentsCanMic', 'Student mics', <Mic className="size-4" />)}
         {policyToggle('studentsCanCamera', 'Student cameras', <Camera className="size-4" />)}

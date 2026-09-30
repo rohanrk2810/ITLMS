@@ -20,6 +20,8 @@ export interface LiveSessionResponse {
   peakParticipants: number
   recordingEnabled: boolean
   recordingUrl: string | null
+  /** A capture is running right now. */
+  recording: boolean
   attendanceComputed: boolean
   /** True when the room will accept a join request right now. */
   joinable: boolean
@@ -63,6 +65,12 @@ export async function pastLiveClasses(): Promise<LiveSessionResponse[]> {
 
 export async function getLiveSessionStatus(classSessionId: number | string): Promise<LiveSessionResponse> {
   const { data } = await apiClient.get<LiveSessionResponse>(`/api/liveclass/class-sessions/${classSessionId}`)
+  return data
+}
+
+/** The host's view of a class by its live-session id - the one with the recording state and participant list. */
+export async function getLiveSession(liveSessionId: number): Promise<LiveSessionResponse> {
+  const { data } = await apiClient.get<LiveSessionResponse>(`/api/liveclass/sessions/${liveSessionId}`)
   return data
 }
 
@@ -134,6 +142,24 @@ export async function muteAllStudents(liveSessionId: number): Promise<number> {
 
 export async function removeFromClass(liveSessionId: number, userId: number): Promise<void> {
   await apiClient.delete(`/api/liveclass/sessions/${liveSessionId}/participants/${userId}`)
+}
+
+export async function startRecording(liveSessionId: number): Promise<void> {
+  await apiClient.post(`/api/liveclass/sessions/${liveSessionId}/recording/start`)
+}
+
+export async function stopRecording(liveSessionId: number): Promise<void> {
+  await apiClient.post(`/api/liveclass/sessions/${liveSessionId}/recording/stop`)
+}
+
+/**
+ * Fetches the whole recording as a blob and hands back an object URL for a `<video>` tag. The backend does not
+ * honour byte ranges, so this downloads the file once rather than streaming it - fine for a class recording, and it
+ * lets the request carry the normal Authorization header, which a plain `<video src>` cannot do.
+ */
+export async function fetchRecording(liveSessionId: number): Promise<string> {
+  const { data } = await apiClient.get(`/api/liveclass/sessions/${liveSessionId}/recording`, { responseType: 'blob' })
+  return URL.createObjectURL(data as Blob)
 }
 
 export type LiveQuestionType = 'MCQ' | 'MULTIPLE_SELECT' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'CODING' | 'OTHER'

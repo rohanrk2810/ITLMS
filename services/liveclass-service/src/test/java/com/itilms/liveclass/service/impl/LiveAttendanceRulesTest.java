@@ -210,7 +210,7 @@ class LiveAttendanceRulesTest {
             LiveClassProperties props = new LiveClassProperties();
             props.setPresentThresholdPercent(present);
             props.setLateThresholdPercent(late);
-            return new LiveAttendanceServiceImpl(null, null, null, props, null);
+            return new LiveAttendanceServiceImpl(null, null, null, null, props, null);
         }
     }
 }

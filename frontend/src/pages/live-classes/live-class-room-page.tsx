@@ -7,8 +7,10 @@ import '@livekit/components-styles'
 
 import { type JoinTokenResponse, joinLiveClass } from '@/api/live-classes'
 import { apiErrorMessage } from '@/api/client'
+import { ContentProtection } from '@/components/content-protection'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAuthStore } from '@/stores/auth-store'
 import { HostSidePanel } from './host-side-panel'
 import { LiveQuestionPanel } from './live-question-panel'
 
@@ -17,6 +19,7 @@ export function LiveClassRoomPage() {
   const navigate = useNavigate()
   const [credentials, setCredentials] = useState<JoinTokenResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const user = useAuthStore((s) => s.user)
 
   useEffect(() => {
     if (!sessionId) return
@@ -74,7 +77,13 @@ export function LiveClassRoomPage() {
           style={{ height: '100%' }}
           onDisconnected={() => void navigate('/app/live-classes')}
         >
-          <VideoConference />
+          <ContentProtection
+            active={!credentials.roomAdmin}
+            watermarkLabel={user ? `${user.fullName} · ${user.email}` : ''}
+            className="h-full"
+          >
+            <VideoConference />
+          </ContentProtection>
           {!credentials.roomAdmin && <LiveQuestionPanel classSessionId={credentials.classSessionId} />}
         </LiveKitRoom>
         </div>
