@@ -1,23 +1,22 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Loader2, Plus, Trash2, X } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
   type AskQuestionInput,
-  type LiveAnswer,
   type LiveQuestion,
   type LiveQuestionType,
   LIVE_QUESTION_TYPE_LABEL,
   askQuestion,
   classQuestions,
   closeQuestion,
-  questionAnswers,
 } from '@/api/live-classes'
 import { apiErrorMessage } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { QuestionHistoryList } from './question-history-list'
 
 const CodeEditor = lazy(() => import('@/components/code-editor'))
 
@@ -26,8 +25,6 @@ const TYPES: LiveQuestionType[] = ['MCQ', 'MULTIPLE_SELECT', 'TRUE_FALSE', 'SHOR
 /** The trainer's side of asking the class a question, and the history of what has been asked. */
 export function AskQuestionPanel({ liveSessionId, classSessionId }: { liveSessionId: number; classSessionId: number }) {
   const [history, setHistory] = useState<LiveQuestion[]>([])
-  const [expanded, setExpanded] = useState<LiveQuestion | null>(null)
-  const [answers, setAnswers] = useState<LiveAnswer[]>([])
 
   const refresh = () => {
     classQuestions(classSessionId).then(setHistory).catch(() => undefined)
@@ -38,15 +35,6 @@ export function AskQuestionPanel({ liveSessionId, classSessionId }: { liveSessio
     return () => window.clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classSessionId])
-
-  async function openAnswers(q: LiveQuestion) {
-    setExpanded(q)
-    try {
-      setAnswers(await questionAnswers(q.id))
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Could not load answers.'))
-    }
-  }
 
   async function close(q: LiveQuestion) {
     try {
@@ -76,56 +64,7 @@ export function AskQuestionPanel({ liveSessionId, classSessionId }: { liveSessio
         <AskForm liveSessionId={liveSessionId} onAsked={refresh} />
       )}
 
-      <div>
-        <h3 className="text-sm font-medium">Asked so far ({history.length})</h3>
-        <ul className="mt-1 flex flex-col gap-1">
-          {history.map((q) => (
-            <li key={q.id} className="flex items-center justify-between gap-2 rounded border p-2 text-xs">
-              <button type="button" className="min-w-0 flex-1 truncate text-left hover:underline" onClick={() => void openAnswers(q)}>
-                <span className="font-mono text-muted-foreground">{q.offsetLabel}</span> {q.prompt}
-              </button>
-              <span className="shrink-0 text-muted-foreground">
-                {q.status === 'OPEN' ? 'open' : `${q.answered ?? 0} answered`}
-              </span>
-            </li>
-          ))}
-          {history.length === 0 && <p className="text-xs text-muted-foreground">Nothing asked yet.</p>}
-        </ul>
-      </div>
-
-      {expanded && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setExpanded(null)}>
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-background p-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex items-center justify-between">
-              <h4 className="font-medium">{expanded.prompt}</h4>
-              <Button size="icon" variant="ghost" onClick={() => setExpanded(null)}><X className="size-4" /></Button>
-            </div>
-            <ul className="flex flex-col gap-2 text-sm">
-              {answers.map((a) => (
-                <li key={a.userId} className="rounded border p-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{a.displayName ?? `User ${a.userId}`}</span>
-                    {a.correct != null && (
-                      <span className={a.correct ? 'text-green-600' : 'text-destructive'}>
-                        {a.correct ? `Correct (${a.awardedMarks ?? 0})` : 'Incorrect'}
-                      </span>
-                    )}
-                    {a.viaRecording && <span className="text-xs text-muted-foreground">from recording</span>}
-                  </div>
-                  {a.code ? (
-                    <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 text-xs">{a.code}</pre>
-                  ) : a.text ? (
-                    <p className="mt-1 text-muted-foreground">{a.text}</p>
-                  ) : a.selected ? (
-                    <p className="mt-1 text-muted-foreground">Picked: {a.selected.join(', ')}</p>
-                  ) : null}
-                </li>
-              ))}
-              {answers.length === 0 && <p className="text-xs text-muted-foreground">Nobody has answered yet.</p>}
-            </ul>
-          </div>
-        </div>
-      )}
+      <QuestionHistoryList classSessionId={classSessionId} questions={history} onRefresh={refresh} />
     </div>
   )
 }

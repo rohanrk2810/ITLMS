@@ -101,6 +101,14 @@ public class LiveClassController {
         return liveClassService.upcomingForCaller();
     }
 
+    @Operation(summary = "My finished live classes",
+            description = "Most recent first - where a recording is opened from, once it has one.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/past")
+    public List<LiveSessionResponse> past() {
+        return liveClassService.pastForCaller();
+    }
+
     @Operation(summary = "My time in live classes",
             description = "The room time behind your automatic attendance, class by class.")
     @PreAuthorize("hasRole('STUDENT')")

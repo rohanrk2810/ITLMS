@@ -305,6 +305,30 @@ public class LiveClassServiceImpl implements LiveClassService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<LiveSessionResponse> pastForCaller() {
+        AppPrincipal caller = SecurityUtils.requirePrincipal();
+
+        List<LiveSession> sessions;
+        if (caller.isStaff()) {
+            sessions = sessionRepository.findByStatusOrderByScheduledStartAtDesc(
+                    LiveSessionStatus.ENDED, org.springframework.data.domain.PageRequest.of(0, 50)).getContent();
+        } else if (caller.isStudent() || caller.isTrainer()) {
+            List<Long> batchIds = batchClient.myBatches().stream()
+                    .map(BatchClient.BatchSummary::id)
+                    .toList();
+            sessions = batchIds.isEmpty() ? List.of() : sessionRepository.findPastForBatches(
+                    batchIds, org.springframework.data.domain.PageRequest.of(0, 50)).getContent();
+        } else {
+            sessions = List.of();
+        }
+
+        return sessions.stream()
+                .map(s -> LiveSessionResponse.summary(s, joinable(s)))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<LiveSessionResponse> forBatch(Long batchId) {
         return sessionRepository.findByBatchIdOrderByScheduledStartAtDesc(batchId).stream()
                 .map(s -> LiveSessionResponse.summary(s, joinable(s)))
