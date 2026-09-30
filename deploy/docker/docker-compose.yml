@@ -82,6 +82,10 @@ volumes:
   kafka-data:
   file-storage:
   piston-packages:
+  # Class recordings. Shared between liveclass-service (which reads finished
+  # files to serve them) and livekit-egress (which writes them) - nothing else
+  # mounts it.
+  recordings:
 
 services:
 
@@ -204,6 +208,42 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:7880:7880"
       - "${BIND_ADDRESS:-127.0.0.1}:7881:7881"
       - "${BIND_ADDRESS:-127.0.0.1}:7882:7882/udp"
+
+  # Records a class on request: a headless Chromium composites the room the same
+  # way a viewer would see it, and ffmpeg encodes what it renders to a file on
+  # the shared `recordings` volume. This is the heaviest container in the stack
+  # - real time video compositing plus encoding - and LiveKit's own guidance is
+  # roughly 4 vCPU / 4 GB per concurrent recording. It only runs while a
+  # recording is in progress; `docker compose up -d` without `livekit-egress`
+  # in the argument list starts every other service without it, and the
+  # record button simply fails with "media server unreachable" until it is.
+  livekit-egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    networks: [itilms]
+    # Chrome's own sandbox needs a capability Docker does not grant by default;
+    # this is LiveKit's documented alternative to running the container
+    # privileged.
+    cap_add:
+      - SYS_ADMIN
+    # Chrome is a heavy /dev/shm user; the 64 MB Docker default makes it crash
+    # under real video, not just run slowly.
+    shm_size: 512m
+    environment:
+      EGRESS_CONFIG: |
+        log_level: info
+        api_key: ${LIVEKIT_API_KEY:?Set LIVEKIT_API_KEY in deploy/docker/.env}
+        api_secret: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in deploy/docker/.env}
+        ws_url: ws://livekit:7880
+        redis:
+          address: redis:6379
+    volumes:
+      - recordings:/recordings
+    depends_on:
+      livekit:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   mailpit:
     image: axllent/mailpit:v1.31
@@ -470,6 +510,8 @@ services:
       LIVEKIT_WS_URL: ${LIVEKIT_WS_URL:-ws://localhost:7880}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?Set LIVEKIT_API_KEY in deploy/docker/.env}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in deploy/docker/.env}
+    volumes:
+      - recordings:/recordings
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8091/actuator/health || exit 1"]

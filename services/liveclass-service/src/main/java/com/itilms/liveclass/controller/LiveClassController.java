@@ -57,6 +57,7 @@ public class LiveClassController {
     private final StudentParticipationService participationService;
     private final RoomControlService controlService;
     private final LiveQuestionService questionService;
+    private final com.itilms.liveclass.service.RecordingService recordingService;
 
     @Operation(summary = "Internal: how often one student joined their batches' live classes",
             description = "For reporting-service's student progress report. Not reachable through the gateway; "
@@ -182,6 +183,39 @@ public class LiveClassController {
     @PostMapping("/sessions/{id}/mute-all")
     public MuteResult muteAll(@PathVariable Long id) {
         return new MuteResult(controlService.muteAll(id));
+    }
+
+    @Operation(summary = "Start recording the class",
+            description = "The class trainer or staff only. One capture at a time; the class must be live.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/sessions/{id}/recording/start")
+    public ResponseEntity<Void> startRecording(@PathVariable Long id) {
+        recordingService.start(id);
+        return ResponseEntity.accepted().build();
+    }
+
+    @Operation(summary = "Stop recording the class",
+            description = "Finishing the file takes a little longer; the recording becomes available once it is ready.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/sessions/{id}/recording/stop")
+    public ResponseEntity<Void> stopRecording(@PathVariable Long id) {
+        recordingService.stop(id);
+        return ResponseEntity.accepted().build();
+    }
+
+    @Operation(summary = "Watch a class's recording",
+            description = "The class trainer/staff, or a student enrolled in the batch. 404 until one exists. "
+                    + "Returns the whole file rather than honouring byte ranges, so the frontend fetches it once "
+                    + "and scrubs within what it has downloaded.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/sessions/{id}/recording")
+    public ResponseEntity<org.springframework.core.io.Resource> recording(@PathVariable Long id) throws java.io.IOException {
+        java.io.File file = recordingService.fileFor(id);
+        var resource = new org.springframework.core.io.FileSystemResource(file);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.valueOf("video/mp4"))
+                .contentLength(resource.contentLength())
+                .body(resource);
     }
 
     @Operation(summary = "Ask the class a question",

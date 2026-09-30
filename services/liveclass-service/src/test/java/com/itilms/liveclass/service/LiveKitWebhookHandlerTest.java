@@ -77,7 +77,7 @@ class LiveKitWebhookHandlerTest {
     }
 
     private static WebhookNotice notice(String id, String event, String identity, Instant at) {
-        return new WebhookNotice(id, event, ROOM, "RM_abc", identity, null, at);
+        return new WebhookNotice(id, event, ROOM, "RM_abc", identity, null, at, null, null);
     }
 
     private static Instant at(int minutesFromStart) {
@@ -153,5 +153,45 @@ class LiveKitWebhookHandlerTest {
         handler.handle(notice("EV_7", WebhookNotice.PARTICIPANT_JOINED, "user-5", at(0)));
         verify(events).notifyBatch(eq(3L), eq("LIVE_CLASS"), anyString(), anyString(), eq("/live/42"));
         assertThat(session.getStatus()).isEqualTo(LiveSessionStatus.LIVE);
+    }
+
+    @Test
+    @DisplayName("A completed capture clears the egress id and publishes the recording")
+    void egressCompleted() {
+        session.setEgressId("EG_1");
+        session.setRecordingFilePath("/recordings/itilms-session-42/123.mp4");
+
+        handler.handle(egressNotice("EV_8", "EG_1", "EGRESS_COMPLETE"));
+
+        assertThat(session.getEgressId()).isNull();
+        assertThat(session.getRecordingUrl()).isEqualTo("/api/liveclass/sessions/7/recording");
+    }
+
+    @Test
+    @DisplayName("A failed capture clears the egress id but publishes no recording")
+    void egressFailed() {
+        session.setEgressId("EG_1");
+        session.setRecordingFilePath("/recordings/itilms-session-42/123.mp4");
+
+        handler.handle(egressNotice("EV_9", "EG_1", "EGRESS_FAILED"));
+
+        assertThat(session.getEgressId()).isNull();
+        assertThat(session.getRecordingUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("egress_ended for a capture that was superseded is ignored")
+    void egressEndedForAStaleCapture() {
+        session.setEgressId("EG_2");
+        session.setRecordingFilePath("/recordings/itilms-session-42/999.mp4");
+
+        handler.handle(egressNotice("EV_10", "EG_1", "EGRESS_COMPLETE"));
+
+        assertThat(session.getEgressId()).isEqualTo("EG_2");
+        assertThat(session.getRecordingUrl()).isNull();
+    }
+
+    private static WebhookNotice egressNotice(String id, String egressId, String egressStatus) {
+        return new WebhookNotice(id, WebhookNotice.EGRESS_ENDED, ROOM, null, null, null, at(30), egressId, egressStatus);
     }
 }

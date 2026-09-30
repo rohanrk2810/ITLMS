@@ -20,6 +20,7 @@ import com.itilms.liveclass.entity.LiveParticipant;
 import com.itilms.liveclass.entity.LiveSession;
 import com.itilms.liveclass.entity.LiveSessionStatus;
 import com.itilms.liveclass.entity.ParticipantRole;
+import com.itilms.liveclass.livekit.LiveKitGateway;
 import com.itilms.liveclass.repository.LiveParticipantRepository;
 import com.itilms.liveclass.repository.LiveSessionRepository;
 import com.itilms.liveclass.service.LiveAttendanceService;
@@ -63,6 +64,7 @@ public class LiveAttendanceServiceImpl implements LiveAttendanceService {
     private final LiveSessionRepository sessionRepository;
     private final LiveParticipantRepository participantRepository;
     private final com.itilms.liveclass.repository.LiveQuestionRepository questionRepository;
+    private final LiveKitGateway liveKit;
     private final LiveClassProperties props;
     private final EventPublisher events;
 
@@ -82,6 +84,9 @@ public class LiveAttendanceServiceImpl implements LiveAttendanceService {
         Instant closeAt = closedAt != null ? closedAt : inferCloseTime(session, participants);
         session.markEnded(closeAt);
         questionRepository.closeAllOpen(liveSessionId, closeAt);
+        if (session.getEgressId() != null) {
+            liveKit.stopEgressQuietly(session.getEgressId());
+        }
 
         // Nobody's leave event arrives when the room is torn down around them, or
         // when a laptop lid closes and LiveKit's own timeout is what ends the

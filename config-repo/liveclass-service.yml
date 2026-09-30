@@ -29,6 +29,11 @@ itilms:
     # minutes, not for the rest of the course.
     token-ttl: 4h
     webhook-api-key: ${LIVEKIT_API_KEY}
+    # Where a class recording is written - a volume this container and the
+    # livekit-egress container both mount, so a file Egress just finished is
+    # one this service can read at once. No cloud upload is configured: a
+    # self-hosted deployment has nowhere else to put it by default.
+    recording-storage-path: ${LIVE_RECORDING_PATH:/recordings}
 
   live-class:
     # A student who was in the room for at least this share of the session
