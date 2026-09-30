@@ -603,4 +603,112 @@ class AuthServiceImplTest {
             assertThat(rollsBackOn("login", args, new IllegalStateException("boom"))).isTrue();
         }
     }
+
+    @Nested
+    @DisplayName("One active login per user")
+    class SingleSession {
+
+        private User signedInUser() {
+            User user = user(1, UserStatus.ACTIVE);
+            when(userRepository.findByEmailOrPhone("asha@test.local")).thenReturn(Optional.of(user));
+            when(passwordEncoder.matches("Passw0rd!", "stored-hash")).thenReturn(true);
+            return user;
+        }
+
+        private RefreshToken liveSession(Instant lastActivity) {
+            RefreshToken t = storedToken(1, "old");
+            t.setLastActivityAt(lastActivity);
+            return t;
+        }
+
+        private void login() {
+            service.login(new LoginRequest("asha@test.local", "Passw0rd!"), CLIENT);
+        }
+
+        @Test
+        void newLoginEndsTheEarlierSessionUnderReplace() {
+            signedInUser();
+            when(refreshTokenRepository.findLiveSessions(eq(1L), any()))
+                    .thenReturn(java.util.List.of(liveSession(Instant.now())));
+            when(refreshTokenRepository.revokeAllForUser(eq(1L), any(), eq("NEW_LOGIN"))).thenReturn(1);
+
+            login();
+
+            verify(refreshTokenRepository).revokeAllForUser(eq(1L), any(), eq("NEW_LOGIN"));
+            verify(refreshTokenRepository).save(any(RefreshToken.class));
+        }
+
+        @Test
+        void firstLoginRevokesNothing() {
+            signedInUser();
+            when(refreshTokenRepository.findLiveSessions(eq(1L), any())).thenReturn(java.util.List.of());
+
+            login();
+
+            verify(refreshTokenRepository, never()).revokeAllForUser(anyLong(), any(), anyString());
+        }
+
+        @Test
+        void denyPolicyRefusesWhileAnotherSessionIsInUse() {
+            properties.getSecurity().getSessions()
+                    .setConflictPolicy(IdentityProperties.Security.ConflictPolicy.DENY);
+            signedInUser();
+            when(refreshTokenRepository.findLiveSessions(eq(1L), any()))
+                    .thenReturn(java.util.List.of(liveSession(Instant.now())));
+
+            assertThatThrownBy(this::login).isInstanceOf(ForbiddenOperationException.class);
+            verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
+            verify(refreshTokenRepository, never()).revokeAllForUser(anyLong(), any(), anyString());
+        }
+
+        @Test
+        void denyPolicyIgnoresASessionIdlePastTheTimeout() {
+            properties.getSecurity().getSessions()
+                    .setConflictPolicy(IdentityProperties.Security.ConflictPolicy.DENY);
+            signedInUser();
+            when(refreshTokenRepository.findLiveSessions(eq(1L), any()))
+                    .thenReturn(java.util.List.of(liveSession(Instant.now().minus(Duration.ofHours(3)))));
+
+            login();
+
+            verify(refreshTokenRepository).revokeAllForUser(eq(1L), any(), eq("NEW_LOGIN"));
+        }
+
+        @Test
+        void roleOutsideThePolicyMayKeepSeveralSessions() {
+            properties.getSecurity().getSessions().setSingleSessionRoles(java.util.List.of("ADMIN"));
+            signedInUser(); // a STUDENT
+
+            login();
+
+            verify(refreshTokenRepository, never()).findLiveSessions(anyLong(), any());
+            verify(refreshTokenRepository, never()).revokeAllForUser(anyLong(), any(), anyString());
+        }
+
+        @Test
+        void replayOfATokenEndedByANewLoginDoesNotKillTheNewSession() {
+            RefreshToken old = storedToken(1, "old");
+            old.revoke("NEW_LOGIN");
+            when(refreshTokenRepository.findByTokenHash("hash:old")).thenReturn(Optional.of(old));
+
+            assertThatThrownBy(() -> service.refresh("old", CLIENT))
+                    .isInstanceOf(BadCredentialsException.class)
+                    .hasMessageContaining("another device");
+            verify(refreshTokenRepository, never()).revokeAllForUser(anyLong(), any());
+        }
+
+        @Test
+        void rotationKeepsTheSessionIdentity() {
+            RefreshToken old = storedToken(1, "old");
+            old.setSessionId("sess-1");
+            when(refreshTokenRepository.findByTokenHash("hash:old")).thenReturn(Optional.of(old));
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user(1, UserStatus.ACTIVE)));
+
+            service.refresh("old", CLIENT);
+
+            ArgumentCaptor<RefreshToken> saved = ArgumentCaptor.forClass(RefreshToken.class);
+            verify(refreshTokenRepository, org.mockito.Mockito.atLeastOnce()).save(saved.capture());
+            assertThat(saved.getAllValues()).extracting(RefreshToken::getSessionId).containsOnly("sess-1");
+        }
+    }
 }

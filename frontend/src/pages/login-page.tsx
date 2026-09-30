@@ -1,10 +1,10 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { login } from '@/api/auth'
-import { apiErrorMessage } from '@/api/client'
+import { SIGNED_OUT_NOTICE_KEY, apiErrorMessage } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,18 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
+
+  useEffect(() => {
+    try {
+      const notice = sessionStorage.getItem(SIGNED_OUT_NOTICE_KEY)
+      if (notice) {
+        sessionStorage.removeItem(SIGNED_OUT_NOTICE_KEY)
+        toast.warning(notice)
+      }
+    } catch {
+      /* no storage, no notice */
+    }
+  }, [])
 
   const mutation = useMutation({
     mutationFn: () => login(identifier, password),

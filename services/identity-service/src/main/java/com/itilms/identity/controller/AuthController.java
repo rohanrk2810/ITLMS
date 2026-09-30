@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.itilms.common.dto.ApiMessage;
 import com.itilms.common.security.AppPrincipal;
+import com.itilms.common.security.Roles;
 import com.itilms.identity.dto.request.ChangePasswordRequest;
 import com.itilms.identity.dto.request.ForgotPasswordRequest;
 import com.itilms.identity.dto.request.LoginRequest;
@@ -19,6 +21,7 @@ import com.itilms.identity.dto.request.RefreshTokenRequest;
 import com.itilms.identity.dto.request.RegisterRequest;
 import com.itilms.identity.dto.request.ResetPasswordRequest;
 import com.itilms.identity.dto.response.AuthResponse;
+import com.itilms.identity.dto.response.SessionResponse;
 import com.itilms.identity.dto.response.UserResponse;
 import com.itilms.identity.service.AuthService;
 
@@ -138,6 +141,23 @@ public class AuthController {
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal AppPrincipal principal) {
         return authService.currentUser(principal.userId());
+    }
+
+    @Operation(summary = "My login sessions",
+            description = "Recent sessions with login time, last activity, logout time and status.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/sessions")
+    public java.util.List<SessionResponse> mySessions(@AuthenticationPrincipal AppPrincipal principal) {
+        return authService.sessions(principal.userId());
+    }
+
+    @Operation(summary = "A user's login sessions (admin)")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @GetMapping("/sessions/user/{userId}")
+    public java.util.List<SessionResponse> userSessions(@PathVariable Long userId) {
+        return authService.sessions(userId);
     }
 
     /**

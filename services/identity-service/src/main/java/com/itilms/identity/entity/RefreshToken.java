@@ -63,6 +63,26 @@ public class RefreshToken {
     @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
+    /** Constant across rotations: identifies one sign-in on one device. */
+    @Column(name = "session_id", nullable = false, length = 36)
+    private String sessionId;
+
+    /** Readable summary of the browser/OS, derived from the user agent. */
+    @Column(name = "device_label", length = 120)
+    private String deviceLabel;
+
+    @Column(name = "session_started_at", nullable = false)
+    @Builder.Default
+    private Instant sessionStartedAt = Instant.now();
+
+    @Column(name = "last_activity_at", nullable = false)
+    @Builder.Default
+    private Instant lastActivityAt = Instant.now();
+
+    /** Why the session ended when it was not the user's own doing (see {@link RevokeReason}). */
+    @Column(name = "revoke_reason", length = 30)
+    private String revokeReason;
+
     @Column(name = "created_at", nullable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();
@@ -74,6 +94,13 @@ public class RefreshToken {
     public void revoke() {
         if (revokedAt == null) {
             revokedAt = Instant.now();
+        }
+    }
+
+    public void revoke(String reason) {
+        if (revokedAt == null) {
+            revokedAt = Instant.now();
+            revokeReason = reason;
         }
     }
 }
