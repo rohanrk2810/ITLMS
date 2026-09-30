@@ -9,6 +9,7 @@ import {
   type LiveSessionResponse,
   answerQuestion,
   classQuestions,
+  fetchRecording,
   getLiveSessionStatus,
 } from '@/api/live-classes'
 import { apiErrorMessage } from '@/api/client'
@@ -18,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ContentProtection } from '@/components/content-protection'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 import { QuestionHistoryList } from './question-history-list'
 
@@ -38,6 +40,8 @@ export function ClassReviewPage() {
   const [session, setSession] = useState<LiveSessionResponse | null>(null)
   const [questions, setQuestions] = useState<LiveQuestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [videoLoading, setVideoLoading] = useState(false)
 
   const refresh = () => {
     if (!classSessionId) return
@@ -62,6 +66,30 @@ export function ClassReviewPage() {
   }, [classSessionId])
 
   const answeredCount = useMemo(() => questions?.filter((q) => q.myAnswer).length ?? 0, [questions])
+
+  useEffect(() => {
+    if (!session?.recordingUrl) return
+    let cancelled = false
+    let objectUrl: string | null = null
+    setVideoLoading(true)
+    fetchRecording(session.id)
+      .then((url) => {
+        if (cancelled) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        objectUrl = url
+        setVideoUrl(url)
+      })
+      .catch((err: unknown) => toast.error(apiErrorMessage(err, 'Could not load the recording.')))
+      .finally(() => {
+        if (!cancelled) setVideoLoading(false)
+      })
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [session?.id, session?.recordingUrl])
 
   function jumpTo(offsetSeconds: number) {
     const video = videoRef.current
@@ -102,8 +130,14 @@ export function ClassReviewPage() {
       </div>
 
       {session.recordingUrl ? (
-        // eslint-disable-next-line jsx-a11y/media-has-caption
-        <video ref={videoRef} src={session.recordingUrl} controls className="w-full rounded-lg border bg-black" />
+        <ContentProtection active={!isHost} watermarkLabel={user ? `${user.fullName} · ${user.email}` : ''}>
+          {videoLoading && !videoUrl ? (
+            <Skeleton className="aspect-video w-full" />
+          ) : (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video ref={videoRef} src={videoUrl ?? undefined} controls className="w-full rounded-lg border bg-black" />
+          )}
+        </ContentProtection>
       ) : (
         <Card>
           <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">

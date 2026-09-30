@@ -30,6 +30,10 @@ public record LiveSessionResponse(
         int peakParticipants,
         boolean recordingEnabled,
         String recordingUrl,
+
+        @Schema(description = "A capture is running right now")
+        boolean recording,
+
         boolean attendanceComputed,
 
         @Schema(description = "True when the room will accept a join request at this moment")
@@ -56,7 +60,7 @@ public record LiveSessionResponse(
                 s.getSessionDate(), s.getStartTime(), s.getEndTime(),
                 s.getScheduledStartAt(), s.getScheduledEndAt(),
                 s.getStatus().name(), s.getStartedAt(), s.getEndedAt(),
-                s.getPeakParticipants(), s.isRecordingEnabled(), s.getRecordingUrl(),
+                s.getPeakParticipants(), s.isRecordingEnabled(), s.getRecordingUrl(), s.getEgressId() != null,
                 s.isAttendanceComputed(), joinable, participants);
     }
 }

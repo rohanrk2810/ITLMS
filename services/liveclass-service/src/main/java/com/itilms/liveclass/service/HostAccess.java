@@ -52,6 +52,20 @@ public class HostAccess {
         }
     }
 
+    /** A host of the class, or a student enrolled in it - the two audiences a recording is for. */
+    public void requireHostOrEnrolled(LiveSession session) {
+        AppPrincipal caller = SecurityUtils.requirePrincipal();
+        if (caller.isStaff() || caller.isTrainer()) {
+            requireHostOf(session);
+            return;
+        }
+        if (caller.isStudent()) {
+            requireEnrolled(caller, session);
+            return;
+        }
+        throw new ForbiddenOperationException("You cannot view this class.");
+    }
+
     /** A student must hold an active place in the batch, checked now rather than remembered. */
     public void requireEnrolled(AppPrincipal student, LiveSession session) {
         if (student.profileId() == null) {
