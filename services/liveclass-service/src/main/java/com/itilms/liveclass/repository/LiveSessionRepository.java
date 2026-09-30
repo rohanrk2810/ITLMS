@@ -125,4 +125,18 @@ public interface LiveSessionRepository extends JpaRepository<LiveSession, Long> 
             """)
     List<LiveSession> findUpcomingForBatches(@Param("batchIds") List<Long> batchIds,
                                              @Param("from") Instant from);
+
+    /**
+     * A student's or trainer's finished classes, most recent first - the list a recording is opened from.
+     *
+     * <p>Keyed off the status, not the scheduled end time: a class the trainer closed early is just as finished as
+     * one that ran its full slot, and its scheduled end may still be well in the future.
+     */
+    @Query("""
+            SELECT s FROM LiveSession s
+            WHERE s.batchId IN :batchIds
+              AND s.status = com.itilms.liveclass.entity.LiveSessionStatus.ENDED
+            ORDER BY s.scheduledStartAt DESC
+            """)
+    Page<LiveSession> findPastForBatches(@Param("batchIds") List<Long> batchIds, Pageable pageable);
 }

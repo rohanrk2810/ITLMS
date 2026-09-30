@@ -242,6 +242,7 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | POST | /api/liveclass/class-sessions/{classSessionId}/join | any signed-in user | Join — checks batch-service that the caller belongs, mints a signed LiveKit token (student token ≠ editable into a trainer token) |
 | GET | /api/liveclass/class-sessions/{classSessionId} | any signed-in user | Room status for a timetable session |
 | GET | /api/liveclass/upcoming | any signed-in user | My upcoming live classes |
+| GET | /api/liveclass/past | any signed-in user | My finished live classes, most recent first - where a recording is reviewed from |
 | GET | /api/liveclass/me/attendance | STUDENT | My own time-in-room history |
 | GET | /api/liveclass/sessions/{id} | ACADEMIC | A live class with its participant list |
 | GET | /api/liveclass/batches/{batchId} | ACADEMIC | A batch's live classes |
@@ -258,6 +259,9 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | GET | /api/liveclass/class-sessions/{classSessionId}/questions | any signed-in user | A class's questions in the order asked, each with its `offsetSeconds`/`offsetLabel`. Students see the answer key only once a question is closed or they have answered |
 | GET | /api/liveclass/class-sessions/{classSessionId}/questions/open | any signed-in user | The question open right now, or 204 |
 | POST | /api/liveclass/questions/{questionId}/answer | STUDENT | Answer a question, once. Answering after it closed (e.g. from the recording) is flagged `viaRecording` |
+
+Ending a class (by hand, or by the sweep settling a room nobody closed) closes whatever question was still open, so a
+recording never carries a question stuck "open" forever.
 
 ### Webhook — `/api/liveclass/webhook`
 | Method | Path | Role | Does |

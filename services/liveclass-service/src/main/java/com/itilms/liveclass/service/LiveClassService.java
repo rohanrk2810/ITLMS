@@ -47,6 +47,9 @@ public interface LiveClassService {
     /** Live classes coming up for the signed-in user. */
     List<LiveSessionResponse> upcomingForCaller();
 
+    /** The signed-in user's finished classes, most recent first - where a recording is reviewed from. */
+    List<LiveSessionResponse> pastForCaller();
+
     List<LiveSessionResponse> forBatch(Long batchId);
 
     /** The signed-in student's own room time in one batch. */

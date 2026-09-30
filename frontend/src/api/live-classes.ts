@@ -56,6 +56,11 @@ export async function upcomingLiveClasses(): Promise<LiveSessionResponse[]> {
   return data
 }
 
+export async function pastLiveClasses(): Promise<LiveSessionResponse[]> {
+  const { data } = await apiClient.get<LiveSessionResponse[]>('/api/liveclass/past')
+  return data
+}
+
 export async function getLiveSessionStatus(classSessionId: number | string): Promise<LiveSessionResponse> {
   const { data } = await apiClient.get<LiveSessionResponse>(`/api/liveclass/class-sessions/${classSessionId}`)
   return data
