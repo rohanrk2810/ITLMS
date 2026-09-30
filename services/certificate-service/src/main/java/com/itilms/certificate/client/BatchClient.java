@@ -18,6 +18,13 @@ public interface BatchClient {
     @GetMapping("/api/attendance/students/{studentId}")
     AttendanceSummary attendance(@PathVariable("studentId") Long studentId, @RequestParam("batchId") Long batchId);
 
+    /** Only the name is needed, to print and list which batch the certificate is for. */
+    @GetMapping("/api/batches/{id}")
+    BatchInfo batch(@PathVariable("id") Long id);
+
+    record BatchInfo(Long id, String batchCode, String name) {
+    }
+
     record AttendanceSummary(Long studentId, Long batchId, int attendedSessions, int totalSessions,
                              BigDecimal attendancePercent) {
     }
@@ -28,9 +35,18 @@ public interface BatchClient {
 
         @Override
         public BatchClient create(Throwable cause) {
-            return (studentId, batchId) -> {
-                log.warn("batch-service unreachable reading attendance of student {}", studentId, cause);
-                return null;
+            return new BatchClient() {
+                @Override
+                public AttendanceSummary attendance(Long studentId, Long batchId) {
+                    log.warn("batch-service unreachable reading attendance of student {}", studentId, cause);
+                    return null;
+                }
+
+                @Override
+                public BatchInfo batch(Long id) {
+                    log.warn("batch-service unreachable reading batch {}", id, cause);
+                    return null;
+                }
             };
         }
     }

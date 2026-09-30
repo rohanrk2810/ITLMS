@@ -59,14 +59,14 @@ public class BrandingController {
     }
 
     @PreAuthorize(Roles.ADMIN_ONLY)
-    @PostMapping(value = "/api/branding/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/api/branding/logo")
     public BrandingResponse uploadLogo(@RequestPart("file") MultipartFile file,
                                        @AuthenticationPrincipal AppPrincipal admin) throws IOException {
         return service.setLogo(file.getBytes(), admin.userId());
     }
 
     @PreAuthorize(Roles.ADMIN_ONLY)
-    @PostMapping(value = "/api/branding/favicon", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/api/branding/favicon")
     public BrandingResponse uploadFavicon(@RequestPart("file") MultipartFile file,
                                           @AuthenticationPrincipal AppPrincipal admin) throws IOException {
         return service.setFavicon(file.getBytes(), admin.userId());

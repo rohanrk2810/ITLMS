@@ -67,7 +67,10 @@ const FeePlanDetailPage = lazy(() =>
 )
 
 const CertificatesPage = lazy(() =>
-  import('@/pages/certificates/certificates-page').then((m) => ({ default: m.CertificatesPage })),
+  import('@/pages/certificates/certificates-index-page').then((m) => ({ default: m.CertificatesIndexPage })),
+)
+const VerifyCertificatePage = lazy(() =>
+  import('@/pages/verify-certificate-page').then((m) => ({ default: m.VerifyCertificatePage })),
 )
 
 const LeadsPage = lazy(() => import('@/pages/admissions/leads-page').then((m) => ({ default: m.LeadsPage })))
@@ -131,7 +134,7 @@ const queryClient = new QueryClient({
 
 const ACADEMIC: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT']
 const FINANCE_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'FINANCE', 'STUDENT']
-const CERTIFICATE_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'STUDENT']
+const CERTIFICATE_ROLES: readonly Role[] = ['ADMIN', 'STUDENT']
 const ADMISSION_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 const STUDENT_RECORD_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 const BATCH_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
@@ -196,6 +199,9 @@ export default function App() {
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<RootRedirect />} />
+
+              {/* Public: anyone with a certificate ID and code can check it, signed in or not. */}
+              <Route path="/verify/:certificateNo" element={<VerifyCertificatePage />} />
 
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
