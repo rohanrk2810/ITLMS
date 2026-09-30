@@ -9,7 +9,8 @@ import { type JoinTokenResponse, joinLiveClass } from '@/api/live-classes'
 import { apiErrorMessage } from '@/api/client'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { HostControlsPanel } from './host-controls-panel'
+import { HostSidePanel } from './host-side-panel'
+import { LiveQuestionPanel } from './live-question-panel'
 
 export function LiveClassRoomPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -62,7 +63,7 @@ export function LiveClassRoomPage() {
         <span className="text-sm font-medium">{credentials.topic ?? credentials.courseTitle}</span>
       </div>
       <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1">
+        <div className="relative min-w-0 flex-1">
         <LiveKitRoom
           serverUrl={credentials.serverUrl}
           token={credentials.token}
@@ -74,9 +75,12 @@ export function LiveClassRoomPage() {
           onDisconnected={() => void navigate('/app/live-classes')}
         >
           <VideoConference />
+          {!credentials.roomAdmin && <LiveQuestionPanel classSessionId={credentials.classSessionId} />}
         </LiveKitRoom>
         </div>
-        {credentials.roomAdmin && <HostControlsPanel liveSessionId={credentials.liveSessionId} />}
+        {credentials.roomAdmin && (
+          <HostSidePanel liveSessionId={credentials.liveSessionId} classSessionId={credentials.classSessionId} />
+        )}
       </div>
     </div>
   )
