@@ -22,6 +22,7 @@ import com.itilms.identity.dto.request.LoginRequest;
 import com.itilms.identity.dto.request.RegisterRequest;
 import com.itilms.identity.dto.request.ResetPasswordRequest;
 import com.itilms.identity.dto.response.AuthResponse;
+import com.itilms.identity.dto.response.SessionResponse;
 import com.itilms.identity.dto.response.UserResponse;
 import com.itilms.identity.entity.PasswordResetToken;
 import com.itilms.identity.entity.RefreshToken;
@@ -31,6 +32,7 @@ import com.itilms.identity.entity.UserStatus;
 import com.itilms.identity.repository.PasswordResetTokenRepository;
 import com.itilms.identity.repository.RefreshTokenRepository;
 import com.itilms.identity.repository.UserRepository;
+import com.itilms.identity.security.DeviceLabels;
 import com.itilms.identity.security.JwtIssuer;
 import com.itilms.identity.service.AuthService;
 
@@ -43,6 +45,11 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthServiceImpl implements AuthService {
 
     private static final String SERVICE_NAME = "identity-service";
+
+    /** {@code revoke_reason} of a session ended because the same account signed in again. */
+    static final String REASON_NEW_LOGIN = "NEW_LOGIN";
+    static final String SIGNED_IN_ELSEWHERE =
+            "You were signed out because this account signed in on another device.";
 
     /**
      * A real BCrypt hash of a value nobody knows. When an unknown identifier is
@@ -112,6 +119,8 @@ public class AuthServiceImpl implements AuthService {
                     "This account is %s. Please contact the institute administrator."
                             .formatted(user.getStatus().name().toLowerCase()));
         }
+
+        enforceSingleSession(user);
 
         user.recordSuccessfulLogin();
         userRepository.save(user);
@@ -184,6 +193,12 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken stored = refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
 
+        if (stored.getRevokedAt() != null && REASON_NEW_LOGIN.equals(stored.getRevokeReason())) {
+            // Not theft: this device was signed out because the account signed in elsewhere.
+            // The newer session must survive, so nothing else is revoked here.
+            throw new BadCredentialsException(SIGNED_IN_ELSEWHERE);
+        }
+
         if (stored.getRevokedAt() != null) {
             // A token that was already spent is being presented again. Either
             // this is a stale retry or a copy is in circulation, and there is
@@ -215,7 +230,8 @@ public class AuthServiceImpl implements AuthService {
         stored.setReplacedBy(jwtIssuer.hash(replacement));
         refreshTokenRepository.save(stored);
 
-        RefreshToken issued = persistRefreshToken(user, replacement, metadata);
+        RefreshToken issued = persistRefreshToken(user, replacement, metadata,
+                stored.getSessionId(), stored.getSessionStartedAt());
         log.debug("Rotated refresh token {} -> {} for user {}",
                 stored.getId(), issued.getId(), user.getId());
 
@@ -235,7 +251,7 @@ public class AuthServiceImpl implements AuthService {
         }
         refreshTokenRepository.findByTokenHash(jwtIssuer.hash(refreshToken))
                 .ifPresent(token -> {
-                    token.revoke();
+                    token.revoke("LOGOUT");
                     refreshTokenRepository.save(token);
                     log.debug("Signed out session {} for user {}", token.getId(), token.getUserId());
                 });
@@ -372,6 +388,15 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<SessionResponse> sessions(Long userId) {
+        return refreshTokenRepository
+                .findTop20ByUserIdAndReplacedByIsNullOrderBySessionStartedAtDesc(userId).stream()
+                .map(SessionResponse::from)
+                .toList();
+    }
+
     // -----------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------
@@ -386,8 +411,53 @@ public class AuthServiceImpl implements AuthService {
                 UserResponse.from(user));
     }
 
+    /**
+     * The one-active-login rule, decided here on the server so it cannot be bypassed by
+     * a modified client. Under REPLACE the older sessions end and the new login proceeds;
+     * under DENY the new login is refused while another session is genuinely live (one
+     * idle past the timeout no longer counts, or a closed browser would lock the user out
+     * for the full refresh-token lifetime).
+     *
+     * <p>An already-issued access token stays valid until it expires (itilms.jwt.access-token-ttl),
+     * because the other services verify it without calling back here. The old device cannot
+     * refresh, so it is signed out at the latest one access-token lifetime later.
+     */
+    private void enforceSingleSession(User user) {
+        var sessions = properties.getSecurity().getSessions();
+        if (!sessions.appliesTo(user.getRole().name())) {
+            return;
+        }
+        Instant now = Instant.now();
+        var live = refreshTokenRepository.findLiveSessions(user.getId(), now);
+        if (live.isEmpty()) {
+            return;
+        }
+        if (sessions.getConflictPolicy() == IdentityProperties.Security.ConflictPolicy.DENY) {
+            Instant cutoff = now.minus(sessions.getIdleTimeout());
+            boolean blocked = live.stream().anyMatch(t -> t.getLastActivityAt().isAfter(cutoff));
+            if (blocked) {
+                throw new ForbiddenOperationException(
+                        "This account is already signed in on another device. Sign out there first, "
+                                + "or wait a few minutes if that device is no longer in use.");
+            }
+        }
+        int ended = refreshTokenRepository.revokeAllForUser(user.getId(), now, REASON_NEW_LOGIN);
+        log.info("User {} signed in again: ended {} earlier session(s)", user.getId(), ended);
+        events.audit(SERVICE_NAME, "SESSION_REPLACED", "User", user.getId(), null,
+                java.util.Map.of("endedSessions", ended));
+    }
+
     private RefreshToken persistRefreshToken(User user, String rawToken, ClientMetadata metadata) {
+        return persistRefreshToken(user, rawToken, metadata, java.util.UUID.randomUUID().toString(), Instant.now());
+    }
+
+    private RefreshToken persistRefreshToken(User user, String rawToken, ClientMetadata metadata,
+                                             String sessionId, Instant startedAt) {
         return refreshTokenRepository.save(RefreshToken.builder()
+                .sessionId(sessionId)
+                .sessionStartedAt(startedAt)
+                .lastActivityAt(Instant.now())
+                .deviceLabel(DeviceLabels.of(metadata.userAgent()))
                 .userId(user.getId())
                 .tokenHash(jwtIssuer.hash(rawToken))
                 .expiresAt(jwtIssuer.refreshTokenExpiry())

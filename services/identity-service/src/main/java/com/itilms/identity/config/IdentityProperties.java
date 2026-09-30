@@ -55,6 +55,28 @@ public class IdentityProperties {
         /** Cap on password-reset emails per account per hour. */
         private int maxResetRequestsPerHour = 3;
         private Password password = new Password();
+        private Sessions sessions = new Sessions();
+
+        /**
+         * One active login per user. {@code singleSessionRoles} lists the roles the rule
+         * applies to (all roles by default; an empty list switches it off).
+         */
+        @Getter
+        @Setter
+        public static class Sessions {
+            private java.util.List<String> singleSessionRoles = java.util.List.of(
+                    "ADMIN", "COORDINATOR", "TRAINER", "STUDENT", "FINANCE", "PLACEMENT");
+            /** REPLACE: a new login ends the old session. DENY: the new login is refused. */
+            private ConflictPolicy conflictPolicy = ConflictPolicy.REPLACE;
+            /** Under DENY, a session idle longer than this no longer blocks a new login. */
+            private Duration idleTimeout = Duration.ofMinutes(30);
+
+            public boolean appliesTo(String role) {
+                return singleSessionRoles != null && singleSessionRoles.contains(role);
+            }
+        }
+
+        public enum ConflictPolicy { REPLACE, DENY }
 
         @Getter
         @Setter
