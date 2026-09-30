@@ -54,6 +54,9 @@ const LiveClassesPage = lazy(() =>
 const LiveClassRoomPage = lazy(() =>
   import('@/pages/live-classes/live-class-room-page').then((m) => ({ default: m.LiveClassRoomPage })),
 )
+const ClassReviewPage = lazy(() =>
+  import('@/pages/live-classes/class-review-page').then((m) => ({ default: m.ClassReviewPage })),
+)
 
 const FinanceIndexPage = lazy(() =>
   import('@/pages/finance/finance-index-page').then((m) => ({ default: m.FinanceIndexPage })),
@@ -213,6 +216,7 @@ export default function App() {
 
                     <Route path="/app/live-classes" element={<LiveClassesPage />} />
                     <Route path="/app/live-classes/:sessionId" element={<LiveClassRoomPage />} />
+                    <Route path="/app/live-classes/:classSessionId/review" element={<ClassReviewPage />} />
 
                     <Route path="/app/assessments" element={<AssessmentsIndexPage />} />
                     <Route path="/app/assessments/tests/:quizId" element={<QuizIndexPage />} />
