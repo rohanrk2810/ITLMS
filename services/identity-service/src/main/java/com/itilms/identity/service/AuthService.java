@@ -6,7 +6,10 @@ import com.itilms.identity.dto.request.LoginRequest;
 import com.itilms.identity.dto.request.RegisterRequest;
 import com.itilms.identity.dto.request.ResetPasswordRequest;
 import com.itilms.identity.dto.response.AuthResponse;
+import com.itilms.identity.dto.response.SessionResponse;
 import com.itilms.identity.dto.response.UserResponse;
+
+import java.util.List;
 
 /** Everything a user can do with their own credentials. */
 public interface AuthService {
@@ -36,6 +39,9 @@ public interface AuthService {
     void resetPassword(ResetPasswordRequest request);
 
     UserResponse currentUser(Long userId);
+
+    /** Recent login sessions of one user, newest first (login time, last activity, logout, status). */
+    List<SessionResponse> sessions(Long userId);
 
     /**
      * Where the request came from, recorded against sessions and resets so a

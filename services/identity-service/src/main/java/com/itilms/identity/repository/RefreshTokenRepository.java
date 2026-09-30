@@ -27,6 +27,21 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Query("UPDATE RefreshToken t SET t.revokedAt = :now WHERE t.userId = :userId AND t.revokedAt IS NULL")
     int revokeAllForUser(@Param("userId") Long userId, @Param("now") Instant now);
 
+    /** Ends every session, recording why - used when a newer login replaces them. */
+    @Modifying
+    @Query("UPDATE RefreshToken t SET t.revokedAt = :now, t.revokeReason = :reason "
+            + "WHERE t.userId = :userId AND t.revokedAt IS NULL")
+    int revokeAllForUser(@Param("userId") Long userId, @Param("now") Instant now,
+                         @Param("reason") String reason);
+
+    /** Sessions still usable, newest activity first. */
+    @Query("SELECT t FROM RefreshToken t WHERE t.userId = :userId AND t.revokedAt IS NULL "
+            + "AND t.expiresAt > :now ORDER BY t.lastActivityAt DESC")
+    List<RefreshToken> findLiveSessions(@Param("userId") Long userId, @Param("now") Instant now);
+
+    /** Login history: one row per session (the tip of each rotation chain), newest first. */
+    List<RefreshToken> findTop20ByUserIdAndReplacedByIsNullOrderBySessionStartedAtDesc(Long userId);
+
     /**
      * Housekeeping. Expired rows are worthless but accumulate quickly — one
      * per login per device — and slow the token-hash lookup on every refresh.

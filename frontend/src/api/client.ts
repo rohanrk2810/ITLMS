@@ -76,6 +76,8 @@ export function clearSession() {
 // requests), so a page that fires five queries on mount does not race five
 // refresh calls against the same rotating refresh token - reusing an
 // already-used one revokes the whole session (Doc S12).
+export const SIGNED_OUT_NOTICE_KEY = 'itilms.signedOutNotice'
+
 let refreshPromise: Promise<string | null> | null = null
 
 export function refreshAccessToken(): Promise<string | null> {
@@ -93,7 +95,16 @@ export function refreshAccessToken(): Promise<string | null> {
       applySession(data)
       return data.accessToken
     })
-    .catch(() => {
+    .catch((error: unknown) => {
+      // Ended because the account signed in on another device: leave the reason for the
+      // login page to show, rather than dropping the user there with no explanation.
+      if (apiErrorMessage(error, '').includes('another device')) {
+        try {
+          sessionStorage.setItem(SIGNED_OUT_NOTICE_KEY, apiErrorMessage(error, ''))
+        } catch {
+          /* storage unavailable: the plain login page is still correct */
+        }
+      }
       clearSession()
       return null
     })
