@@ -252,6 +252,12 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | PUT | /api/liveclass/sessions/{id}/participants/{userId}/permissions | ACADEMIC, host | Allow/deny one student's mic, camera or screen; `followRoom` clears the override. Trainers/staff cannot be restricted |
 | POST | /api/liveclass/sessions/{id}/participants/{userId}/mute | ACADEMIC, host | Switch off one student's MICROPHONE, CAMERA or SCREEN_SHARE |
 | POST | /api/liveclass/sessions/{id}/mute-all | ACADEMIC, host | Mute every student microphone (hosts left alone) |
+| POST | /api/liveclass/sessions/{id}/questions | ACADEMIC, host | Ask the class a question (MCQ, multiple select, true/false, short answer, coding, other). Stamped with its offset from the class start; closes any question still open |
+| POST | /api/liveclass/questions/{questionId}/close | ACADEMIC, host | Close a question. Students may still answer it later from the recording |
+| GET | /api/liveclass/questions/{questionId}/answers | ACADEMIC, host | Every student's answer to one question |
+| GET | /api/liveclass/class-sessions/{classSessionId}/questions | any signed-in user | A class's questions in the order asked, each with its `offsetSeconds`/`offsetLabel`. Students see the answer key only once a question is closed or they have answered |
+| GET | /api/liveclass/class-sessions/{classSessionId}/questions/open | any signed-in user | The question open right now, or 204 |
+| POST | /api/liveclass/questions/{questionId}/answer | STUDENT | Answer a question, once. Answering after it closed (e.g. from the recording) is flagged `viaRecording` |
 
 ### Webhook — `/api/liveclass/webhook`
 | Method | Path | Role | Does |

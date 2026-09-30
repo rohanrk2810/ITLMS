@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
  * The class trainer's and staff's controls over what students may switch on. Every button calls the server, which
  * checks the caller is a host of this class; hiding this panel from students is a convenience, not the protection.
  */
-export function HostControlsPanel({ liveSessionId }: { liveSessionId: number }) {
+export function RoomControlsBody({ liveSessionId }: { liveSessionId: number }) {
   const [controls, setControls] = useState<RoomControls | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -69,7 +69,7 @@ export function HostControlsPanel({ liveSessionId }: { liveSessionId: number }) 
   }
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto border-l bg-card p-3 text-sm">
+    <div className="flex flex-col gap-3 text-sm">
       <div>
         <h2 className="font-semibold">Class controls</h2>
         <p className="text-xs text-muted-foreground">What students may switch on. Applies at once.</p>
@@ -103,7 +103,7 @@ export function HostControlsPanel({ liveSessionId }: { liveSessionId: number }) 
           />
         ))}
       </ul>
-    </aside>
+    </div>
   )
 }
 

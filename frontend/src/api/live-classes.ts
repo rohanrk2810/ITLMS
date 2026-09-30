@@ -130,3 +130,112 @@ export async function muteAllStudents(liveSessionId: number): Promise<number> {
 export async function removeFromClass(liveSessionId: number, userId: number): Promise<void> {
   await apiClient.delete(`/api/liveclass/sessions/${liveSessionId}/participants/${userId}`)
 }
+
+export type LiveQuestionType = 'MCQ' | 'MULTIPLE_SELECT' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'CODING' | 'OTHER'
+
+export const LIVE_QUESTION_TYPE_LABEL: Record<LiveQuestionType, string> = {
+  MCQ: 'Single choice (MCQ)',
+  MULTIPLE_SELECT: 'Multiple select',
+  TRUE_FALSE: 'True / False',
+  SHORT_ANSWER: 'Short answer',
+  CODING: 'Coding',
+  OTHER: 'Open question',
+}
+
+export interface AskQuestionInput {
+  type: LiveQuestionType
+  prompt: string
+  options?: string[]
+  correctOptions?: number[]
+  acceptedAnswers?: string[]
+  language?: string
+  starterCode?: string
+  explanation?: string
+  marks?: number
+}
+
+export interface AnswerQuestionInput {
+  selected?: number[]
+  text?: string
+  code?: string
+  language?: string
+}
+
+export interface LiveQuestionMyAnswer {
+  selected: number[] | null
+  text: string | null
+  code: string | null
+  language: string | null
+  correct: boolean | null
+  awardedMarks: number | null
+  viaRecording: boolean
+  submittedAt: string
+}
+
+export interface LiveQuestion {
+  id: number
+  liveSessionId: number
+  classSessionId: number
+  type: LiveQuestionType
+  prompt: string
+  options: string[] | null
+  language: string | null
+  starterCode: string | null
+  marks: number
+  status: 'OPEN' | 'CLOSED'
+  askedAt: string
+  offsetSeconds: number
+  offsetLabel: string
+  correctOptions: number[] | null
+  acceptedAnswers: string[] | null
+  explanation: string | null
+  answered: number | null
+  correctCount: number | null
+  myAnswer: LiveQuestionMyAnswer | null
+}
+
+export interface LiveAnswer {
+  userId: number
+  studentId: number | null
+  displayName: string | null
+  selected: number[] | null
+  text: string | null
+  code: string | null
+  language: string | null
+  correct: boolean | null
+  awardedMarks: number | null
+  viaRecording: boolean
+  submittedAt: string
+}
+
+export async function askQuestion(liveSessionId: number, input: AskQuestionInput): Promise<LiveQuestion> {
+  const { data } = await apiClient.post<LiveQuestion>(`/api/liveclass/sessions/${liveSessionId}/questions`, input)
+  return data
+}
+
+export async function closeQuestion(questionId: number): Promise<LiveQuestion> {
+  const { data } = await apiClient.post<LiveQuestion>(`/api/liveclass/questions/${questionId}/close`)
+  return data
+}
+
+export async function questionAnswers(questionId: number): Promise<LiveAnswer[]> {
+  const { data } = await apiClient.get<LiveAnswer[]>(`/api/liveclass/questions/${questionId}/answers`)
+  return data
+}
+
+export async function classQuestions(classSessionId: number | string): Promise<LiveQuestion[]> {
+  const { data } = await apiClient.get<LiveQuestion[]>(`/api/liveclass/class-sessions/${classSessionId}/questions`)
+  return data
+}
+
+export async function openQuestion(classSessionId: number | string): Promise<LiveQuestion | null> {
+  const { data, status } = await apiClient.get<LiveQuestion>(`/api/liveclass/class-sessions/${classSessionId}/questions/open`, {
+    validateStatus: (s) => s === 200 || s === 204,
+  })
+  return status === 204 ? null : data
+}
+
+export async function answerQuestion(questionId: number, input: AnswerQuestionInput): Promise<LiveQuestion> {
+  const { data } = await apiClient.post<LiveQuestion>(`/api/liveclass/questions/${questionId}/answer`, input)
+  return data
+}

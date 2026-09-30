@@ -15,7 +15,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.itilms.common.security.Roles;
+import com.itilms.liveclass.dto.request.AnswerQuestionRequest;
+import com.itilms.liveclass.dto.request.AskQuestionRequest;
 import com.itilms.liveclass.dto.request.MuteRequest;
+import com.itilms.liveclass.dto.response.LiveAnswerResponse;
+import com.itilms.liveclass.dto.response.LiveQuestionResponse;
+import com.itilms.liveclass.service.LiveQuestionService;
 import com.itilms.liveclass.dto.request.ParticipantPermissionRequest;
 import com.itilms.liveclass.dto.request.RoomPolicyRequest;
 import com.itilms.liveclass.dto.response.JoinTokenResponse;
@@ -51,6 +56,7 @@ public class LiveClassController {
     private final LiveClassService liveClassService;
     private final StudentParticipationService participationService;
     private final RoomControlService controlService;
+    private final LiveQuestionService questionService;
 
     @Operation(summary = "Internal: how often one student joined their batches' live classes",
             description = "For reporting-service's student progress report. Not reachable through the gateway; "
@@ -168,6 +174,55 @@ public class LiveClassController {
     @PostMapping("/sessions/{id}/mute-all")
     public MuteResult muteAll(@PathVariable Long id) {
         return new MuteResult(controlService.muteAll(id));
+    }
+
+    @Operation(summary = "Ask the class a question",
+            description = "MCQ, multiple select, true/false, short answer, coding or other. The question is stamped "
+                    + "with how far into the class it was asked, and pushed to the students in the room. Asking a "
+                    + "new question closes the previous one.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/sessions/{id}/questions")
+    public LiveQuestionResponse ask(@PathVariable Long id, @Valid @RequestBody AskQuestionRequest request) {
+        return questionService.ask(id, request);
+    }
+
+    @Operation(summary = "Close a question", description = "Students can still answer it later from the recording.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/questions/{questionId}/close")
+    public LiveQuestionResponse closeQuestion(@PathVariable Long questionId) {
+        return questionService.closeQuestion(questionId);
+    }
+
+    @Operation(summary = "Every student's answer to a question")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping("/questions/{questionId}/answers")
+    public List<LiveAnswerResponse> answers(@PathVariable Long questionId) {
+        return questionService.answersTo(questionId);
+    }
+
+    @Operation(summary = "A class's questions, in the order they were asked",
+            description = "Each carries its offset from the class start (for a recording's timeline). Students see the "
+                    + "answer key only once a question has closed or they have answered.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/class-sessions/{classSessionId}/questions")
+    public List<LiveQuestionResponse> questions(@PathVariable Long classSessionId) {
+        return questionService.forClass(classSessionId);
+    }
+
+    @Operation(summary = "The question being asked right now", description = "204 when there is none.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/class-sessions/{classSessionId}/questions/open")
+    public ResponseEntity<LiveQuestionResponse> openQuestion(@PathVariable Long classSessionId) {
+        LiveQuestionResponse open = questionService.openQuestion(classSessionId);
+        return open == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(open);
+    }
+
+    @Operation(summary = "Answer a question", description = "Students only, once per question. After a question has "
+            + "closed this is the recorded-class answer.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/questions/{questionId}/answer")
+    public LiveQuestionResponse answer(@PathVariable Long questionId, @Valid @RequestBody AnswerQuestionRequest request) {
+        return questionService.answer(questionId, request);
     }
 
     /** How many tracks were switched off. */
