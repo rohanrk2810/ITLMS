@@ -119,7 +119,7 @@ public class UserServiceImpl implements UserService {
                     new NotificationRequestedEvent(
                             com.itilms.common.event.DomainEvent.newId(), Instant.now(),
                             List.of(user.getId()), null, null,
-                            "ACCOUNT_CREATED", "Your IT-ILMS account is ready",
+                            "ACCOUNT_CREATED", "Your account is ready",
                             "Sign in with your email and the temporary password below, "
                                     + "then choose a password of your own.",
                             "/login", true,
