@@ -24,13 +24,15 @@ public class EmailComposer {
     private final ITemplateEngine templates;
     private final NotificationProperties props;
     private final EmailProperties mail;
+    private final InstituteName institute;
 
     public Email compose(Content content, Secrets secrets) {
+        String name = institute.get();
         String link = linkFor(content.actionUrl(), secrets);
-        String label = secrets.resetToken() != null ? "Choose a new password" : "Open IT-ILMS";
+        String label = secrets.resetToken() != null ? "Choose a new password" : "Open " + name;
 
         Context context = new Context();
-        context.setVariable("institute", mail.getFromName());
+        context.setVariable("institute", name);
         context.setVariable("title", content.title());
         context.setVariable("message", content.message());
         context.setVariable("link", link);
@@ -48,7 +50,7 @@ public class EmailComposer {
         if (link != null) {
             text.append(label).append(": ").append(link).append("\n\n");
         }
-        text.append("- ").append(mail.getFromName());
+        text.append("- ").append(name);
         return new Email(content.title(), text.toString(), html);
     }
 

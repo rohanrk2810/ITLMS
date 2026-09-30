@@ -101,6 +101,13 @@ spring:
         # Login and password reset are throttled: these are the endpoints a
         # credential-stuffing script aims at (Doc S12).
         # ---------------------------------------------------------------
+        # Branding is read on every page load, including the login page, so it gets no
+        # per-address throttle (the sign-in one would starve a busy campus network).
+        - id: identity-branding
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/public/branding/**,/api/branding/**
+
         - id: identity-auth
           uri: lb://identity-service
           predicates:

@@ -13,7 +13,8 @@ import com.itilms.notification.service.Content;
 
 class EmailComposerTest {
 
-    private final EmailComposer composer = new EmailComposer(engine(), props(), new EmailProperties());
+    private final EmailComposer composer = new EmailComposer(engine(), props(), new EmailProperties(),
+            new InstituteName(null, new EmailProperties()));
 
     private static SpringTemplateEngine engine() {
         ClassLoaderTemplateResolver resolver = new ClassLoaderTemplateResolver();

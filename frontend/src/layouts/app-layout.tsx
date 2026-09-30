@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { GraduationCap, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 
+import { BrandMark } from '@/components/brand-mark'
 import { NotificationBell } from '@/components/notification-bell'
 import { SidebarNav } from '@/components/sidebar-nav'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { UserMenu } from '@/components/user-menu'
@@ -16,8 +18,7 @@ export function AppLayout() {
     <div className="flex min-h-svh bg-background">
       <aside className="hidden w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground md:flex md:flex-col">
         <div className="flex h-14 items-center gap-2 border-b px-4 font-semibold">
-          <GraduationCap className="size-5" />
-          IT Institute LMS
+          <BrandMark />
         </div>
         <SidebarNav />
       </aside>
@@ -25,8 +26,7 @@ export function AppLayout() {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-64 p-0">
           <SheetTitle className="flex h-14 items-center gap-2 border-b px-4 font-semibold">
-            <GraduationCap className="size-5" />
-            IT Institute LMS
+            <BrandMark />
           </SheetTitle>
           <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
         </SheetContent>
@@ -45,6 +45,7 @@ export function AppLayout() {
           </Button>
           <span className="hidden text-sm text-muted-foreground md:inline" />
           <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
             <NotificationBell />
             <UserMenu />
           </div>
