@@ -412,18 +412,39 @@ try {
     check('Student who did nothing is not eligible, with outstanding work listed', e2.eligible === false && e2.outstandingWork?.length > 0, `outstanding=${e2.outstandingWork?.length}`);
     check('Every eligibility criterion was answered by its owning service (none UNAVAILABLE)',
       e2.criteria.every(c => c.outcome !== 'UNAVAILABLE'), e2.criteria.map(c => `${c.key}:${c.outcome}`).join(' '));
-    let r = await api('POST', '/api/certificates/claim', s2Tok, { courseId });
-    check('Claiming without meeting the criteria is refused', r.status >= 400 && r.status < 500, `got ${r.status}`);
+    let r = await api('POST', '/api/certificates/requests', s2Tok, { courseId });
+    check('Requesting without meeting the criteria is refused', r.status >= 400 && r.status < 500, `got ${r.status}`);
 
     // Make student 1 complete: the lesson, the quiz, the assignment, attendance and fees are done above.
     await must('POST', `/api/progress/lessons/${lesson.id}`, s1Tok, { watchedSeconds: 1800, completed: true });
     let e1 = await must('GET', `/api/certificates/eligibility?studentId=${s1.id}&courseId=${courseId}`, s1Tok);
     check('Student who finished everything is eligible', e1.eligible === true,
       e1.criteria.map(c => `${c.key}:${c.outcome}`).join(' ') + ` | left=${(e1.outstandingWork ?? []).join('; ')}`);
-    const cert = await must('POST', '/api/certificates/claim', s1Tok, { courseId });
-    check('Eligible student claimed a certificate', cert.status === 'ISSUED' && !!cert.certificateNo, `no=${cert.certificateNo}`);
     r = await api('POST', '/api/certificates/claim', s1Tok, { courseId });
-    check('A second claim does not issue a duplicate', r.status === 409 || (r.status < 300 && r.json?.certificateNo === cert.certificateNo), `got ${r.status}`);
+    check('Students can no longer issue their own certificate', r.status >= 400, `got ${r.status}`);
+    const req = await must('POST', '/api/certificates/requests', s1Tok, { courseId });
+    check('Eligible student requested a certificate: PENDING, batch from enrolment', req.status === 'PENDING' && !!req.batchId, `status=${req.status} batch=${req.batchId}`);
+    r = await api('POST', '/api/certificates/requests', s1Tok, { courseId });
+    check('A second open request is refused', r.status === 409, `got ${r.status}`);
+    r = await api('POST', `/api/certificates/requests/${req.id}/approve`, s1Tok);
+    check('A student cannot approve their own request', r.status === 403, `got ${r.status}`);
+    r = await api('POST', `/api/certificates/requests/${req.id}/approve`, tTok);
+    check('A trainer cannot approve a request', r.status === 403, `got ${r.status}`);
+    r = await api('GET', '/api/certificates/requests', tTok);
+    check('A trainer cannot list requests unless the institute enabled it', r.status === 403, `got ${r.status}`);
+    r = await api('POST', `/api/certificates/requests/${req.id}/issue`, admin);
+    check('Issuing before approval is refused', r.status >= 400 && r.status < 500, `got ${r.status}`);
+    const detail = await must('GET', `/api/certificates/requests/${req.id}`, admin);
+    check('Admin sees the request with eligibility re-checked', detail.eligibility?.eligible === true, JSON.stringify(detail.eligibility?.eligible));
+    r = await api('POST', `/api/certificates/requests/${req.id}/reject`, admin, { reason: '  ' });
+    check('Rejecting needs a reason', r.status >= 400 && r.status < 500, `got ${r.status}`);
+    await must('POST', `/api/certificates/requests/${req.id}/approve`, admin);
+    const cert = await must('POST', `/api/certificates/requests/${req.id}/issue`, admin);
+    check('Approved request issued a certificate', cert.status === 'ISSUED' && !!cert.certificateNo, `no=${cert.certificateNo}`);
+    const after = (await must('GET', '/api/certificates/requests/me', s1Tok))[0];
+    check('The request now reads ISSUED and points at the certificate', after.status === 'ISSUED' && after.certificateId === cert.id, `status=${after.status}`);
+    r = await api('POST', '/api/certificates/requests', s1Tok, { courseId });
+    check('Holding a certificate blocks a new request', r.status === 409, `got ${r.status}`);
 
     const verifyUrl = `/api/certificates/verify/${cert.certificateNo}`;
     r = await api('GET', verifyUrl, null);

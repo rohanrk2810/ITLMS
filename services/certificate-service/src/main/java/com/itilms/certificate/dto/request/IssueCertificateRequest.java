@@ -12,7 +12,7 @@ import jakarta.validation.constraints.NotNull;
  */
 @Schema(description = "Issue a certificate")
 public record IssueCertificateRequest(
-        @Schema(description = "Ignored when a student claims their own certificate")
+        @Schema(description = "The student to issue the certificate to")
         Long studentId,
 
         @NotNull(message = "Course is required")

@@ -38,28 +38,37 @@ public class CertificatePdfRenderer {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
 
     private final CertificateProperties props;
+    private final InstituteBranding branding;
 
     public byte[] render(Certificate certificate, String verificationUrl) {
+        InstituteBranding.Info institute = branding.get();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4.rotate(), 72, 72, 60, 60);
         PdfWriter writer = PdfWriter.getInstance(document, out);
         document.addTitle("Certificate " + certificate.getCertificateNo());
-        document.addAuthor(props.getInstituteName());
+        document.addAuthor(institute.name());
         document.open();
 
         drawBorder(writer.getDirectContent(), document.getPageSize());
 
-        document.add(centred(props.getInstituteName(), font(FontFactory.HELVETICA_BOLD, 24), 0));
+        addLogo(document, institute.logo());
+        document.add(centred(institute.name(), font(FontFactory.HELVETICA_BOLD, 24), 0));
         document.add(centred("CERTIFICATE OF COMPLETION", font(FontFactory.HELVETICA, 16), 18));
         document.add(centred("This is to certify that", font(FontFactory.HELVETICA_OBLIQUE, 14), 40));
         document.add(centred(certificate.getStudentName(), font(FontFactory.HELVETICA_BOLD, 30), 14));
         document.add(centred("has successfully completed the course", font(FontFactory.HELVETICA_OBLIQUE, 14), 14));
         document.add(centred(certificate.getCourseTitle(), font(FontFactory.HELVETICA_BOLD, 22), 14));
+        if (certificate.getBatchName() != null) {
+            document.add(centred("Batch: " + certificate.getBatchName(), font(FontFactory.HELVETICA, 12), 6));
+        }
         document.add(centred("Issued on " + DATE.format(certificate.getIssueDate()),
-                font(FontFactory.HELVETICA, 12), 30));
+                font(FontFactory.HELVETICA, 12), 24));
 
-        document.add(centred(props.getSignatoryName(), font(FontFactory.HELVETICA_BOLD, 12), 50));
-        document.add(centred(props.getInstituteName(), font(FontFactory.HELVETICA, 10), 2));
+        document.add(centred(institute.signatoryName(), font(FontFactory.HELVETICA_BOLD, 12), 40));
+        if (institute.signatoryTitle() != null) {
+            document.add(centred(institute.signatoryTitle(), font(FontFactory.HELVETICA, 10), 2));
+        }
+        document.add(centred(institute.name(), font(FontFactory.HELVETICA, 10), 2));
 
         Paragraph footer = new Paragraph();
         footer.setAlignment(Element.ALIGN_CENTER);
@@ -73,6 +82,21 @@ public class CertificatePdfRenderer {
 
         document.close();
         return out.toByteArray();
+    }
+
+    /** A logo that cannot be decoded (say a WebP, which the PDF library does not read) is skipped, not fatal. */
+    private static void addLogo(Document document, byte[] bytes) {
+        if (bytes == null) {
+            return;
+        }
+        try {
+            com.lowagie.text.Image logo = com.lowagie.text.Image.getInstance(bytes);
+            logo.scaleToFit(90, 60);
+            logo.setAlignment(Element.ALIGN_CENTER);
+            document.add(logo);
+        } catch (Exception ignored) {
+            // no logo rather than no certificate
+        }
     }
 
     private static void drawBorder(PdfContentByte canvas, Rectangle page) {

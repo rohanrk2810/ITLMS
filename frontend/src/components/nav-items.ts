@@ -67,7 +67,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // A student's own fees, or the finance desk for everyone who runs it (Doc S6.12).
     roles: ['ADMIN', 'COORDINATOR', 'FINANCE', 'STUDENT'],
   },
-  { label: 'Certificates', to: '/app/certificates', icon: Award, roles: ['ADMIN', 'COORDINATOR', 'STUDENT'] },
+  { label: 'Certificates', to: '/app/certificates', icon: Award, roles: ['ADMIN', 'STUDENT'] },
   { label: 'Placements', to: '/app/placements', icon: Briefcase, roles: ['ADMIN', 'PLACEMENT', 'STUDENT'] },
   { label: 'Files', to: '/app/files', icon: FileText, roles: ALL_ROLES },
   { label: 'Announcements', to: '/app/announcements', icon: Megaphone, roles: ALL_ROLES },

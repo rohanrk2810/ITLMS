@@ -54,7 +54,8 @@ class VerificationAndPdfTest {
         when(repository.findByCertificateNo("ITILMS-2026-0000007")).thenReturn(Optional.of(certificate("K7QMX-2HWRP")));
         when(repository.findByCertificateNo("ITILMS-2026-0000008")).thenReturn(Optional.empty());
         CertificateServiceImpl service = new CertificateServiceImpl(repository, null, null, null, null, null,
-                null, new CertificateProperties(), mock(EventPublisher.class), new ObjectMapper());
+                null, new InstituteBranding(null, new CertificateProperties()), null,
+                new CertificateProperties(), mock(EventPublisher.class), new ObjectMapper());
 
         assertThat(service.verify("ITILMS-2026-0000007", "k7qmx-2hwrp").status()).isEqualTo("VALID");
 
@@ -69,7 +70,8 @@ class VerificationAndPdfTest {
     @Test
     @DisplayName("The certificate renders as a PDF")
     void rendersPdf() {
-        byte[] pdf = new CertificatePdfRenderer(new CertificateProperties())
+        byte[] pdf = new CertificatePdfRenderer(new CertificateProperties(),
+                new InstituteBranding(null, new CertificateProperties()))
                 .render(certificate("K7QMX-2HWRP"), "http://localhost:5173/verify/ITILMS-2026-0000007?code=K7QMX-2HWRP");
 
         assertThat(new String(pdf, 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");

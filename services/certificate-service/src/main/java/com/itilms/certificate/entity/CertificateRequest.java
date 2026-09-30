@@ -1,7 +1,6 @@
 package com.itilms.certificate.entity;
 
 import java.time.Instant;
-import java.time.LocalDate;
 
 import com.itilms.common.entity.AuditableEntity;
 
@@ -19,25 +18,19 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** A course certificate (Doc S6.13). */
+/** A student's request for a course certificate, awaiting an admin's decision. */
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "certificates")
-public class Certificate extends AuditableEntity {
+@Table(name = "certificate_requests")
+public class CertificateRequest extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "certificate_no", nullable = false, length = 40)
-    private String certificateNo;
-
-    @Column(name = "verification_code", nullable = false, length = 16)
-    private String verificationCode;
 
     @Column(name = "student_id", nullable = false)
     private Long studentId;
@@ -63,45 +56,45 @@ public class Certificate extends AuditableEntity {
     @Column(name = "batch_name", length = 160)
     private String batchName;
 
-    /** The request this certificate answers; null for one an admin issued directly. */
-    @Column(name = "request_id")
-    private Long requestId;
-
-    @Column(name = "issue_date", nullable = false)
-    private LocalDate issueDate;
-
-    @Column(name = "completion_date")
-    private LocalDate completionDate;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private CertificateStatus status = CertificateStatus.ISSUED;
+    private CertificateRequestStatus status = CertificateRequestStatus.PENDING;
 
-    @Column(name = "revoked_at")
-    private Instant revokedAt;
+    @Column(name = "requested_at", nullable = false)
+    @Builder.Default
+    private Instant requestedAt = Instant.now();
 
-    @Column(name = "revoked_by")
-    private Long revokedBy;
+    @Column(name = "eligibility_snapshot", columnDefinition = "text")
+    private String eligibilitySnapshot;
 
-    @Column(name = "revoked_reason", length = 255)
-    private String revokedReason;
+    @Column(name = "reviewed_by")
+    private Long reviewedBy;
 
-    /** The figures each criterion was checked against at issue, as JSON. */
-    @Column(columnDefinition = "text")
-    private String evidence;
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
 
-    @Column(name = "issued_by")
-    private Long issuedBy;
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 
-    public boolean isValid() {
-        return status == CertificateStatus.ISSUED;
+    @Column(name = "certificate_id")
+    private Long certificateId;
+
+    public void approve(Long adminId, Instant at) {
+        this.status = CertificateRequestStatus.APPROVED;
+        this.reviewedBy = adminId;
+        this.reviewedAt = at;
     }
 
-    public void revoke(String reason, Long byUserId, Instant at) {
-        this.status = CertificateStatus.REVOKED;
-        this.revokedReason = reason;
-        this.revokedBy = byUserId;
-        this.revokedAt = at;
+    public void reject(Long adminId, String reason, Instant at) {
+        this.status = CertificateRequestStatus.REJECTED;
+        this.reviewedBy = adminId;
+        this.reviewedAt = at;
+        this.rejectionReason = reason;
+    }
+
+    public void markIssued(Long certificateId) {
+        this.status = CertificateRequestStatus.ISSUED;
+        this.certificateId = certificateId;
     }
 }

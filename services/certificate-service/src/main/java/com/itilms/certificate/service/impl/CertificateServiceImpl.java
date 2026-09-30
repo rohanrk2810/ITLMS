@@ -23,7 +23,11 @@ import com.itilms.certificate.dto.response.EligibilityResponse;
 import com.itilms.certificate.dto.response.VerificationResponse;
 import com.itilms.certificate.entity.Certificate;
 import com.itilms.certificate.entity.CertificateStatus;
+import com.itilms.certificate.entity.CertificateRequest;
+import com.itilms.certificate.entity.CertificateRequestStatus;
 import com.itilms.certificate.repository.CertificateRepository;
+import com.itilms.certificate.repository.CertificateRequestRepository;
+import com.itilms.certificate.service.InstituteBranding;
 import com.itilms.certificate.service.CertificatePdfRenderer;
 import com.itilms.certificate.service.CertificateService;
 import com.itilms.certificate.service.EligibilityRules;
@@ -60,6 +64,8 @@ public class CertificateServiceImpl implements CertificateService {
     private final FinanceClient financeClient;
     private final AdmissionClient admissionClient;
     private final CertificatePdfRenderer pdfRenderer;
+    private final InstituteBranding branding;
+    private final CertificateRequestRepository requestRepository;
     private final CertificateProperties props;
     private final EventPublisher events;
     private final ObjectMapper objectMapper;
@@ -127,12 +133,7 @@ public class CertificateServiceImpl implements CertificateService {
         List<EligibilityResponse.Criterion> criteria =
                 EligibilityRules.evaluate(facts, props.getCriteria(), props.getCurrencySymbol());
         if (!EligibilityRules.eligible(criteria)) {
-            String unmet = criteria.stream()
-                    .filter(c -> c.outcome() == EligibilityResponse.Outcome.NOT_MET
-                            || c.outcome() == EligibilityResponse.Outcome.UNAVAILABLE)
-                    .map(c -> c.name() + (c.detail() == null ? "" : " (" + c.detail() + ")"))
-                    .reduce((a, b) -> a + "; " + b).orElse("");
-            throw new BusinessRuleException("NOT_ELIGIBLE", "Not yet eligible: " + unmet);
+            throw new BusinessRuleException("NOT_ELIGIBLE", "Not yet eligible: " + EligibilityRules.unmetSummary(criteria));
         }
 
         AdmissionClient.Student student = admissionClient.lookup(List.of(studentId)).stream().findFirst()
@@ -143,6 +144,11 @@ public class CertificateServiceImpl implements CertificateService {
                     "The course could not be read to print its title. Please try again shortly.");
         }
 
+        Long batchId = facts.progress().batchId();
+        BatchClient.BatchInfo batch = batchId == null ? null : batchClient.batch(batchId);
+        CertificateRequest open = requestRepository.findFirstByStudentIdAndCourseIdAndStatusIn(studentId, courseId,
+                List.of(CertificateRequestStatus.PENDING, CertificateRequestStatus.APPROVED)).orElse(null);
+
         Certificate certificate = certificateRepository.save(Certificate.builder()
                 .certificateNo(Codes.certificateNo(certificateRepository.nextSequence()))
                 .verificationCode(VerificationCodes.generate())
@@ -152,7 +158,9 @@ public class CertificateServiceImpl implements CertificateService {
                 .studentName(student.fullName())
                 .courseId(courseId)
                 .courseTitle(course.course().title())
-                .batchId(facts.progress().batchId())
+                .batchId(batchId)
+                .batchName(batch == null ? null : batch.name())
+                .requestId(open == null ? null : open.getId())
                 .issueDate(LocalDate.now(props.getZone()))
                 .completionDate(LocalDate.now(props.getZone()))
                 .status(CertificateStatus.ISSUED)
@@ -161,6 +169,17 @@ public class CertificateServiceImpl implements CertificateService {
                 .build());
 
         String url = verificationUrl(certificate);
+
+        // The certificate only counts as issued if it can actually be produced. Rendering here, inside
+        // the transaction, means a failure rolls the row back and the request stays where it was
+        // (APPROVED) instead of claiming an issue that has no document behind it.
+        pdfRenderer.render(certificate, url);
+
+        if (open != null) {
+            open.markIssued(certificate.getId());
+            requestRepository.save(open);
+        }
+
         events.publishAfterCommit(KafkaTopics.CERTIFICATE_ISSUED, String.valueOf(studentId),
                 new CertificateIssuedEvent(DomainEvent.newId(), Instant.now(), certificate.getId(),
                         certificate.getCertificateNo(), studentId, student.userId(), courseId,
@@ -169,27 +188,17 @@ public class CertificateServiceImpl implements CertificateService {
             // Doc S16: certificate issued - in-app and email.
             events.publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED,
                     NotificationRequestedEvent.toUsersWithEmail(List.of(student.userId()), "CERTIFICATE",
-                            "Your certificate is ready",
-                            "Congratulations on completing %s. Certificate no. %s."
+                            "Your certificate has been issued",
+                            "Your certificate for %s (no. %s) has been issued and is now available in your dashboard."
                                     .formatted(certificate.getCourseTitle(), certificate.getCertificateNo()),
                             "/student/certificates"));
         }
         events.audit(SERVICE_NAME, "CERTIFICATE_ISSUED", "Certificate", certificate.getId(), null,
                 Map.of("certificateNo", certificate.getCertificateNo(), "studentId", studentId,
-                        "courseId", courseId, "selfClaimed", issuer.isStudent()));
+                        "courseId", courseId, "requestId", open == null ? "none" : open.getId()));
 
         log.info("Issued certificate {} to student {} for course {}", certificate.getCertificateNo(), studentId, courseId);
         return CertificateResponse.from(certificate, url);
-    }
-
-    @Override
-    @Transactional
-    public CertificateResponse claim(Long courseId) {
-        AppPrincipal caller = SecurityUtils.requirePrincipal();
-        if (caller.studentIdOrNull() == null) {
-            throw new ForbiddenOperationException("Only a student with a linked profile can claim a certificate.");
-        }
-        return issue(caller.profileId(), courseId);
     }
 
     // -----------------------------------------------------------------
@@ -248,14 +257,17 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public byte[] pdf(Long id) {
         Certificate certificate = require(id);
         SecurityUtils.requireStudentOwnershipOrStaff(certificate.getStudentId());
         if (!certificate.isValid()) {
             throw new BusinessRuleException("This certificate has been revoked and cannot be downloaded.");
         }
-        return pdfRenderer.render(certificate, verificationUrl(certificate));
+        byte[] document = pdfRenderer.render(certificate, verificationUrl(certificate));
+        events.audit(SERVICE_NAME, "CERTIFICATE_DOWNLOADED", "Certificate", id, null,
+                Map.of("certificateNo", certificate.getCertificateNo()));
+        return document;
     }
 
     @Override
@@ -273,7 +285,7 @@ public class CertificateServiceImpl implements CertificateService {
         return new VerificationResponse(certificate.getCertificateNo(),
                 certificate.isValid() ? "VALID" : "REVOKED",
                 certificate.getStudentName(), certificate.getCourseTitle(),
-                certificate.getIssueDate(), props.getInstituteName());
+                certificate.getIssueDate(), branding.get().name());
     }
 
     // -----------------------------------------------------------------
