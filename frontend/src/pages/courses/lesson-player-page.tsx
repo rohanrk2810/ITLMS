@@ -17,6 +17,37 @@ function flattenLessons(modules: { lessons: LessonResponse[] }[]): LessonRespons
   return modules.flatMap((m) => m.lessons)
 }
 
+/** Turns a YouTube / Vimeo / Google Drive share link into an embeddable URL; null for direct video files. */
+function toEmbedUrl(raw: string): string | null {
+  const trimmed = raw.trim()
+  let url: URL
+  try {
+    url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`)
+  } catch {
+    return null
+  }
+  const host = url.hostname.replace(/^(www|m|music)\./, '')
+  if (host === 'youtu.be') {
+    return `https://www.youtube.com/embed/${url.pathname.slice(1)}`
+  }
+  if (host === 'youtube.com') {
+    const id = url.searchParams.get('v')
+    if (id) return `https://www.youtube.com/embed/${id}`
+    const m = url.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]+)/)
+    if (m) return `https://www.youtube.com/embed/${m[1]}`
+  }
+  if (host === 'vimeo.com') {
+    const m = url.pathname.match(/^\/(\d+)/)
+    if (m) return `https://player.vimeo.com/video/${m[1]}`
+  }
+  if (host === 'drive.google.com') {
+    const m = url.pathname.match(/\/file\/d\/([\w-]+)/)
+    const id = m?.[1] ?? url.searchParams.get('id')
+    if (id) return `https://drive.google.com/file/d/${id}/preview`
+  }
+  return null
+}
+
 export function LessonPlayerPage() {
   const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>()
   const queryClient = useQueryClient()
@@ -112,7 +143,17 @@ export function LessonPlayerPage() {
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
-        {lesson.type === 'VIDEO' && lesson.contentUrl && (
+        {lesson.type === 'VIDEO' && lesson.contentUrl && toEmbedUrl(lesson.contentUrl) && (
+          <iframe
+            key={lesson.id}
+            title={lesson.title}
+            src={toEmbedUrl(lesson.contentUrl)!}
+            className="aspect-video w-full bg-black"
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+          />
+        )}
+        {lesson.type === 'VIDEO' && lesson.contentUrl && !toEmbedUrl(lesson.contentUrl) && (
           <video
             key={lesson.id}
             src={lesson.contentUrl}
