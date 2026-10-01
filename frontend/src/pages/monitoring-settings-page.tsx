@@ -30,6 +30,7 @@ const BLANK: MonitoringSettingInput = {
   enabled: true,
   faceVisibility: true,
   cameraRequired: false,
+  microphoneRequired: false,
   warningAfterSeconds: 10,
   showWarning: true,
   warningMessage: '',
@@ -202,6 +203,16 @@ export function MonitoringSettingsPage() {
             <Checkbox checked={form.cameraRequired} onCheckedChange={(v) => set('cameraRequired', v === true)} />
             Students must allow the camera to join
           </label>
+          <label className="flex items-start gap-2 text-sm">
+            <Checkbox checked={form.microphoneRequired} onCheckedChange={(v) => set('microphoneRequired', v === true)} />
+            <span>
+              Students must allow the microphone to join
+              <span className="block text-xs text-muted-foreground">
+                Permission only: nothing is listened to or recorded, because students speak in a live class. A note is
+                kept if the permission is later removed.
+              </span>
+            </span>
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={form.showWarning} onCheckedChange={(v) => set('showWarning', v === true)} />
             Show the student a warning
@@ -259,6 +270,7 @@ export function MonitoringSettingsPage() {
                   <TableHead>Level</TableHead>
                   <TableHead>Monitoring</TableHead>
                   <TableHead>Camera required</TableHead>
+                  <TableHead>Mic required</TableHead>
                   <TableHead>Warn after</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -271,6 +283,7 @@ export function MonitoringSettingsPage() {
                       <Badge variant={s.enabled ? 'default' : 'secondary'}>{s.enabled ? 'ON' : 'OFF'}</Badge>
                     </TableCell>
                     <TableCell>{s.cameraRequired ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{s.microphoneRequired ? 'Yes' : 'No'}</TableCell>
                     <TableCell>{s.warningAfterSeconds}s</TableCell>
                     <TableCell className="text-right">
                       <Button size="sm" variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(s.id)}>

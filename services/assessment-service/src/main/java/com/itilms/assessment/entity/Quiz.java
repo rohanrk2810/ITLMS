@@ -97,6 +97,13 @@ public class Quiz extends AuditableEntity {
     @Column(name = "require_camera", nullable = false)
     private boolean requireCamera;
 
+    /**
+     * The student's microphone must be on: allowed before starting, and the browser reports when it is turned off
+     * or when sustained sound is heard. Level only - no audio is recorded. Events warn and are kept; none ends the attempt.
+     */
+    @Column(name = "require_microphone", nullable = false)
+    private boolean requireMicrophone;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

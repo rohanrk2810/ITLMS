@@ -13,7 +13,9 @@ import { CameraPreview } from '@/components/camera-panel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CAMERA_PROBLEM_TEXT, CameraError, openCamera } from '@/lib/face-detector'
+import { CAMERA_PROBLEM_TEXT, CameraError, openCamera, stopStream } from '@/lib/face-detector'
+import { MIC_PROBLEM_TEXT, MicError, openMicrophone } from '@/lib/microphone'
+import { useMicMonitor } from '@/lib/use-mic-monitor'
 import { useClassMonitor } from '@/lib/use-class-monitor'
 
 /**
@@ -28,18 +30,31 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
     retry: 1,
   })
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [micStream, setMicStream] = useState<MediaStream | null>(null)
   const [skipped, setSkipped] = useState(false)
   const [asking, setAsking] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
   // Stop the camera when leaving the class.
-  useEffect(() => () => stream?.getTracks().forEach((track) => track.stop()), [stream])
+  useEffect(() => () => stopStream(stream), [stream])
+  useEffect(() => () => stopStream(micStream), [micStream])
 
   async function allow() {
     setAsking(true)
     setProblem(null)
     try {
-      setStream(await openCamera())
+      const camera = await openCamera()
+      if (query.data?.microphoneRequired) {
+        try {
+          setMicStream(await openMicrophone())
+        } catch (error) {
+          // Both are needed to join: do not keep a camera running for a class the student cannot enter.
+          stopStream(camera)
+          setProblem(MIC_PROBLEM_TEXT[error instanceof MicError ? error.problem : 'other'])
+          return
+        }
+      }
+      setStream(camera)
     } catch (error) {
       setProblem(CAMERA_PROBLEM_TEXT[error instanceof CameraError ? error.problem : 'other'])
     } finally {
@@ -71,6 +86,12 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
             </li>
             <li>Your trainer and the administrator can see those notes.</li>
           </ul>
+          {settings.microphoneRequired && (
+            <p className="text-muted-foreground">
+              Your microphone is also needed to join. Nothing is listened to or recorded; a note is kept only if it is turned
+              off or blocked.
+            </p>
+          )}
           {settings.cameraRequired && <p className="font-medium">You need to allow the camera to join this class.</p>}
           {problem && (
             <p role="alert" className="text-destructive">
@@ -80,7 +101,7 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
           <div className="flex gap-2">
             <Button onClick={() => void allow()} disabled={asking}>
               {asking ? <Loader2 className="animate-spin" /> : <Camera />}
-              Allow camera and join
+              {settings.microphoneRequired ? 'Allow camera and microphone, and join' : 'Allow camera and join'}
             </Button>
             {!settings.cameraRequired && (
               <Button variant="outline" onClick={() => setSkipped(true)}>
@@ -96,7 +117,7 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
   return (
     <>
       {children}
-      <ClassMonitorRunner classSessionId={classSessionId} stream={stream} settings={settings} />
+      <ClassMonitorRunner classSessionId={classSessionId} stream={stream} micStream={micStream} settings={settings} />
     </>
   )
 }
@@ -104,10 +125,12 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
 function ClassMonitorRunner({
   classSessionId,
   stream,
+  micStream,
   settings,
 }: {
   classSessionId: number
   stream: MediaStream
+  micStream: MediaStream | null
   settings: EffectiveMonitoring
 }) {
   const video = useRef<HTMLVideoElement>(null)
@@ -119,10 +142,30 @@ function ClassMonitorRunner({
     [classSessionId],
   )
   const { status, warn } = useClassMonitor({ stream, video, settings, onEvent })
+  // Only watched for being on and allowed: students speak in a class, so sound is never reported here.
+  const micStatus = useMicMonitor({
+    enabled: settings.microphoneRequired && micStream != null,
+    stream: micStream,
+    threshold: 1,
+    detectSound: false,
+    onEvent: (type) => {
+      if (type === 'MICROPHONE_DISABLED' || type === 'MICROPHONE_PERMISSION_DENIED') onEvent(type)
+    },
+  })
+  const micProblem = settings.microphoneRequired && (micStatus === 'off' || micStatus === 'denied')
 
   return (
     <>
       <CameraPreview stream={stream} video={video} status={status} />
+      {settings.showWarning && micProblem && !warn && (
+        <div
+          role="status"
+          className="pointer-events-none fixed top-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-md border border-amber-500 bg-amber-100 px-4 py-2 text-sm font-medium text-amber-900 shadow-lg dark:bg-amber-950 dark:text-amber-100"
+        >
+          <TriangleAlert className="size-4 shrink-0" />
+          Please keep your microphone allowed and on.
+        </div>
+      )}
       {settings.showWarning && warn && (
         <div
           role="status"

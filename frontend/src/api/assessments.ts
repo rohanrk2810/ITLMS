@@ -22,6 +22,7 @@ export interface StudentQuizResponse {
   maxViolations: number
   /** The camera must be on: allowed before starting and watched for a visible face. */
   requireCamera: boolean
+  requireMicrophone: boolean
   openNow: boolean
   canStart: boolean
   inProgressAttemptId: number | null
@@ -92,6 +93,7 @@ export interface AttemptViewResponse {
   maxViolations: number
   /** The camera must stay on and show the student's face. */
   requireCamera: boolean
+  requireMicrophone: boolean
   /** Violations that have counted so far in this attempt. */
   violationCount: number
   questions: AttemptQuestion[]
@@ -153,12 +155,18 @@ export type ViolationType =
   | 'MULTIPLE_FACES'
   | 'CAMERA_DISABLED'
   | 'CAMERA_PERMISSION_DENIED'
+  | 'MICROPHONE_DISABLED'
+  | 'MICROPHONE_PERMISSION_DENIED'
+  | 'SPEECH_DETECTED'
 
 export const VIOLATION_LABEL: Record<ViolationType, string> = {
   FACE_NOT_DETECTED: 'Face not visible',
   MULTIPLE_FACES: 'More than one face',
   CAMERA_DISABLED: 'Camera turned off',
   CAMERA_PERMISSION_DENIED: 'Camera permission removed',
+  MICROPHONE_DISABLED: 'Microphone turned off',
+  MICROPHONE_PERMISSION_DENIED: 'Microphone permission removed',
+  SPEECH_DETECTED: 'Sound picked up',
   TAB_SWITCH: 'Left the test tab',
   WINDOW_BLUR: 'Left the test window',
   FULLSCREEN_EXIT: 'Left fullscreen',
@@ -376,6 +384,7 @@ export interface QuizResponse {
   secureMode: boolean
   maxViolations: number
   requireCamera: boolean
+  requireMicrophone: boolean
   status: string
   trainerId: number | null
   publishedAt: string | null
@@ -400,6 +409,7 @@ export interface QuizInput {
   secureMode?: boolean
   maxViolations?: number
   requireCamera?: boolean
+  requireMicrophone?: boolean
 }
 
 export interface QuestionOptionInput {

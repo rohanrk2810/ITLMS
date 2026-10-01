@@ -15,15 +15,16 @@ public final class MonitoringRules {
     }
 
     /** What applies to a class when no setting exists at any level: nothing is monitored. */
-    public static final Effective OFF = new Effective(false, true, false, 10, true, null, true, "DEFAULT");
+    public static final Effective OFF = new Effective(false, true, false, false, 10, true, null, true, "DEFAULT");
 
     /** The settings that apply to one class, as a student's browser and the event check need them. */
-    public record Effective(boolean enabled, boolean faceVisibility, boolean cameraRequired,
+    public record Effective(boolean enabled, boolean faceVisibility, boolean cameraRequired, boolean microphoneRequired,
                             int warningAfterSeconds, boolean showWarning, String warningMessage,
                             boolean logEvents, String source) {
 
         static Effective of(MonitoringSetting s) {
-            return new Effective(s.isEnabled(), s.isFaceVisibility(), s.isCameraRequired(), s.getWarningAfterSeconds(),
+            return new Effective(s.isEnabled(), s.isFaceVisibility(), s.isCameraRequired(), s.isMicrophoneRequired(),
+                    s.getWarningAfterSeconds(),
                     s.isShowWarning(), s.getWarningMessage(), s.isLogEvents(), s.getScopeType().name());
         }
     }
@@ -44,6 +45,7 @@ public final class MonitoringRules {
             case FACE_NOT_DETECTED -> durationSeconds != null && durationSeconds >= CRITICAL_AFTER_SECONDS
                     ? MonitoringEvent.Severity.CRITICAL : MonitoringEvent.Severity.WARNING;
             case CAMERA_DISABLED, CAMERA_PERMISSION_DENIED -> MonitoringEvent.Severity.CRITICAL;
+            case MICROPHONE_DISABLED, MICROPHONE_PERMISSION_DENIED -> MonitoringEvent.Severity.WARNING;
         };
     }
 
@@ -51,6 +53,10 @@ public final class MonitoringRules {
     public static boolean accepts(Effective effective, MonitoringEvent.Type type) {
         if (!effective.enabled() || !effective.logEvents()) {
             return false;
+        }
+        // The microphone is only watched where an administrator made it a requirement.
+        if (type == MonitoringEvent.Type.MICROPHONE_DISABLED || type == MonitoringEvent.Type.MICROPHONE_PERMISSION_DENIED) {
+            return effective.microphoneRequired();
         }
         boolean faceType = type == MonitoringEvent.Type.FACE_NOT_DETECTED
                 || type == MonitoringEvent.Type.FACE_RESTORED || type == MonitoringEvent.Type.MULTIPLE_FACES;

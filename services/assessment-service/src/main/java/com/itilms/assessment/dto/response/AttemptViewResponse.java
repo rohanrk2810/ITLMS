@@ -46,6 +46,7 @@ public record AttemptViewResponse(
         int maxViolations,
         @Schema(description = "The camera must stay on and show the student's face")
         boolean requireCamera,
+        boolean requireMicrophone,
         @Schema(description = "Violations that have counted so far in this attempt")
         int violationCount,
         List<Question> questions,
@@ -99,6 +100,6 @@ public record AttemptViewResponse(
                 attempt.getAttemptNo(), quiz.getAttemptsAllowed(), quiz.getTotalMarks(),
                 quiz.getPassPercentage(), attempt.getStartedAt(), attempt.getExpiresAt(),
                 attempt.secondsRemaining(now), quiz.isSecureMode(), quiz.getMaxViolations(),
-                quiz.isRequireCamera(), attempt.getViolationCount(), paper, savedAnswers);
+                quiz.isRequireCamera(), quiz.isRequireMicrophone(), attempt.getViolationCount(), paper, savedAnswers);
     }
 }

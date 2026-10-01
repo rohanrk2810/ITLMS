@@ -26,23 +26,33 @@ public final class MonitoringDtos {
             @Min(3) @Max(300) Integer warningAfterSeconds,
             Boolean showWarning,
             @Size(max = 200) String warningMessage,
-            Boolean logEvents) {
+            Boolean logEvents,
+            /** The student must allow the microphone to join. Permission only: nothing is listened to. */
+            Boolean microphoneRequired) {
+
+        /** A setting that says nothing about the microphone (it stays off). */
+        public SettingRequest(MonitoringSetting.Scope scopeType, Long scopeId, Boolean enabled, Boolean faceVisibility,
+                              Boolean cameraRequired, Integer warningAfterSeconds, Boolean showWarning,
+                              String warningMessage, Boolean logEvents) {
+            this(scopeType, scopeId, enabled, faceVisibility, cameraRequired, warningAfterSeconds, showWarning,
+                    warningMessage, logEvents, null);
+        }
     }
 
     public record SettingResponse(Long id, String scopeType, Long scopeId, boolean enabled, boolean faceVisibility,
-                                  boolean cameraRequired, int warningAfterSeconds, boolean showWarning,
+                                  boolean cameraRequired, boolean microphoneRequired, int warningAfterSeconds, boolean showWarning,
                                   String warningMessage, boolean logEvents, Instant updatedAt) {
 
         public static SettingResponse from(MonitoringSetting s) {
             return new SettingResponse(s.getId(), s.getScopeType().name(), s.getScopeId(), s.isEnabled(),
-                    s.isFaceVisibility(), s.isCameraRequired(), s.getWarningAfterSeconds(), s.isShowWarning(),
+                    s.isFaceVisibility(), s.isCameraRequired(), s.isMicrophoneRequired(), s.getWarningAfterSeconds(), s.isShowWarning(),
                     s.getWarningMessage(), s.isLogEvents(), s.getUpdatedAt());
         }
     }
 
     /** What applies to one class, and where that came from. */
     public record EffectiveResponse(boolean enabled, boolean faceVisibility, boolean cameraRequired,
-                                    int warningAfterSeconds, boolean showWarning, String warningMessage,
+                                    boolean microphoneRequired, int warningAfterSeconds, boolean showWarning, String warningMessage,
                                     boolean logEvents, String source) {
     }
 

@@ -48,6 +48,10 @@ public class MonitoringSetting extends AuditableEntity {
     @Column(name = "camera_required", nullable = false)
     private boolean cameraRequired;
 
+    /** The student must allow the microphone to join; permission only, no listening. */
+    @Column(name = "microphone_required", nullable = false)
+    private boolean microphoneRequired;
+
     @Column(name = "warning_after_seconds", nullable = false)
     private int warningAfterSeconds;
 
