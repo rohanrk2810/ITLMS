@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import {
   type Branding,
+  type BrandingImageKind,
   type UpdateBrandingInput,
   assetUrl,
   getBranding,
@@ -72,7 +73,7 @@ export function BrandingPage() {
   })
 
   const upload = useMutation({
-    mutationFn: ({ kind, file }: { kind: 'logo' | 'favicon'; file: File }) => uploadBrandingImage(kind, file),
+    mutationFn: ({ kind, file }: { kind: BrandingImageKind; file: File }) => uploadBrandingImage(kind, file),
     onSuccess: (next) => {
       apply(next)
       toast.success('Image updated.')
@@ -81,7 +82,7 @@ export function BrandingPage() {
   })
 
   const remove = useMutation({
-    mutationFn: (kind: 'logo' | 'favicon') => removeBrandingImage(kind),
+    mutationFn: (kind: BrandingImageKind) => removeBrandingImage(kind),
     onSuccess: apply,
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not remove the image.')),
   })
@@ -216,6 +217,26 @@ export function BrandingPage() {
           />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sign-in page background</CardTitle>
+          <CardDescription>
+            The picture behind the sign-in card, for example your campus. PNG, JPEG or WebP up to 5 MB. A wide
+            landscape photo works best.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ImagePicker
+            label="Background image"
+            src={assetUrl(branding?.loginBackgroundUrl ?? null)}
+            busy={upload.isPending || remove.isPending}
+            tall
+            onPick={(file) => upload.mutate({ kind: 'login-background', file })}
+            onRemove={() => remove.mutate('login-background')}
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -233,6 +254,7 @@ function ImagePicker(props: {
   label: string
   src: string | null
   busy: boolean
+  tall?: boolean
   onPick: (file: File) => void
   onRemove: () => void
 }) {
@@ -240,9 +262,15 @@ function ImagePicker(props: {
   return (
     <div className="flex flex-col gap-3">
       <Label>{props.label}</Label>
-      <div className="flex h-24 items-center justify-center rounded-md border bg-muted/40">
+      <div
+        className={`flex items-center justify-center overflow-hidden rounded-md border bg-muted/40 ${props.tall ? 'h-48' : 'h-24'}`}
+      >
         {props.src ? (
-          <img src={props.src} alt={`${props.label} preview`} className="max-h-20 max-w-full object-contain" />
+          <img
+            src={props.src}
+            alt={`${props.label} preview`}
+            className={props.tall ? 'size-full object-cover' : 'max-h-20 max-w-full object-contain'}
+          />
         ) : (
           <span className="text-sm text-muted-foreground">Not set</span>
         )}

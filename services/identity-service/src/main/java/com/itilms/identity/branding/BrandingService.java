@@ -17,6 +17,8 @@ public class BrandingService {
 
     private static final String SERVICE_NAME = "identity-service";
     static final int MAX_IMAGE_BYTES = 1024 * 1024;
+    /** A campus photo is far bigger than a logo. */
+    static final int MAX_BACKGROUND_BYTES = 5 * 1024 * 1024;
 
     private final InstituteSettingsRepository repository;
     private final EventPublisher events;
@@ -59,6 +61,28 @@ public class BrandingService {
         s.setFaviconType(ImageSniffer.detect(bytes));
         s.setFavicon(bytes);
         return save(s, adminId, "BRANDING_FAVICON_CHANGED");
+    }
+
+    @Transactional
+    public BrandingResponse setLoginBackground(byte[] bytes, Long adminId) {
+        InstituteSettings s = load();
+        s.setLoginBackgroundType(ImageSniffer.detect(bytes, MAX_BACKGROUND_BYTES));
+        s.setLoginBackground(bytes);
+        return save(s, adminId, "BRANDING_LOGIN_BACKGROUND_CHANGED");
+    }
+
+    @Transactional
+    public BrandingResponse clearLoginBackground(Long adminId) {
+        InstituteSettings s = load();
+        s.setLoginBackground(null);
+        s.setLoginBackgroundType(null);
+        return save(s, adminId, "BRANDING_LOGIN_BACKGROUND_REMOVED");
+    }
+
+    @Transactional(readOnly = true)
+    public Image loginBackground() {
+        InstituteSettings s = load();
+        return s.getLoginBackground() == null ? null : new Image(s.getLoginBackground(), s.getLoginBackgroundType());
     }
 
     @Transactional
