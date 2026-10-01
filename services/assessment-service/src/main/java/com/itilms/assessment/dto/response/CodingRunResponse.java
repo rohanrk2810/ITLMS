@@ -23,15 +23,17 @@ public record CodingRunResponse(
         List<Case> cases
 ) {
 
+    /** Time and memory are measurements, not answers, so a hidden case shows them too. */
     public record Case(int number, boolean hidden, boolean passed, String input, String expectedOutput,
-                       String actualOutput, String error) {
+                       String actualOutput, String error, Double timeSeconds, Integer memoryKb) {
     }
 
     public static CodingRunResponse of(Long questionId, CodingJudge.Verdict verdict) {
         List<Case> cases = verdict.cases().stream().map(c -> c.hidden()
                 ? new Case(c.number(), true, c.passed(), null, null, null,
-                        c.error() == null ? null : "Did not finish")
-                : new Case(c.number(), false, c.passed(), c.input(), c.expected(), c.actual(), c.error())).toList();
+                        c.error() == null ? null : "Did not finish", c.timeSeconds(), c.memoryKb())
+                : new Case(c.number(), false, c.passed(), c.input(), c.expected(), c.actual(), c.error(),
+                        c.timeSeconds(), c.memoryKb())).toList();
         return new CodingRunResponse(questionId, verdict.passedCount(), verdict.cases().size(),
                 verdict.compileError(), cases);
     }

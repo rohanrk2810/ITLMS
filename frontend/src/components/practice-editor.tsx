@@ -4,6 +4,7 @@ import { Loader2, Play, RotateCcw } from 'lucide-react'
 
 import { apiErrorMessage } from '@/api/client'
 import { codeLanguageLabel, type CodeLanguageCode, getCodeLanguages, runCode, type RunCodeResponse } from '@/api/code'
+import { CodeResultPanel } from '@/components/code-result-panel'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -62,6 +63,8 @@ export function PracticeEditor({ language, starterCode, lessonId }: PracticeEdit
   const [source, setSource] = useState(() => loadDraft(draftKey) ?? starter)
   const [stdin, setStdin] = useState('')
   const [result, setResult] = useState<RunCodeResponse | null>(null)
+  /** The code that produced `result`; the complexity estimate reads this, not whatever is typed since. */
+  const [ranCode, setRanCode] = useState('')
   const [runError, setRunError] = useState<string | null>(null)
 
   const languagesQuery = useQuery({
@@ -71,12 +74,19 @@ export function PracticeEditor({ language, starterCode, lessonId }: PracticeEdit
   })
 
   const mutation = useMutation({
-    mutationFn: () => runCode({ language, sourceCode: source, stdin: stdin || undefined }),
+    mutationFn: async () => {
+      const code = source
+      const response = await runCode({ language, sourceCode: code, stdin: stdin || undefined })
+      return { response, code }
+    },
     onMutate: () => {
       setResult(null)
       setRunError(null)
     },
-    onSuccess: setResult,
+    onSuccess: ({ response, code }) => {
+      setResult(response)
+      setRanCode(code)
+    },
     onError: (error) => setRunError(apiErrorMessage(error, 'Could not run the code. Try again in a moment.')),
   })
 
@@ -172,6 +182,18 @@ export function PracticeEditor({ language, starterCode, lessonId }: PracticeEdit
         </p>
       )}
       {result && <RunOutput result={result} />}
+      {result && (
+        <CodeResultPanel
+          language={language}
+          ranCode={ranCode}
+          headlineLabel="Status"
+          headline={OUTCOME_LABEL[result.outcome]}
+          ok={result.outcome === 'SUCCESS'}
+          timeSeconds={result.timeSeconds}
+          memoryKb={result.memoryKb}
+          analyse={result.outcome !== 'COMPILE_ERROR' && language !== 'SQL'}
+        />
+      )}
     </section>
   )
 }

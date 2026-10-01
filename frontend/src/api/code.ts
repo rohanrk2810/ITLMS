@@ -55,3 +55,47 @@ export async function runCode(input: RunCodeInput): Promise<RunCodeResponse> {
   const { data } = await apiClient.post<RunCodeResponse>('/api/code/run', input)
   return data
 }
+
+/** n^(p2/2) * (log n)^log, or exponential: the growth rate in numbers, so it can be drawn. */
+export interface ComplexityModel {
+  p2: number
+  log: number
+  exp: boolean
+}
+
+export interface CodeSuggestion {
+  title: string
+  explanation: string
+  currentTime: string
+  currentSpace: string
+  betterTime: string
+  betterSpace: string
+  betterTimeModel: ComplexityModel
+  betterSpaceModel: ComplexityModel
+}
+
+/** An estimate read from the source, never a measurement and never a proof. */
+export interface CodeAnalysis {
+  language: string
+  supported: boolean
+  estimated: boolean
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+  timeComplexity: string | null
+  timeModel: ComplexityModel | null
+  timeReason: string | null
+  timeSteps: string[]
+  spaceComplexity: string | null
+  spaceModel: ComplexityModel | null
+  spaceReason: string | null
+  spaceSteps: string[]
+  verdict: 'EFFICIENT' | 'COULD_BE_BETTER' | 'UNKNOWN'
+  verdictMessage: string
+  suggestions: CodeSuggestion[]
+  notes: string[]
+}
+
+/** Reads the code and estimates its time and space complexity. Nothing is executed. */
+export async function analyzeCode(language: CodeLanguageCode, sourceCode: string): Promise<CodeAnalysis> {
+  const { data } = await apiClient.post<CodeAnalysis>('/api/code/analyze', { language, sourceCode })
+  return data
+}
