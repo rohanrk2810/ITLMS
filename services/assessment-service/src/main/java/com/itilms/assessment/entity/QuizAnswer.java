@@ -1,5 +1,6 @@
 package com.itilms.assessment.entity;
 
+import com.itilms.common.code.CodeLanguage;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -8,6 +9,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -62,6 +65,11 @@ public class QuizAnswer {
 
     @Column(name = "tests_total")
     private Integer testsTotal;
+
+    /** CODING: the language the student chose when the question allows a choice; null means the question's own. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "code_language", length = 10)
+    private CodeLanguage codeLanguage;
 
     /** CODING: SHA-256 of the code that last run tested. When it differs from the saved code, the code has changed since. */
     @Column(name = "tested_source_hash", length = 64)

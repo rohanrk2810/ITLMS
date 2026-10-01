@@ -247,6 +247,68 @@ class AttemptServiceImplTest {
     }
 
     @Test
+    @DisplayName("A student may answer in another language only when the author allowed it")
+    void anotherLanguageNeedsThePermissionOfTheQuestion() {
+        QuizQuestion cq = coding(40L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        assertThatThrownBy(() -> service.runTests(9L, 40L, "print(1)", "JAVA"))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("must be answered in");
+        verify(judge, never()).judge(any(), any(), any());
+        verify(judge, never()).judge(any(), any());
+    }
+
+    @Test
+    @DisplayName("When allowed, the chosen language is what runs, and it is kept with the answer")
+    void chosenLanguageIsRunAndStored() {
+        QuizQuestion cq = coding(40L);
+        cq.setAllowLanguageChoice(true);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+        when(judge.judge(cq, "class A {}", com.itilms.common.code.CodeLanguage.JAVA)).thenReturn(verdict(true, true));
+
+        service.runTests(9L, 40L, "class A {}", "java");
+
+        org.mockito.ArgumentCaptor<QuizAnswer> saved = org.mockito.ArgumentCaptor.forClass(QuizAnswer.class);
+        verify(answerRepository).save(saved.capture());
+        assertThat(saved.getValue().getCodeLanguage()).isEqualTo(com.itilms.common.code.CodeLanguage.JAVA);
+        assertThat(saved.getValue().getTestedSourceHash())
+                .as("the verdict belongs to this code in this language")
+                .isEqualTo(CodingJudge.verdictKey("class A {}", com.itilms.common.code.CodeLanguage.JAVA))
+                .isNotEqualTo(CodingJudge.sha256("class A {}"));
+    }
+
+    @Test
+    @DisplayName("SQL cannot be chosen, and naming the question's own language is just the normal run")
+    void sqlIsRefusedAndTheOwnLanguageIsNotAChoice() {
+        QuizQuestion cq = coding(40L);
+        cq.setAllowLanguageChoice(true);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+        when(judge.judge(cq, "print(1)")).thenReturn(verdict(true, true));
+
+        assertThatThrownBy(() -> service.runTests(9L, 40L, "select 1", "SQL"))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("SQL");
+
+        service.runTests(9L, 40L, "print(1)", "PYTHON");
+        verify(judge).judge(cq, "print(1)");
+    }
+
+    @Test
+    @DisplayName("Saving an answer with a language the question does not allow is refused")
+    void savingAnAnswerChecksTheLanguageToo() {
+        QuizQuestion cq = coding(40L);
+        when(questionRepository.findWithOptions(1L)).thenReturn(List.of(q1, cq));
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        var request = new SubmitAttemptRequest(List.of(new SubmitAttemptRequest.Answer(40L, null, "code", "JAVA")));
+
+        assertThatThrownBy(() -> service.saveAnswers(9L, request))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("must be answered in");
+    }
+
+    @Test
     @DisplayName("Running tests keeps the code, the verdict and the marks it earned, tied to that exact code")
     void runTestsStoresTheVerdict() {
         QuizQuestion cq = coding(40L);

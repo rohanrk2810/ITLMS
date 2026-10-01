@@ -5,6 +5,7 @@ import { Loader2, Play, RotateCcw } from 'lucide-react'
 import { apiErrorMessage } from '@/api/client'
 import { codeLanguageLabel, type CodeLanguageCode, getCodeLanguages, runCode, type RunCodeResponse } from '@/api/code'
 import { CodeResultPanel } from '@/components/code-result-panel'
+import { LanguageSelect } from '@/components/language-select'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,8 @@ function clearDraft(key: string) {
 interface PracticeEditorProps {
   language: CodeLanguageCode
   starterCode: string | null
+  /** The author lets the student practise in another language. */
+  allowLanguageChoice?: boolean
   /** Keeps each lesson's draft separate, so a half-written exercise survives leaving the page. Render with key={lessonId} so moving between lessons starts fresh. */
   lessonId: number
 }
@@ -56,9 +59,12 @@ interface PracticeEditorProps {
  * The editor is Monaco (the engine of VS Code) with snippets and keyword suggestions; see code-editor.tsx.
  * Ctrl/Cmd+Enter runs.
  */
-export function PracticeEditor({ language, starterCode, lessonId }: PracticeEditorProps) {
-  const draftKey = `itilms.practice.${lessonId}`
-  const starter = starterCode ?? ''
+export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId, allowLanguageChoice = false }: PracticeEditorProps) {
+  const [language, setLanguage] = useState<CodeLanguageCode>(lessonLanguage)
+  // Each language keeps its own draft; the lesson's own language keeps the plain key, as before choice existed.
+  const draftKey = language === lessonLanguage ? `itilms.practice.${lessonId}` : `itilms.practice.${lessonId}.${language}`
+  // The starter code was written for the lesson's language only.
+  const starter = language === lessonLanguage ? (starterCode ?? '') : ''
 
   const [source, setSource] = useState(() => loadDraft(draftKey) ?? starter)
   const [stdin, setStdin] = useState('')
@@ -106,6 +112,14 @@ export function PracticeEditor({ language, starterCode, lessonId }: PracticeEdit
     saveDraft(draftKey, value)
   }
 
+  function handleLanguage(next: CodeLanguageCode) {
+    const nextKey = next === lessonLanguage ? `itilms.practice.${lessonId}` : `itilms.practice.${lessonId}.${next}`
+    setLanguage(next)
+    setSource(loadDraft(nextKey) ?? (next === lessonLanguage ? (starterCode ?? '') : ''))
+    setResult(null)
+    setRunError(null)
+  }
+
   function handleReset() {
     clearDraft(draftKey)
     setSource(starter)
@@ -124,6 +138,7 @@ export function PracticeEditor({ language, starterCode, lessonId }: PracticeEdit
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {allowLanguageChoice && <LanguageSelect value={language} disabled={mutation.isPending} onChange={handleLanguage} />}
           <Button type="button" size="sm" variant="ghost" onClick={handleReset} disabled={mutation.isPending}>
             <RotateCcw />
             Reset

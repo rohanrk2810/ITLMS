@@ -35,7 +35,9 @@ public record LessonResponse(
         @Schema(description = "Language of the lesson's practice editor; null when it has none. "
                 + "Null too when the lesson is locked - starter code is material.")
         String codeLanguage,
-        String starterCode
+        String starterCode,
+        @Schema(description = "Practice editor: the student may pick another language")
+        boolean allowLanguageChoice
 ) {
 
     /** Full content, for an enrolled student or for staff. */
@@ -46,7 +48,7 @@ public record LessonResponse(
                 lesson.getDurationMinutes(), lesson.getSequenceNo(),
                 lesson.isPreview(), lesson.isMandatory(), true, completed, watchedSeconds,
                 lesson.getCodeLanguage() == null ? null : lesson.getCodeLanguage().name(),
-                lesson.getStarterCode());
+                lesson.getStarterCode(), lesson.isAllowLanguageChoice());
     }
 
     /**
@@ -60,6 +62,6 @@ public record LessonResponse(
                 lesson.getId(), lesson.getModuleId(), lesson.getTitle(), lesson.getType().name(),
                 null, null, null,
                 lesson.getDurationMinutes(), lesson.getSequenceNo(),
-                lesson.isPreview(), lesson.isMandatory(), false, null, null, null, null);
+                lesson.isPreview(), lesson.isMandatory(), false, null, null, null, null, false);
     }
 }

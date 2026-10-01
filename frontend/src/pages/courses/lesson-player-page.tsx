@@ -144,7 +144,13 @@ export function LessonPlayerPage() {
       </div>
 
       {lesson.accessible && lesson.codeLanguage && (
-        <PracticeEditor key={lesson.id} lessonId={lesson.id} language={lesson.codeLanguage} starterCode={lesson.starterCode} />
+        <PracticeEditor
+          key={lesson.id}
+          lessonId={lesson.id}
+          language={lesson.codeLanguage}
+          starterCode={lesson.starterCode}
+          allowLanguageChoice={lesson.allowLanguageChoice}
+        />
       )}
 
       <div className="flex items-center justify-between">

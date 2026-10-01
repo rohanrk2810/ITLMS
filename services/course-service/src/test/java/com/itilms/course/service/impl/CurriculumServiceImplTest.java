@@ -222,6 +222,25 @@ class CurriculumServiceImplTest {
         }
 
         @Test
+        void languageChoiceIsKeptOnlyForAPracticeLessonThatIsNotSql() {
+            when(lessonRepository.nextSequenceNo(MODULE)).thenReturn(1);
+
+            var python = service.addLesson(MODULE, new LessonRequest("Loops", "NOTE", null, null, "text", null, null, null,
+                    null, "PYTHON", null, true));
+            var sql = service.addLesson(MODULE, new LessonRequest("Joins", "NOTE", null, null, "text", null, null, null,
+                    null, "SQL", null, true));
+            var noEditor = service.addLesson(MODULE, new LessonRequest("Intro", "NOTE", null, null, "text", null, null, null,
+                    null, null, null, true));
+            var notAsked = service.addLesson(MODULE, new LessonRequest("Loops 2", "NOTE", null, null, "text", null, null, null,
+                    null, "PYTHON", null));
+
+            assertThat(python.allowLanguageChoice()).isTrue();
+            assertThat(sql.allowLanguageChoice()).as("SQL cannot be swapped for another language").isFalse();
+            assertThat(noEditor.allowLanguageChoice()).as("no editor, nothing to choose").isFalse();
+            assertThat(notAsked.allowLanguageChoice()).as("off unless the author turns it on").isFalse();
+        }
+
+        @Test
         void anUnknownLessonTypeIsRefused() {
             assertThatThrownBy(() -> service.addLesson(MODULE, new LessonRequest("S", "HOLOGRAM", "https://x.test", null, null, null, null, null, null, null, null)))
                     .isInstanceOf(BusinessRuleException.class).hasMessageContaining("VIDEO, PDF, NOTE, LINK or TEXT");

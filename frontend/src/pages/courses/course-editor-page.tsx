@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -440,6 +441,18 @@ function AddLessonDialog({ moduleId, onAdded }: { moduleId: number; onAdded: () 
               Students get a code editor under the lesson to try what they learned.
             </p>
           </div>
+          {form.codeLanguage && form.codeLanguage !== 'SQL' && (
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                checked={form.allowLanguageChoice ?? false}
+                onCheckedChange={(v) => setForm({ ...form, allowLanguageChoice: v === true })}
+              />
+              <span>
+                Let students choose the language
+                <span className="block text-xs text-muted-foreground">Off by default. The starter code is only offered in the language above.</span>
+              </span>
+            </label>
+          )}
           {form.codeLanguage && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="starterCode">Starter code</Label>
