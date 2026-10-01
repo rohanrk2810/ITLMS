@@ -15,10 +15,13 @@ export interface Branding {
   /** Relative to the API; run through {@link assetUrl} before using it as an image source. */
   logoUrl: string | null
   faviconUrl: string | null
+  loginBackgroundUrl: string | null
   version: number
 }
 
-export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'version'>
+export type BrandingImageKind = 'logo' | 'favicon' | 'login-background'
+
+export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'loginBackgroundUrl' | 'version'>
 
 /** Anonymous: the login page reads this before anyone is signed in. */
 export async function getBranding(): Promise<Branding> {
@@ -31,14 +34,14 @@ export async function updateBranding(input: UpdateBrandingInput): Promise<Brandi
   return data
 }
 
-export async function uploadBrandingImage(kind: 'logo' | 'favicon', file: File): Promise<Branding> {
+export async function uploadBrandingImage(kind: BrandingImageKind, file: File): Promise<Branding> {
   const form = new FormData()
   form.append('file', file)
   const { data } = await apiClient.post<Branding>(`/api/branding/${kind}`, form)
   return data
 }
 
-export async function removeBrandingImage(kind: 'logo' | 'favicon'): Promise<Branding> {
+export async function removeBrandingImage(kind: BrandingImageKind): Promise<Branding> {
   const { data } = await apiClient.delete<Branding>(`/api/branding/${kind}`)
   return data
 }

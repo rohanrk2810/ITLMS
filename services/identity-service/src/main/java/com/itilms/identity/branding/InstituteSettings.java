@@ -65,6 +65,13 @@ public class InstituteSettings {
     @Column(name = "favicon_type")
     private String faviconType;
 
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(name = "login_background", columnDefinition = "bytea")
+    private byte[] loginBackground;
+
+    @Column(name = "login_background_type")
+    private String loginBackgroundType;
+
     /** Bumped on every change; part of the image URLs so browsers refetch after an edit. */
     private long version = 1;
 
