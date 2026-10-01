@@ -4,6 +4,7 @@ import { CheckCircle2, Info, Lightbulb, TriangleAlert, XCircle } from 'lucide-re
 
 import type { ComparisonBucket, RunComparison } from '@/api/assessments'
 import { type CodeAnalysis, type CodeLanguageCode, type ComplexityModel, analyzeCode } from '@/api/code'
+import { BarChart, LineChart, type LineSeries, SEMANTIC } from '@/components/charts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -273,9 +274,6 @@ const CURVES: Array<{ label: string; model: ComplexityModel }> = [
   { label: 'O(2ⁿ)', model: { p2: 0, log: 0, exp: true } },
 ]
 
-const W = 340
-const H = 190
-const PAD = { left: 34, right: 10, top: 10, bottom: 26 }
 const N_MAX = 12
 const Y_MAX = 150
 
@@ -287,26 +285,12 @@ function steps(model: ComplexityModel, n: number): number {
   return Math.max(1, poly * log)
 }
 
-const px = (n: number) => PAD.left + ((n - 1) / (N_MAX - 1)) * (W - PAD.left - PAD.right)
-const py = (y: number) => PAD.top + (1 - Math.min(y, Y_MAX) / Y_MAX) * (H - PAD.top - PAD.bottom)
-
-/** The curve as an SVG path, stopped where it leaves the top of the chart rather than flattened against it. */
-function pathFor(model: ComplexityModel): string {
-  const points: string[] = []
-  let previous: { n: number; y: number } | null = null
-  for (let n = 1; n <= N_MAX + 1e-9; n += 0.25) {
-    const y = steps(model, n)
-    if (y > Y_MAX) {
-      if (previous) {
-        const t = (Y_MAX - previous.y) / (y - previous.y)
-        points.push(`L${px(previous.n + t * (n - previous.n)).toFixed(1)},${py(Y_MAX).toFixed(1)}`)
-      }
-      break
-    }
-    points.push(`${points.length === 0 ? 'M' : 'L'}${px(n).toFixed(1)},${py(y).toFixed(1)}`)
-    previous = { n, y }
+function pointsFor(model: ComplexityModel): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = []
+  for (let n = 1; n <= N_MAX; n += 0.5) {
+    points.push({ x: n, y: steps(model, n) })
   }
-  return points.join(' ')
+  return points
 }
 
 function sameModel(a: ComplexityModel, b: ComplexityModel) {
@@ -328,49 +312,29 @@ function GrowthChart({
   better?: ComplexityModel
   betterLabel?: string
 }) {
+  const suggested = better && !sameModel(better, yours) ? better : undefined
+  const series: LineSeries[] = [
+    ...CURVES.map((c) => ({ label: c.label, points: pointsFor(c.model), color: '#94a3b8', faint: true })),
+    ...(suggested
+      ? [{ label: `Suggested ${betterLabel}`, points: pointsFor(suggested), color: SEMANTIC.good, dashed: true, width: 3 }]
+      : []),
+    { label: `Your code ${yoursLabel}`, points: pointsFor(yours), color: 'primary', width: 4 },
+  ]
   return (
     <figure className="flex flex-col gap-1">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        role="img"
-        aria-label={`How the number of steps grows with the input. Your code: ${yoursLabel}${better ? `. Suggested: ${betterLabel}` : ''}.`}
-        className="w-full max-w-md rounded-md border bg-card"
-      >
-        <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom} stroke="currentColor" opacity={0.4} />
-        <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={H - PAD.bottom} stroke="currentColor" opacity={0.4} />
-        <text x={W / 2} y={H - 6} textAnchor="middle" fontSize="9" fill="currentColor" opacity={0.7}>
-          input size (n)
-        </text>
-        <text x={10} y={H / 2} textAnchor="middle" fontSize="9" fill="currentColor" opacity={0.7} transform={`rotate(-90 10 ${H / 2})`}>
-          steps
-        </text>
-        {CURVES.map((curve) => (
-          <path
-            key={curve.label}
-            d={pathFor(curve.model)}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1}
-            opacity={0.25}
-          />
-        ))}
-        {better && !sameModel(better, yours) && (
-          <path d={pathFor(better)} fill="none" stroke="#10b981" strokeWidth={2.5} strokeDasharray="6 4" />
-        )}
-        <path d={pathFor(yours)} fill="none" stroke="var(--primary)" strokeWidth={3} />
-      </svg>
-      <figcaption className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-4" style={{ background: 'var(--primary)' }} />
-          Your code {yoursLabel}
-        </span>
-        {better && !sameModel(better, yours) && (
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-0.5 w-4 border-t-2 border-dashed border-emerald-500" />
-            Suggested {betterLabel}
-          </span>
-        )}
-        <span>Faint lines: {CURVES.map((c) => c.label).join(', ')}</span>
+      <LineChart
+        series={series}
+        xTitle="input size (n)"
+        yTitle="steps"
+        yMax={Y_MAX}
+        height={260}
+        ariaLabel={`How the number of steps grows with the input. Your code: ${yoursLabel}${
+          suggested ? `. Suggested: ${betterLabel}` : ''
+        }.`}
+      />
+      <figcaption className="text-xs text-muted-foreground">
+        Faint lines are the usual growth rates ({CURVES.map((c) => c.label).join(', ')}). The picture shows the shape of
+        the growth, not measured time.
       </figcaption>
     </figure>
   )
@@ -393,85 +357,57 @@ function Distribution({ comparison }: { comparison: RunComparison }) {
 }
 
 function Histogram({ title, buckets, unit, scale = 1 }: { title: string; buckets: ComparisonBucket[]; unit: string; scale?: number }) {
-  const max = Math.max(...buckets.map((b) => b.count), 1)
   const fmt = (v: number) => (scale === 1 ? String(v) : (v / scale).toFixed(1))
   return (
-    <figure className="flex flex-col gap-1" aria-label={title}>
+    <figure className="flex flex-col gap-1">
       <figcaption className="text-xs font-medium">{title}</figcaption>
-      <div className="flex h-24 items-end gap-0.5">
-        {buckets.map((b) => (
-          <div
-            key={b.from}
-            title={`${fmt(b.from)}-${fmt(b.to)} ${unit}: ${b.count} student${b.count === 1 ? '' : 's'}`}
-            className={cn('flex-1 rounded-t', b.yours ? 'bg-emerald-500' : 'bg-muted-foreground/40')}
-            style={{ height: `${Math.max(4, Math.round((b.count / max) * 100))}%` }}
-          />
-        ))}
-      </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground">
-        <span>
-          {fmt(buckets[0].from)} {unit}
-        </span>
-        <span>
-          {fmt(buckets[buckets.length - 1].to)} {unit}
-        </span>
-      </div>
+      <BarChart
+        labels={buckets.map((b) => `${fmt(b.from)}-${fmt(b.to)}`)}
+        series={[
+          {
+            label: 'Students',
+            values: buckets.map((b) => b.count),
+            color: buckets.map((b) => (b.yours ? SEMANTIC.good : SEMANTIC.neutral)),
+          },
+        ]}
+        height={180}
+        ariaLabel={`${title}. Your solution is in the range ${fmt(buckets.find((b) => b.yours)?.from ?? 0)} to ${fmt(
+          buckets.find((b) => b.yours)?.to ?? 0,
+        )} ${unit}.`}
+      />
     </figure>
   )
 }
 
 /** One bar per test case for time and for memory, coloured by whether the test passed. */
 function CaseBars({ cases }: { cases: CaseMeasure[] }) {
-  const maxTime = Math.max(...cases.map((c) => c.timeSeconds ?? 0), 0.001)
-  const maxMem = Math.max(...cases.map((c) => c.memoryKb ?? 0), 1)
+  const labels = cases.map((c) => (c.hidden ? `Hidden ${c.number}` : `Test ${c.number}`))
+  const colors = cases.map((c) => (c.passed ? SEMANTIC.good : SEMANTIC.bad))
+  const height = Math.max(120, 36 + cases.length * 26)
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <BarGroup
-        title="Time per test (ms)"
-        rows={cases.map((c) => ({
-          key: c.number,
-          label: c.hidden ? `Hidden ${c.number}` : `Test ${c.number}`,
-          passed: c.passed,
-          fraction: (c.timeSeconds ?? 0) / maxTime,
-          value: c.timeSeconds != null ? `${Math.round(c.timeSeconds * 1000)} ms` : '-',
-        }))}
-      />
-      <BarGroup
-        title="Memory per test (MB)"
-        rows={cases.map((c) => ({
-          key: c.number,
-          label: c.hidden ? `Hidden ${c.number}` : `Test ${c.number}`,
-          passed: c.passed,
-          fraction: (c.memoryKb ?? 0) / maxMem,
-          value: c.memoryKb != null ? `${(c.memoryKb / 1024).toFixed(1)} MB` : '-',
-        }))}
-      />
+      <figure className="flex flex-col gap-1">
+        <figcaption className="text-xs font-medium">Time per test (ms)</figcaption>
+        <BarChart
+          horizontal
+          labels={labels}
+          series={[{ label: 'Time', values: cases.map((c) => Math.round((c.timeSeconds ?? 0) * 1000)), color: colors }]}
+          unit=" ms"
+          height={height}
+          ariaLabel="Time taken by each test case, in milliseconds. Green bars passed, red bars failed."
+        />
+      </figure>
+      <figure className="flex flex-col gap-1">
+        <figcaption className="text-xs font-medium">Memory per test (MB)</figcaption>
+        <BarChart
+          horizontal
+          labels={labels}
+          series={[{ label: 'Memory', values: cases.map((c) => Number(((c.memoryKb ?? 0) / 1024).toFixed(1))), color: colors }]}
+          unit=" MB"
+          height={height}
+          ariaLabel="Memory used by each test case, in megabytes. Green bars passed, red bars failed."
+        />
+      </figure>
     </div>
-  )
-}
-
-function BarGroup({
-  title,
-  rows,
-}: {
-  title: string
-  rows: Array<{ key: number; label: string; passed: boolean; fraction: number; value: string }>
-}) {
-  return (
-    <figure className="flex flex-col gap-1" aria-label={title}>
-      <figcaption className="text-xs font-medium">{title}</figcaption>
-      {rows.map((row) => (
-        <div key={row.key} className="grid grid-cols-[5rem_1fr_4rem] items-center gap-2 text-xs">
-          <span className="truncate text-muted-foreground">{row.label}</span>
-          <span className="h-3 overflow-hidden rounded bg-muted">
-            <span
-              className={cn('block h-full rounded', row.passed ? 'bg-emerald-500' : 'bg-destructive')}
-              style={{ width: `${Math.max(2, Math.round(row.fraction * 100))}%` }}
-            />
-          </span>
-          <span className="text-right tabular-nums">{row.value}</span>
-        </div>
-      ))}
-    </figure>
   )
 }

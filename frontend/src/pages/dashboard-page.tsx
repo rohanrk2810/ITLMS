@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { getDashboardSummary } from '@/api/reporting'
 import { AnnouncementsPanel } from '@/components/announcements-panel'
+import { InstituteCharts, StudentCharts } from '@/components/dashboard-charts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney } from '@/lib/format'
@@ -29,6 +30,7 @@ export function DashboardPage() {
       </div>
 
       {showInstituteSummary ? <InstituteSummary /> : <RoleQuickLinks role={user?.role} />}
+      {user?.role === 'STUDENT' && <StudentCharts />}
       {!showInstituteSummary && <AnnouncementsPanel />}
     </div>
   )
@@ -66,6 +68,7 @@ function InstituteSummary() {
         <Stat label="Attendance" value={`${s.attendance.percent}%`} hint={`${s.attendance.present} present, ${s.attendance.absent} absent`} />
         <Stat label="Placements" value={s.placementsSelectedTotal} hint={`${s.jobsPostedTotal} jobs posted`} />
       </div>
+      <InstituteCharts s={s} />
       <Link to="/app/audit-logs" className="text-sm font-medium text-foreground hover:underline">
         View the audit trail &rarr;
       </Link>
