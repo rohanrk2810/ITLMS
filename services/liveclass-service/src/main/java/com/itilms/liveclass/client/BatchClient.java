@@ -29,6 +29,13 @@ public interface BatchClient {
     EnrollmentCheck isEnrolled(@PathVariable("batchId") Long batchId,
                                @PathVariable("studentId") Long studentId);
 
+    /** Only the course is used, to apply a course-level monitoring setting. */
+    @GetMapping("/api/batches/{id}")
+    BatchInfo batch(@PathVariable("id") Long id);
+
+    record BatchInfo(Long id, Long courseId) {
+    }
+
     /** The signed-in student's or trainer's own batches; scoped by their token. */
     @GetMapping("/api/batches/mine")
     List<BatchSummary> myBatches();
@@ -92,6 +99,12 @@ public interface BatchClient {
                     log.error("batch-service unreachable while checking whether student {} is in "
                             + "batch {} - refusing entry", studentId, batchId, cause);
                     return new EnrollmentCheck(false);
+                }
+
+                @Override
+                public BatchInfo batch(Long id) {
+                    log.warn("batch-service unreachable while reading batch {}", id, cause);
+                    return null;
                 }
 
                 @Override
