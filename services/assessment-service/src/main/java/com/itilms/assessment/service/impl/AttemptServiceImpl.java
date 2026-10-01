@@ -185,7 +185,8 @@ public class AttemptServiceImpl implements AttemptService {
         // A report the test does not ask for (window events on a test that is not secure, camera events on
         // one that does not need the camera), or a sitting already over: nothing to enforce, and no reason
         // to make the page handle an error for a report it had every right to send.
-        boolean applies = request.type().isCamera() ? quiz.isRequireCamera() : quiz.isSecureMode();
+        boolean applies = request.type().isCamera() ? quiz.isRequireCamera()
+                : request.type().isMicrophone() ? quiz.isRequireMicrophone() : quiz.isSecureMode();
         if (!applies || attempt.getStatus().isFinished() || attempt.hasExpired(now)) {
             return outcome(attempt, quiz, false, null);
         }
@@ -435,9 +436,10 @@ public class AttemptServiceImpl implements AttemptService {
 
         // Camera events per attempt in one query, only when the test watches the camera at all.
         Map<Long, Integer> cameraEvents = new HashMap<>();
-        if (quiz.isRequireCamera() && !finished.isEmpty()) {
+        // The count covers every monitoring event: camera and microphone alike.
+        if ((quiz.isRequireCamera() || quiz.isRequireMicrophone()) && !finished.isEmpty()) {
             List<ViolationType> cameraTypes = java.util.Arrays.stream(ViolationType.values())
-                    .filter(ViolationType::isCamera).toList();
+                    .filter(ViolationType::isMonitoring).toList();
             violations.countByAttemptAndTypes(finished.stream().map(QuizAttempt::getId).toList(), cameraTypes)
                     .forEach(row -> cameraEvents.put((Long) row[0], ((Number) row[1]).intValue()));
         }

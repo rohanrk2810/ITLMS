@@ -87,6 +87,7 @@ public class MonitoringService {
         row.setEnabled(request.enabled());
         row.setFaceVisibility(request.faceVisibility() == null || request.faceVisibility());
         row.setCameraRequired(request.cameraRequired() != null && request.cameraRequired());
+        row.setMicrophoneRequired(request.microphoneRequired() != null && request.microphoneRequired());
         row.setWarningAfterSeconds(request.warningAfterSeconds() == null ? 10 : request.warningAfterSeconds());
         row.setShowWarning(request.showWarning() == null || request.showWarning());
         row.setWarningMessage(request.warningMessage() == null || request.warningMessage().isBlank()
@@ -222,7 +223,8 @@ public class MonitoringService {
     }
 
     private static EffectiveResponse toResponse(Effective e) {
-        return new EffectiveResponse(e.enabled(), e.faceVisibility(), e.cameraRequired(), e.warningAfterSeconds(),
+        return new EffectiveResponse(e.enabled(), e.faceVisibility(), e.cameraRequired(), e.microphoneRequired(),
+                e.warningAfterSeconds(),
                 e.showWarning(), e.warningMessage(), e.logEvents(), e.source());
     }
 }

@@ -277,6 +277,31 @@ class MonitoringServiceTest {
         assertThatThrownBy(() -> service.eventsOf(CLASS_SESSION)).isInstanceOf(ForbiddenOperationException.class);
     }
 
+    @Test
+    void microphoneEventsAreOnlyKeptWhereTheMicrophoneIsRequired() {
+        joinedAsStudent();
+        var s = setting(Scope.INSTITUTE, 0, true);
+        when(settings.findByScopeTypeAndScopeId(Scope.INSTITUTE, 0L)).thenReturn(Optional.of(s));
+
+        service.record(CLASS_SESSION, new EventRequest(MonitoringEvent.Type.MICROPHONE_PERMISSION_DENIED, null, null));
+        verify(eventRepository, never()).save(any());
+
+        s.setMicrophoneRequired(true);
+        service.record(CLASS_SESSION, new EventRequest(MonitoringEvent.Type.MICROPHONE_PERMISSION_DENIED, null, null));
+        verify(eventRepository).save(any(MonitoringEvent.class));
+        assertThat(MonitoringRules.severity(MonitoringEvent.Type.MICROPHONE_DISABLED, null))
+                .isEqualTo(MonitoringEvent.Severity.WARNING);
+    }
+
+    @Test
+    void adminCanRequireTheMicrophoneAndItDefaultsToOff() {
+        signInAs("ADMIN", null);
+
+        assertThat(service.save(on(Scope.INSTITUTE, null)).microphoneRequired()).isFalse();
+        var request = new SettingRequest(Scope.INSTITUTE, null, true, null, null, null, null, null, null, true);
+        assertThat(service.save(request).microphoneRequired()).isTrue();
+    }
+
     // ------------------------------------------------------------------ severity
 
     @Test

@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CameraCheck, CameraPreview } from '@/components/camera-panel'
+import { MicCheck, MicIndicator } from '@/components/mic-panel'
 import type { CodeLanguageCode } from '@/api/code'
 import { CodingQuestion } from '@/components/coding-question'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -29,7 +30,9 @@ import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CAMERA_PROBLEM_TEXT, CameraError, openCamera, stopStream } from '@/lib/face-detector'
+import { MIC_PROBLEM_TEXT, MicError, openMicrophone } from '@/lib/microphone'
 import { useCameraMonitor } from '@/lib/use-camera-monitor'
+import { thresholdFor, useMicMonitor } from '@/lib/use-mic-monitor'
 import { enterFullscreen, leaveFullscreen, useTestGuard } from '@/lib/use-test-guard'
 import { cn } from '@/lib/utils'
 
@@ -188,7 +191,7 @@ export function QuizAttemptPage() {
       .then((list) => {
         if (!mounted.current) return
         const quiz = list.find((q) => String(q.id) === quizId)
-        if ((quiz?.secureMode || quiz?.requireCamera) && (quiz.canStart || quiz.inProgressAttemptId)) {
+        if ((quiz?.secureMode || quiz?.requireCamera || quiz?.requireMicrophone) && (quiz.canStart || quiz.inProgressAttemptId)) {
           setIntro(quiz)
           setView('intro')
         } else {
@@ -251,6 +254,34 @@ export function QuizAttemptPage() {
       toast.error(CAMERA_PROBLEM_TEXT[error instanceof CameraError ? error.problem : 'other'])
     }
   }
+
+  // Microphone tests work the same way: opened on the rules screen, kept for the sitting, and each problem
+  // (switched off, permission removed, sustained sound) goes to the server, which answers with the warning.
+  const [micStream, setMicStream] = useState<MediaStream | null>(null)
+  const [micReady, setMicReady] = useState(false)
+  const [micThreshold, setMicThreshold] = useState(thresholdFor(0))
+  const watchingMic = view === 'live' && paper?.requireMicrophone === true
+  const micStatus = useMicMonitor({
+    enabled: watchingMic,
+    stream: micStream,
+    threshold: micThreshold,
+    detectSound: true,
+    onEvent: handleViolation,
+  })
+  const micBlocked = watchingMic && (!micStream || micStatus === 'off' || micStatus === 'denied')
+
+  async function reopenMicrophone() {
+    try {
+      setMicStream(await openMicrophone())
+    } catch (error) {
+      toast.error(MIC_PROBLEM_TEXT[error instanceof MicError ? error.problem : 'other'])
+    }
+  }
+
+  useEffect(() => () => stopStream(micStream), [micStream])
+  useEffect(() => {
+    if (view === 'results') stopStream(micStream)
+  }, [view, micStream])
 
   // The camera belongs to the sitting: let it go when the page is left, replaced or finished.
   useEffect(() => () => stopStream(cameraStream), [cameraStream])
@@ -336,6 +367,13 @@ export function QuizAttemptPage() {
                   <li>Copying, right-click and shortcuts such as print and developer tools are blocked.</li>
                 </>
               )}
+              {intro.requireMicrophone && (
+                <li>
+                  Your microphone must stay on, and you should stay quiet. You are warned if it is turned off or sound
+                  is picked up; nothing is failed automatically for this, but it is recorded for your trainer. Only
+                  the loudness is measured: nothing is recorded.
+                </li>
+              )}
               {intro.requireCamera && (
                 <li>
                   Your camera must stay on with your face visible. You are warned if it is not; nothing is failed
@@ -348,9 +386,17 @@ export function QuizAttemptPage() {
             {intro.requireCamera && (
               <CameraCheck stream={cameraStream} onStream={setCameraStream} onReady={setCameraReady} />
             )}
+            {intro.requireMicrophone && (
+              <MicCheck
+                stream={micStream}
+                onStream={setMicStream}
+                onReady={setMicReady}
+                onThreshold={setMicThreshold}
+              />
+            )}
             <Button
               className="self-start"
-              disabled={intro.requireCamera && !cameraReady}
+              disabled={(intro.requireCamera && !cameraReady) || (intro.requireMicrophone && !micReady)}
               onClick={() => {
                 // Fullscreen must be asked for from this click, so it comes first.
                 void (intro.secureMode ? enterFullscreen() : Promise.resolve(true)).then(() => startAttempt())
@@ -362,6 +408,9 @@ export function QuizAttemptPage() {
               <p className="text-xs text-muted-foreground">
                 You can start once your camera is on and your face is visible.
               </p>
+            )}
+            {intro.requireMicrophone && !micReady && (
+              <p className="text-xs text-muted-foreground">You can start once your microphone is on.</p>
             )}
           </CardContent>
         </Card>
@@ -436,6 +485,24 @@ export function QuizAttemptPage() {
 
       {paper.requireCamera && cameraStream && (
         <CameraPreview stream={cameraStream} video={videoRef} status={cameraStatus} />
+      )}
+
+      {paper.requireMicrophone && micStream && <MicIndicator status={micStatus} besideCamera={paper.requireCamera} />}
+
+      {micBlocked && !cameraBlocked && !warning && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-background p-4" role="alertdialog" aria-modal>
+          <Card className="w-full max-w-md border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Your microphone is off</CardTitle>
+              <CardDescription>
+                This test needs your microphone on. Turn it back on to continue. Your time is still running.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => void reopenMicrophone()}>Turn microphone on</Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {cameraBlocked && !warning && (

@@ -21,15 +21,26 @@ public enum ViolationType {
     FACE_NOT_DETECTED(false, true, "Warning: Please keep your face properly visible in the camera."),
     MULTIPLE_FACES(false, true, "Warning: Only you should be visible in the camera."),
     CAMERA_DISABLED(false, true, "Warning: Your camera must stay on for this test. Turn it back on."),
-    CAMERA_PERMISSION_DENIED(false, true, "Warning: Camera permission was removed. Allow the camera again to continue.");
+    CAMERA_PERMISSION_DENIED(false, true, "Warning: Camera permission was removed. Allow the camera again to continue."),
+
+    MICROPHONE_DISABLED(false, false, true, "Warning: Your microphone must stay on for this test. Turn it back on."),
+    MICROPHONE_PERMISSION_DENIED(false, false, true,
+            "Warning: Microphone permission was removed. Allow the microphone again to continue."),
+    SPEECH_DETECTED(false, false, true, "Warning: Sound was picked up. Please stay quiet during the test.");
 
     private final boolean counts;
     private final boolean camera;
+    private final boolean microphone;
     private final String warning;
 
     ViolationType(boolean counts, boolean camera, String warning) {
+        this(counts, camera, false, warning);
+    }
+
+    ViolationType(boolean counts, boolean camera, boolean microphone, String warning) {
         this.counts = counts;
         this.camera = camera;
+        this.microphone = microphone;
         this.warning = warning;
     }
 
@@ -41,6 +52,15 @@ public enum ViolationType {
     /** Reported by camera monitoring, so it applies to tests that require the camera rather than secure ones. */
     public boolean isCamera() {
         return camera;
+    }
+
+    public boolean isMicrophone() {
+        return microphone;
+    }
+
+    /** Reported by the browser's camera or microphone check rather than by the test window. */
+    public boolean isMonitoring() {
+        return camera || microphone;
     }
 
     /** What to tell the student when this is reported, or null when it is only recorded. */

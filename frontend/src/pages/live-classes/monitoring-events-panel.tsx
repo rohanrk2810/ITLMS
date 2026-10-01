@@ -10,6 +10,8 @@ const LABEL: Record<MonitoringEvent['type'], string> = {
   MULTIPLE_FACES: 'More than one face',
   CAMERA_DISABLED: 'Camera off',
   CAMERA_PERMISSION_DENIED: 'Camera permission removed',
+  MICROPHONE_DISABLED: 'Microphone off',
+  MICROPHONE_PERMISSION_DENIED: 'Microphone permission removed',
 }
 
 /** The trainer's/staff's view of what student monitoring noted, newest first, refreshed while the class runs. */
