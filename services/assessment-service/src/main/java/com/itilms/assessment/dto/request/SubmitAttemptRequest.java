@@ -32,7 +32,16 @@ public record SubmitAttemptRequest(
 
             @Schema(description = "SHORT_ANSWER: what was typed. CODING: the source code. Blank means unanswered.")
             @Size(max = 50000, message = "An answer is limited to 50000 characters")
-            String answerText
+            String answerText,
+
+            @Schema(description = "CODING, when the question lets the student choose: the language the code is written in")
+            @Size(max = 10)
+            String codeLanguage
     ) {
+
+        /** An answer with no language of its own (every answer before language choice existed). */
+        public Answer(Long questionId, Set<Long> selectedOptionIds, String answerText) {
+            this(questionId, selectedOptionIds, answerText, null);
+        }
     }
 }

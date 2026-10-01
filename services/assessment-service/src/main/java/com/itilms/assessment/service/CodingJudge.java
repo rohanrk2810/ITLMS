@@ -1,5 +1,6 @@
 package com.itilms.assessment.service;
 
+import com.itilms.common.code.CodeLanguage;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -62,13 +63,19 @@ public class CodingJudge {
      *                               (busy, over the limit, down): the answer is then not graded, not failed
      */
     public Verdict judge(QuizQuestion question, String sourceCode) {
+        return judge(question, sourceCode, null);
+    }
+
+    /** As above, in the language the student chose instead of the question's own (null means the question's own). */
+    public Verdict judge(QuizQuestion question, String sourceCode, CodeLanguage language) {
         List<QuizTestCase> cases = question.getTestCases();
         if (cases.isEmpty() || question.getCodeLanguage() == null) {
             throw new BusinessRuleException("This question has no test cases to run.");
         }
+        CodeLanguage used = language != null ? language : question.getCodeLanguage();
 
         List<CodeClient.RunResult> results = codeClient.runBatch(new CodeClient.RunBatchRequest(
-                question.getCodeLanguage().name(), sourceCode, cases.stream().map(QuizTestCase::getInput).toList()));
+                used.name(), sourceCode, cases.stream().map(QuizTestCase::getInput).toList()));
         if (results == null || results.size() != cases.size()) {
             throw new BusinessRuleException("CODE_RUNNER_UNAVAILABLE", "The code runner gave an incomplete answer. Try again.");
         }
@@ -113,6 +120,15 @@ public class CodingJudge {
             lines.remove(lines.size() - 1);
         }
         return String.join("\n", lines);
+    }
+
+    /**
+     * Identifies the exact code a verdict belongs to, and the language it was run in. A question's own language keeps
+     * the plain hash of the code (what was stored before language choice existed); another language is mixed in, so
+     * the same text run as Python and as Java are different verdicts.
+     */
+    public static String verdictKey(String sourceCode, CodeLanguage chosen) {
+        return chosen == null ? sha256(sourceCode) : sha256(chosen.name() + "\n" + sourceCode);
     }
 
     /** Identifies the exact code a verdict belongs to. */

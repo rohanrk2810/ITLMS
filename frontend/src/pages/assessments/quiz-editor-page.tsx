@@ -268,7 +268,8 @@ function QuestionKey({ question }: { question: QuizQuestionWithKey }) {
     return (
       <div className="flex flex-col gap-1 text-sm">
         <p className="text-muted-foreground">
-          {question.codeLanguage ? codeLanguageLabel(question.codeLanguage) : 'No language'} &middot;{' '}
+          {question.codeLanguage ? codeLanguageLabel(question.codeLanguage) : 'No language'}
+          {question.allowLanguageChoice && ' (students may choose another)'} &middot;{' '}
           {question.testCases.length} test case{question.testCases.length === 1 ? '' : 's'}
         </p>
         {question.starterCode && (
@@ -320,6 +321,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
   const [accepted, setAccepted] = useState('')
   const [codeLanguage, setCodeLanguage] = useState<CodeLanguageCode>('JAVA')
   const [starterCode, setStarterCode] = useState('')
+  const [allowChoice, setAllowChoice] = useState(false)
   const [testCases, setTestCases] = useState<TestCaseInput[]>([BLANK_CASE])
 
   const isChoice = type === 'SINGLE_CHOICE' || type === 'MULTI_CHOICE' || type === 'TRUE_FALSE'
@@ -329,6 +331,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
     setOptions(BLANK_OPTIONS)
     setAccepted('')
     setStarterCode('')
+    setAllowChoice(false)
     setTestCases([BLANK_CASE])
   }
 
@@ -338,7 +341,13 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
     if (type === 'SHORT_ANSWER') {
       return { ...base, acceptedAnswers: accepted.split('\n').map((a) => a.trim()).filter(Boolean) }
     }
-    return { ...base, codeLanguage, starterCode: starterCode || undefined, testCases }
+    return {
+      ...base,
+      codeLanguage,
+      allowLanguageChoice: allowChoice && codeLanguage !== 'SQL',
+      starterCode: starterCode || undefined,
+      testCases,
+    }
   }
 
   const mutation = useMutation({
@@ -502,6 +511,18 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
                   ))}
                 </select>
               </div>
+              {codeLanguage !== 'SQL' && (
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox checked={allowChoice} onCheckedChange={(v) => setAllowChoice(v === true)} />
+                  <span>
+                    Let students choose the language
+                    <span className="block text-xs text-muted-foreground">
+                      Off by default. Test cases are plain input and output, so any language can be checked against them.
+                      Starter code is only offered in the language above.
+                    </span>
+                  </span>
+                </label>
+              )}
               <div className="flex flex-col gap-2">
                 <Label htmlFor="starterCode">Starter code (optional)</Label>
                 <textarea

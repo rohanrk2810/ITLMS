@@ -71,6 +71,11 @@ public class QuizQuestion extends AuditableEntity {
     @Column(name = "code_language", length = 10)
     private CodeLanguage codeLanguage;
 
+    /** CODING only: when true the student may answer in any language the sandbox runs, not just {@link #codeLanguage}. */
+    @Column(name = "allow_language_choice", nullable = false)
+    @Builder.Default
+    private boolean allowLanguageChoice = false;
+
     /** CODING only: what the editor starts with. Shown to the student. */
     @Column(name = "starter_code", columnDefinition = "text")
     private String starterCode;

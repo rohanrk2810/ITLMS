@@ -50,7 +50,7 @@ public record QuizResponse(
     public record Question(Long id, String questionText, String type, int marks,
                            int sequenceNo, String explanation, List<Option> options,
                            String codeLanguage, String starterCode, List<String> acceptedAnswers,
-                           List<TestCase> testCases) {
+                           List<TestCase> testCases, boolean allowLanguageChoice) {
 
         static Question from(QuizQuestion q) {
             return new Question(q.getId(), q.getQuestionText(), q.getType().name(), q.getMarks(),
@@ -58,7 +58,7 @@ public record QuizResponse(
                     q.getOptions().stream().map(Option::from).toList(),
                     q.getCodeLanguage() == null ? null : q.getCodeLanguage().name(), q.getStarterCode(),
                     List.copyOf(q.getAcceptedAnswers()),
-                    q.getTestCases().stream().map(TestCase::from).toList());
+                    q.getTestCases().stream().map(TestCase::from).toList(), q.isAllowLanguageChoice());
         }
     }
 

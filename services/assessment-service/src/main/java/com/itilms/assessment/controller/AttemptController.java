@@ -62,13 +62,20 @@ public class AttemptController {
                                       @Valid @RequestBody RunTestsRequest request,
                                       @org.springframework.security.core.annotation.AuthenticationPrincipal
                                       com.itilms.common.security.AppPrincipal student) {
-        CodingRunResponse response = attemptService.runTests(id, questionId, request.sourceCode());
+        CodingRunResponse response = attemptService.runTests(id, questionId, request.sourceCode(), request.language());
         // A run that passed every test is compared with other students' best; anything else comes back unchanged.
         return comparisons.attach(response, student == null ? null : student.profileId());
     }
 
     /** The code to test. */
-    public record RunTestsRequest(@NotBlank @Size(max = 50000) String sourceCode) {
+    public record RunTestsRequest(@NotBlank @Size(max = 50000) String sourceCode,
+                                  @io.swagger.v3.oas.annotations.media.Schema(description =
+                                          "Only when the question lets the student choose a language")
+                                  @Size(max = 10) String language) {
+
+        public RunTestsRequest(String sourceCode) {
+            this(sourceCode, null);
+        }
     }
 
     @Operation(summary = "Report something the browser noticed in a secure test",

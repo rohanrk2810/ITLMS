@@ -64,6 +64,11 @@ public class Lesson extends AuditableEntity {
     @Column(name = "starter_code", columnDefinition = "text")
     private String starterCode;
 
+    /** Practice editor only: the student may switch to any other language the editor runs. */
+    @Column(name = "allow_language_choice", nullable = false)
+    @Builder.Default
+    private boolean allowLanguageChoice = false;
+
     /** Drives the estimated course length shown to students. */
     @Column(name = "duration_minutes", nullable = false)
     @Builder.Default
