@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.itilms.codeexec.analysis.StaticAnalyzer;
+import com.itilms.codeexec.dto.AnalysisResponse;
+import com.itilms.codeexec.dto.AnalyzeRequest;
 import com.itilms.codeexec.dto.LanguageResponse;
 import com.itilms.codeexec.dto.RunBatchRequest;
 import com.itilms.codeexec.dto.RunCodeRequest;
@@ -55,6 +58,16 @@ public class CodeExecController {
     @PostMapping("/run-batch")
     public List<RunCodeResponse> runBatch(@Valid @RequestBody RunBatchRequest request) {
         return codeExecService.runBatch(request);
+    }
+
+    @Operation(summary = "Estimate time and space complexity",
+            description = "Reads the code without running it, so it needs no sandbox and cannot be used to run anything. "
+                    + "The answer is an estimate: it carries its reasons, a confidence level and, where it sees one, "
+                    + "a suggestion. SQL is not analysed.")
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/analyze")
+    public AnalysisResponse analyze(@Valid @RequestBody AnalyzeRequest request) {
+        return StaticAnalyzer.analyze(request.language(), request.sourceCode());
     }
 
     @Operation(summary = "Sandbox health",

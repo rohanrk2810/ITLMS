@@ -222,6 +222,9 @@ export interface CodingCaseResult {
   expectedOutput: string | null
   actualOutput: string | null
   error: string | null
+  /** Measured for this test; also given for hidden tests, since a measurement is not an answer. */
+  timeSeconds: number | null
+  memoryKb: number | null
 }
 
 export interface CodingRunResponse {
