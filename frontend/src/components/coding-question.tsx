@@ -119,6 +119,7 @@ export function CodingQuestion({ attemptId, question, code, onChange, savedPasse
               timeSeconds: c.timeSeconds,
               memoryKb: c.memoryKb,
             }))}
+            comparison={result.comparison}
             analyse={!result.compileError}
           />
         </>

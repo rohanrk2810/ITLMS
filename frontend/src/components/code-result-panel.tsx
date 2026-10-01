@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle2, Info, Lightbulb, TriangleAlert, XCircle } from 'lucide-react'
 
+import type { ComparisonBucket, RunComparison } from '@/api/assessments'
 import { type CodeAnalysis, type CodeLanguageCode, type ComplexityModel, analyzeCode } from '@/api/code'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,11 +28,13 @@ interface CodeResultPanelProps {
   memoryKb: number | null
   /** Per-test measurements, when the run was a set of test cases. */
   cases?: CaseMeasure[]
+  /** Against other students, for a run that passed every test of a question many have solved. */
+  comparison?: RunComparison | null
   /** A program that did not compile has no complexity to estimate. */
   analyse?: boolean
 }
 
-type Open = 'explain' | 'optimize' | 'timings' | null
+type Open = 'explain' | 'optimize' | 'timings' | 'compare' | null
 
 /**
  * The result of a run, laid out like a coding-practice site: what happened, how long it took, how much memory it used,
@@ -46,6 +49,7 @@ export function CodeResultPanel({
   timeSeconds,
   memoryKb,
   cases,
+  comparison,
   analyse = true,
 }: CodeResultPanelProps) {
   const [open, setOpen] = useState<Open>(null)
@@ -72,7 +76,23 @@ export function CodeResultPanel({
         <dd>{timeSeconds != null ? `${Math.round(timeSeconds * 1000)} ms` : '-'}</dd>
         <dt className="text-muted-foreground">Memory Usage</dt>
         <dd>{memoryKb != null ? `${(memoryKb / 1024).toFixed(1)} MB` : '-'}</dd>
+        {comparison?.available && comparison.runtimeBeatsPercent != null && (
+          <>
+            <dt className="text-muted-foreground">Compared with others</dt>
+            <dd>
+              Faster than {comparison.runtimeBeatsPercent}%
+              {comparison.memoryBeatsPercent != null && `, lighter than ${comparison.memoryBeatsPercent}%`} of{' '}
+              {comparison.sampleSize - 1} other student{comparison.sampleSize - 1 === 1 ? '' : 's'}
+            </dd>
+          </>
+        )}
       </dl>
+      {comparison && !comparison.available && (
+        <p className="text-xs text-muted-foreground">
+          A comparison with other students appears once {comparison.minimumSample} have solved this question
+          ({comparison.sampleSize} so far).
+        </p>
+      )}
 
       {analyse && analysis.isLoading && <p className="text-xs text-muted-foreground">Estimating complexity...</p>}
       {analyse && analysis.isError && (
@@ -113,11 +133,17 @@ export function CodeResultPanel({
                 Test case timings
               </Button>
             )}
+            {comparison?.available && (
+              <Button type="button" size="sm" variant={open === 'compare' ? 'default' : 'outline'} onClick={() => toggle('compare')}>
+                Compare with others
+              </Button>
+            )}
           </div>
 
           {open === 'explain' && <Explanation data={data} />}
           {open === 'optimize' && <Optimization data={data} />}
           {open === 'timings' && <CaseBars cases={measured} />}
+          {open === 'compare' && comparison && <Distribution comparison={comparison} />}
         </>
       )}
 
@@ -346,6 +372,50 @@ function GrowthChart({
         )}
         <span>Faint lines: {CURVES.map((c) => c.label).join(', ')}</span>
       </figcaption>
+    </figure>
+  )
+}
+
+/** Where this run sits among everyone who solved the question: ten columns, this student's column highlighted. */
+function Distribution({ comparison }: { comparison: RunComparison }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Histogram title="Runtime of all submissions (ms)" buckets={comparison.runtimeBuckets} unit="ms" />
+      {comparison.memoryBuckets.length > 0 && (
+        <Histogram title="Memory of all submissions (MB)" buckets={comparison.memoryBuckets} unit="MB" scale={1024} />
+      )}
+      <p className="text-xs text-muted-foreground sm:col-span-2">
+        Each column counts the students whose best passing solution fell in that range; the green column is yours. Only
+        numbers are compared: no one&apos;s code or name is shown.
+      </p>
+    </div>
+  )
+}
+
+function Histogram({ title, buckets, unit, scale = 1 }: { title: string; buckets: ComparisonBucket[]; unit: string; scale?: number }) {
+  const max = Math.max(...buckets.map((b) => b.count), 1)
+  const fmt = (v: number) => (scale === 1 ? String(v) : (v / scale).toFixed(1))
+  return (
+    <figure className="flex flex-col gap-1" aria-label={title}>
+      <figcaption className="text-xs font-medium">{title}</figcaption>
+      <div className="flex h-24 items-end gap-0.5">
+        {buckets.map((b) => (
+          <div
+            key={b.from}
+            title={`${fmt(b.from)}-${fmt(b.to)} ${unit}: ${b.count} student${b.count === 1 ? '' : 's'}`}
+            className={cn('flex-1 rounded-t', b.yours ? 'bg-emerald-500' : 'bg-muted-foreground/40')}
+            style={{ height: `${Math.max(4, Math.round((b.count / max) * 100))}%` }}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between text-[10px] text-muted-foreground">
+        <span>
+          {fmt(buckets[0].from)} {unit}
+        </span>
+        <span>
+          {fmt(buckets[buckets.length - 1].to)} {unit}
+        </span>
+      </div>
     </figure>
   )
 }

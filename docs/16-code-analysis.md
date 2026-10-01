@@ -25,5 +25,11 @@ It is a heuristic. It cannot know how large the real input is, so a loop over a 
 - *Growth chart* (View Explanation / Optimize Solution): the usual growth rates faintly, this code's rate heavy, the suggested rate dashed. It shows shape, not measured time.
 - *Test case timings*: one bar per test for time and for memory, green for passed, red for failed.
 
+## "Faster than X%" (test runs only)
+assessment-service (V5, `coding_run_stats`) keeps each student's best total runtime and largest memory for a coding question, but only from a run that **passed every test**. A passing run is compared with the other students' bests: "faster than N%" is the share of others who were slower (a tie does not beat anyone), and a ten-column histogram shows where the student sits.
+- **Not shown until it means something:** below `itilms.assessment.comparison-min-sample` (default 20) students the server returns only the count, and the panel says how many more are needed.
+- Only numbers are stored and returned: no code, no names. Memory is compared only among students who have a memory figure.
+- Runtime is the sum of the test cases' times (the sandbox measures each case on its own), so it is for comparing solutions, not a benchmark.
+
 ## Not covered
 The live-class coding question has no run button (the student only submits code for the trainer to mark) and assignments have no code editor, so neither shows this panel yet.
