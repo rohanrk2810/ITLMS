@@ -13,6 +13,7 @@ public record BrandingResponse(
         String signatoryTitle,
         String logoUrl,
         String faviconUrl,
+        String loginBackgroundUrl,
         long version) {
 
     static BrandingResponse from(InstituteSettings s) {
@@ -21,6 +22,7 @@ public record BrandingResponse(
                 s.getContactPhone(), s.getWebsite(), s.getAddress(), s.getSignatoryName(), s.getSignatoryTitle(),
                 s.getLogo() == null ? null : "/api/public/branding/logo" + v,
                 s.getFavicon() == null ? null : "/api/public/branding/favicon" + v,
+                s.getLoginBackground() == null ? null : "/api/public/branding/login-background" + v,
                 s.getVersion());
     }
 }

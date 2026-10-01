@@ -51,6 +51,25 @@ public class BrandingController {
         return image(service.favicon());
     }
 
+    @SecurityRequirements
+    @GetMapping("/api/public/branding/login-background")
+    public ResponseEntity<byte[]> loginBackground() {
+        return image(service.loginBackground());
+    }
+
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @PostMapping("/api/branding/login-background")
+    public BrandingResponse uploadLoginBackground(@RequestPart("file") MultipartFile file,
+                                                  @AuthenticationPrincipal AppPrincipal admin) throws IOException {
+        return service.setLoginBackground(file.getBytes(), admin.userId());
+    }
+
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @DeleteMapping("/api/branding/login-background")
+    public BrandingResponse removeLoginBackground(@AuthenticationPrincipal AppPrincipal admin) {
+        return service.clearLoginBackground(admin.userId());
+    }
+
     @PreAuthorize(Roles.ADMIN_ONLY)
     @PutMapping("/api/branding")
     public BrandingResponse update(@Valid @RequestBody UpdateBrandingRequest request,

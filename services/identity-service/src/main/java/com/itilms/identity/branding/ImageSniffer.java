@@ -13,11 +13,15 @@ final class ImageSniffer {
     }
 
     static String detect(byte[] b) {
+        return detect(b, BrandingService.MAX_IMAGE_BYTES);
+    }
+
+    static String detect(byte[] b, int maxBytes) {
         if (b == null || b.length == 0) {
             throw new BusinessRuleException("The image is empty");
         }
-        if (b.length > BrandingService.MAX_IMAGE_BYTES) {
-            throw new BusinessRuleException("The image is larger than 1 MB");
+        if (b.length > maxBytes) {
+            throw new BusinessRuleException("The image is larger than " + (maxBytes / (1024 * 1024)) + " MB");
         }
         if (b.length >= 8 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') {
             return "image/png";
