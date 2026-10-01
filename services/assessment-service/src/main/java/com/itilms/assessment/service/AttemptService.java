@@ -39,6 +39,9 @@ public interface AttemptService {
      */
     CodingRunResponse runTests(Long attemptId, Long questionId, String sourceCode);
 
+    /** As above, in the language the student chose (null means the question's own). Refused unless the question allows a choice. */
+    CodingRunResponse runTests(Long attemptId, Long questionId, String sourceCode, String language);
+
     /**
      * A secure test's browser reports something (left the window, tried to copy...). The server decides what
      * it counts for: a counted violation below the limit warns, the one that reaches it ends the attempt.

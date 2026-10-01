@@ -61,6 +61,8 @@ export interface AttemptQuestion {
   /** The cases the student may see. Hidden ones are never sent. */
   sampleTests: SampleTest[]
   hiddenTestCount: number
+  /** CODING only: the author lets the student answer in another language. */
+  allowLanguageChoice: boolean
 }
 
 export interface SavedAnswer {
@@ -69,6 +71,8 @@ export interface SavedAnswer {
   answerText: string | null
   testsPassed: number | null
   testsTotal: number | null
+  /** The language the student chose, when the question allows a choice. */
+  codeLanguage: CodeLanguageCode | null
 }
 
 /** The paper for a running attempt. Never carries the answer key (Doc S14). */
@@ -211,7 +215,7 @@ export interface AnswerSaveResponse {
   secondsRemaining: number
 }
 
-export type SubmitAnswer = { questionId: number; selectedOptionIds?: number[]; answerText?: string }
+export type SubmitAnswer = { questionId: number; selectedOptionIds?: number[]; answerText?: string; codeLanguage?: string }
 
 export interface CodingCaseResult {
   number: number
@@ -264,10 +268,12 @@ export async function runCodingTests(
   attemptId: number | string,
   questionId: number,
   sourceCode: string,
+  /** Only for a question that lets the student choose; the server refuses it otherwise. */
+  language?: CodeLanguageCode,
 ): Promise<CodingRunResponse> {
   const { data } = await apiClient.post<CodingRunResponse>(
     `/api/quiz-attempts/${attemptId}/questions/${questionId}/run-tests`,
-    { sourceCode },
+    { sourceCode, language },
   )
   return data
 }
@@ -340,6 +346,7 @@ export interface QuizQuestionWithKey {
   starterCode: string | null
   acceptedAnswers: string[]
   testCases: QuizTestCase[]
+  allowLanguageChoice: boolean
 }
 
 export interface QuizTestCase {
@@ -417,6 +424,8 @@ export interface QuestionInput {
   options?: QuestionOptionInput[]
   /** CODING only. */
   codeLanguage?: CodeLanguageCode
+  /** CODING only: let students answer in another language. Ignored for SQL. */
+  allowLanguageChoice?: boolean
   starterCode?: string
   /** SHORT_ANSWER only. */
   acceptedAnswers?: string[]

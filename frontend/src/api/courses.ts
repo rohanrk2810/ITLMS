@@ -36,6 +36,8 @@ export interface LessonResponse {
   /** The lesson's practice editor language; null when it has none (and while the lesson is locked). */
   codeLanguage: CodeLanguageCode | null
   starterCode: string | null
+  /** Practice editor: the student may pick another language. */
+  allowLanguageChoice: boolean
 }
 
 export interface ModuleResponse {
@@ -153,6 +155,8 @@ export interface LessonInput {
   /** Adds a practice editor to the lesson. Starter code needs it. */
   codeLanguage?: CodeLanguageCode
   starterCode?: string
+  /** Practice editor: let the student pick the language. Ignored for SQL. */
+  allowLanguageChoice?: boolean
 }
 
 /** The staff view across every status, not just published courses. */

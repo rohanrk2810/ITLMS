@@ -402,6 +402,9 @@ public class QuizServiceImpl implements QuizService {
 
         question.setCodeLanguage(type == QuestionType.CODING ? parseLanguage(request.codeLanguage()) : null);
         question.setStarterCode(type == QuestionType.CODING ? trim(request.starterCode()) : null);
+        // A SQL question needs its own database, so it cannot be answered in another language.
+        question.setAllowLanguageChoice(type == QuestionType.CODING && Boolean.TRUE.equals(request.allowLanguageChoice())
+                && question.getCodeLanguage() != CodeLanguage.SQL);
         sequence = 1;
         for (QuestionRequest.TestCaseRequest testCase : cases) {
             question.getTestCases().add(QuizTestCase.builder()

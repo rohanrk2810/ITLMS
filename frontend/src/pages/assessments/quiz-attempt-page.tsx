@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CameraCheck, CameraPreview } from '@/components/camera-panel'
+import type { CodeLanguageCode } from '@/api/code'
 import { CodingQuestion } from '@/components/coding-question'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -35,6 +36,7 @@ import { cn } from '@/lib/utils'
 const AUTOSAVE_INTERVAL_MS = 20_000
 
 type Answers = Record<number, Set<number>>
+type Languages = Record<number, CodeLanguageCode>
 type Texts = Record<number, string>
 type Tested = Record<number, { passed: number; total: number }>
 
@@ -42,13 +44,19 @@ type Tested = Record<number, { passed: number; total: number }>
  * Everything the student has answered, in the shape the API takes. A coding box still holding its untouched
  * starter code is not an answer, and neither is blank text; choice questions send options, the rest text.
  */
-function toSubmitAnswers(paper: AttemptViewResponse, answers: Answers, texts: Texts): SubmitAnswer[] {
+function toSubmitAnswers(
+  paper: AttemptViewResponse,
+  answers: Answers,
+  texts: Texts,
+  languages: Languages = {},
+): SubmitAnswer[] {
   const submit: SubmitAnswer[] = []
   for (const question of paper.questions) {
     if (question.type === 'SHORT_ANSWER' || question.type === 'CODING') {
       const text = texts[question.id] ?? ''
       const untouched = question.type === 'CODING' && text === (question.starterCode ?? '')
-      if (text.trim() && !untouched) submit.push({ questionId: question.id, answerText: text })
+      const chosen = question.allowLanguageChoice ? languages[question.id] : undefined
+      if (text.trim() && !untouched) submit.push({ questionId: question.id, answerText: text, codeLanguage: chosen })
     } else {
       const options = answers[question.id]
       if (options) submit.push({ questionId: question.id, selectedOptionIds: [...options] })
@@ -87,19 +95,25 @@ export function QuizAttemptPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [texts, setTexts] = useState<Texts>({})
+  const [languages, setLanguages] = useState<Languages>({})
   const [tested, setTested] = useState<Tested>({})
   const answersRef = useRef<Answers>({})
   const textsRef = useRef<Texts>({})
+  const languagesRef = useRef<Languages>({})
   useEffect(() => {
     answersRef.current = answers
     textsRef.current = texts
-  }, [answers, texts])
+    languagesRef.current = languages
+  }, [answers, texts, languages])
 
   const submitNow = useCallback(async () => {
     if (!paper || submitting) return
     setSubmitting(true)
     try {
-      const outcome = await submitAttempt(paper.attemptId, toSubmitAnswers(paper, answersRef.current, textsRef.current))
+      const outcome = await submitAttempt(
+        paper.attemptId,
+        toSubmitAnswers(paper, answersRef.current, textsRef.current, languagesRef.current),
+      )
       setResult(outcome)
       setView('results')
       toast.success('Test submitted')
@@ -130,9 +144,11 @@ export function QuizAttemptPage() {
         const restoredAnswers: Answers = {}
         const restoredTexts: Texts = {}
         const restoredTests: Tested = {}
+        const restoredLanguages: Languages = {}
         for (const saved of view.savedAnswers) {
           if (saved.selectedOptionIds.length > 0) restoredAnswers[saved.questionId] = new Set(saved.selectedOptionIds)
           if (saved.answerText) restoredTexts[saved.questionId] = saved.answerText
+          if (saved.codeLanguage) restoredLanguages[saved.questionId] = saved.codeLanguage
           if (saved.testsTotal != null) {
             restoredTests[saved.questionId] = { passed: saved.testsPassed ?? 0, total: saved.testsTotal }
           }
@@ -144,6 +160,7 @@ export function QuizAttemptPage() {
         }
         setAnswers(restoredAnswers)
         setTexts(restoredTexts)
+        setLanguages(restoredLanguages)
         setTested(restoredTests)
         setView('live')
       })
@@ -251,7 +268,10 @@ export function QuizAttemptPage() {
     if (view !== 'live' || !paper) return
     const tick = setInterval(() => setSecondsRemaining((s) => Math.max(0, s - 1)), 1000)
     const save = setInterval(() => {
-      void saveAttemptAnswers(paper.attemptId, toSubmitAnswers(paper, answersRef.current, textsRef.current)).catch(
+      void saveAttemptAnswers(
+        paper.attemptId,
+        toSubmitAnswers(paper, answersRef.current, textsRef.current, languagesRef.current),
+      ).catch(
         () => undefined,
       )
     }, AUTOSAVE_INTERVAL_MS)
@@ -496,6 +516,8 @@ export function QuizAttemptPage() {
                 question={question}
                 code={texts[question.id] ?? question.starterCode ?? ''}
                 onChange={(code) => setTexts((prev) => ({ ...prev, [question.id]: code }))}
+                chosenLanguage={languages[question.id]}
+                onLanguageChange={(language) => setLanguages((prev) => ({ ...prev, [question.id]: language }))}
                 savedPassed={tested[question.id]?.passed ?? null}
                 savedTotal={tested[question.id]?.total ?? null}
                 onTested={(questionId, passed, total) =>

@@ -165,6 +165,7 @@ public class CurriculumServiceImpl implements CurriculumService {
                 .textContent(trim(request.textContent()))
                 .codeLanguage(codeLanguage)
                 .starterCode(starterCodeOrNull(codeLanguage, request))
+                .allowLanguageChoice(choiceAllowed(codeLanguage, request))
                 .durationMinutes(request.durationMinutes() == null ? 0 : request.durationMinutes())
                 .sequenceNo(sequence)
                 .preview(request.previewOrDefault())
@@ -214,6 +215,7 @@ public class CurriculumServiceImpl implements CurriculumService {
         lesson.setTextContent(trim(request.textContent()));
         lesson.setCodeLanguage(codeLanguage);
         lesson.setStarterCode(starterCodeOrNull(codeLanguage, request));
+        lesson.setAllowLanguageChoice(choiceAllowed(codeLanguage, request));
         lesson.setDurationMinutes(request.durationMinutes() == null ? 0 : request.durationMinutes());
         lesson.setPreview(request.previewOrDefault());
         lesson.setMandatory(request.mandatoryOrDefault());
@@ -356,6 +358,11 @@ public class CurriculumServiceImpl implements CurriculumService {
                 }
             }
         }
+    }
+
+    /** Only a practice lesson can offer a choice, and a SQL lesson cannot (it is not interchangeable with the others). */
+    private static boolean choiceAllowed(CodeLanguage language, LessonRequest request) {
+        return language != null && language != CodeLanguage.SQL && Boolean.TRUE.equals(request.allowLanguageChoice());
     }
 
     /** The practice-editor language, or null when the lesson has none. */

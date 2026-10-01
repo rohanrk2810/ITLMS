@@ -1,5 +1,6 @@
     package com.itilms.assessment.service.impl;
 
+import com.itilms.common.code.CodeLanguage;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -259,6 +260,12 @@ public class AttemptServiceImpl implements AttemptService {
     @Override
     @Transactional(noRollbackFor = BusinessRuleException.class)
     public CodingRunResponse runTests(Long attemptId, Long questionId, String sourceCode) {
+        return runTests(attemptId, questionId, sourceCode, null);
+    }
+
+    @Override
+    @Transactional(noRollbackFor = BusinessRuleException.class)
+    public CodingRunResponse runTests(Long attemptId, Long questionId, String sourceCode, String language) {
         QuizAttempt attempt = requireOwnAttempt(attemptId);
         Quiz quiz = requireQuiz(attempt.getQuizId());
         Instant now = Instant.now();
@@ -272,12 +279,38 @@ public class AttemptServiceImpl implements AttemptService {
             throw new BusinessRuleException("INVALID_ANSWER", "Question %d is not a coding question.".formatted(questionId));
         }
 
-        CodingJudge.Verdict verdict = judge.judge(question, sourceCode);
-        recordVerdict(attempt, question, sourceCode, verdict, now);
+        // Checked here, on the server: the question decides whether another language is allowed, not the page.
+        CodeLanguage chosen = chosenLanguage(question, language);
+        CodingJudge.Verdict verdict = chosen == null ? judge.judge(question, sourceCode)
+                : judge.judge(question, sourceCode, chosen);
+        recordVerdict(attempt, question, sourceCode, chosen, verdict, now);
         return CodingRunResponse.of(questionId, verdict);
     }
 
-    private void recordVerdict(QuizAttempt attempt, QuizQuestion question, String sourceCode,
+    /**
+     * The language a student asked to answer in, or null when it is the question's own. A different language is
+     * accepted only when the author switched language choice on, and never for SQL (which needs its own database).
+     */
+    private static CodeLanguage chosenLanguage(QuizQuestion question, String requested) {
+        if (requested == null || requested.isBlank()) {
+            return null;
+        }
+        CodeLanguage language = CodeLanguage.parse(requested).orElseThrow(() ->
+                new BusinessRuleException("INVALID_ANSWER", "Choose one of: " + CodeLanguage.allowedList() + "."));
+        if (language == question.getCodeLanguage()) {
+            return null;
+        }
+        if (!question.isAllowLanguageChoice()) {
+            throw new BusinessRuleException("INVALID_ANSWER", "This question must be answered in %s."
+                    .formatted(question.getCodeLanguage()));
+        }
+        if (language == CodeLanguage.SQL) {
+            throw new BusinessRuleException("INVALID_ANSWER", "SQL cannot be chosen for this question.");
+        }
+        return language;
+    }
+
+    private void recordVerdict(QuizAttempt attempt, QuizQuestion question, String sourceCode, CodeLanguage chosen,
                                CodingJudge.Verdict verdict, Instant now) {
         QuizAnswer row = answerRepository.findByAttemptId(attempt.getId()).stream()
                 .filter(a -> a.getQuestionId().equals(question.getId())).findFirst()
@@ -285,7 +318,8 @@ public class AttemptServiceImpl implements AttemptService {
         row.setAnswerText(sourceCode);
         row.setTestsPassed(verdict.passedCount());
         row.setTestsTotal(verdict.cases().size());
-        row.setTestedSourceHash(CodingJudge.sha256(sourceCode));
+        row.setCodeLanguage(chosen);
+        row.setTestedSourceHash(CodingJudge.verdictKey(sourceCode, chosen));
         row.setTestedMarks(question.codingMarks(verdict.passedWeight()));
         row.setAnsweredAt(now);
         answerRepository.save(row);
@@ -306,11 +340,13 @@ public class AttemptServiceImpl implements AttemptService {
             QuizQuestion question = coding.get(answer.getQuestionId());
             String code = answer.getAnswerText();
             if (question == null || code == null || code.isBlank()
-                    || CodingJudge.sha256(code).equals(answer.getTestedSourceHash())) {
+                    || CodingJudge.verdictKey(code, answer.getCodeLanguage()).equals(answer.getTestedSourceHash())) {
                 continue;
             }
             try {
-                recordVerdict(attempt, question, code, judge.judge(question, code), now);
+                CodeLanguage used = answer.getCodeLanguage();
+                CodingJudge.Verdict verdict = used == null ? judge.judge(question, code) : judge.judge(question, code, used);
+                recordVerdict(attempt, question, code, used, verdict, now);
             } catch (BusinessRuleException | FeignException e) {
                 log.warn("Tests for question {} of attempt {} could not be run at submission: {}",
                         question.getId(), attempt.getId(), e.getMessage());
@@ -464,6 +500,14 @@ public class AttemptServiceImpl implements AttemptService {
                 QuizAnswer row = existing != null ? existing
                         : QuizAnswer.builder().attemptId(attempt.getId()).questionId(question.getId()).build();
                 row.setAnswerText(text);
+                if (question.getType() == QuestionType.CODING) {
+                    CodeLanguage chosen = chosenLanguage(question, answer.codeLanguage());
+                    if (chosen != row.getCodeLanguage()) {
+                        // A new language invalidates the earlier verdict: it was for different code.
+                        row.setTestedSourceHash(null);
+                    }
+                    row.setCodeLanguage(chosen);
+                }
                 row.setAnsweredAt(now);
                 toSave.add(row);
                 saved.put(question.getId(), row);

@@ -4,8 +4,9 @@ import { CheckCircle2, Loader2, Play, XCircle } from 'lucide-react'
 
 import { type AttemptQuestion, type CodingRunResponse, runCodingTests } from '@/api/assessments'
 import { apiErrorMessage } from '@/api/client'
-import { codeLanguageLabel } from '@/api/code'
+import { type CodeLanguageCode, codeLanguageLabel } from '@/api/code'
 import { CodeResultPanel } from '@/components/code-result-panel'
+import { LanguageSelect } from '@/components/language-select'
 import { Button } from '@/components/ui/button'
 import { CLIPBOARD_OK_ATTRIBUTE } from '@/lib/use-test-guard'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,9 @@ interface CodingQuestionProps {
   question: AttemptQuestion
   code: string
   onChange: (code: string) => void
+  /** The language the student picked, when the question allows a choice. */
+  chosenLanguage?: CodeLanguageCode
+  onLanguageChange: (language: CodeLanguageCode) => void
   /** Last known result, from a saved answer, shown until the student runs the tests again. */
   savedPassed: number | null
   savedTotal: number | null
@@ -29,17 +33,28 @@ interface CodingQuestionProps {
  * A coding question inside a test: the editor, the sample cases, and a button that runs every case,
  * hidden ones included. Hidden cases come back as pass or fail only.
  */
-export function CodingQuestion({ attemptId, question, code, onChange, savedPassed, savedTotal, onTested }: CodingQuestionProps) {
+export function CodingQuestion({
+  attemptId,
+  question,
+  code,
+  onChange,
+  chosenLanguage,
+  onLanguageChange,
+  savedPassed,
+  savedTotal,
+  onTested,
+}: CodingQuestionProps) {
   const [result, setResult] = useState<CodingRunResponse | null>(null)
   /** The code the tests ran against, so the complexity estimate matches the results shown. */
   const [ranCode, setRanCode] = useState('')
   const [runError, setRunError] = useState<string | null>(null)
-  const language = question.codeLanguage
+  const language = question.allowLanguageChoice && chosenLanguage ? chosenLanguage : question.codeLanguage
 
   const mutation = useMutation({
     mutationFn: async () => {
       const submitted = code
-      return { response: await runCodingTests(attemptId, question.id, submitted), submitted }
+      const picked = question.allowLanguageChoice ? chosenLanguage : undefined
+      return { response: await runCodingTests(attemptId, question.id, submitted, picked), submitted }
     },
     onMutate: () => {
       setRunError(null)
@@ -59,8 +74,21 @@ export function CodingQuestion({ attemptId, question, code, onChange, savedPasse
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
+        {question.allowLanguageChoice ? (
+          <LanguageSelect
+            value={language}
+            disabled={mutation.isPending}
+            onChange={(next) => {
+              // The earlier results were for another language, so they no longer describe this code.
+              setResult(null)
+              onLanguageChange(next)
+            }}
+          />
+        ) : (
+          <span className="text-xs text-muted-foreground">{codeLanguageLabel(language)}</span>
+        )}
         <span className="text-xs text-muted-foreground">
-          {codeLanguageLabel(language)}
+          {question.allowLanguageChoice && 'You may answer in any language. '}
           {question.hiddenTestCount > 0 && ` · ${question.hiddenTestCount} hidden test${question.hiddenTestCount === 1 ? '' : 's'}`}
         </span>
         <Button type="button" size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending || !code.trim()}>

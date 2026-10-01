@@ -53,8 +53,19 @@ public record LessonRequest(
 
         @Schema(description = "What the practice editor opens with. Needs codeLanguage.")
         @Size(max = 20000, message = "Starter code is limited to 20,000 characters")
-        String starterCode
+        String starterCode,
+
+        @Schema(description = "Practice editor: let the student choose the language. Needs codeLanguage.")
+        Boolean allowLanguageChoice
 ) {
+
+    /** A lesson request that says nothing about language choice (the choice stays off). */
+    public LessonRequest(String title, String type, String contentUrl, String contentFileRef, String textContent,
+                         Integer durationMinutes, Integer sequenceNo, Boolean preview, Boolean mandatory,
+                         String codeLanguage, String starterCode) {
+        this(title, type, contentUrl, contentFileRef, textContent, durationMinutes, sequenceNo, preview, mandatory,
+                codeLanguage, starterCode, null);
+    }
 
     public boolean previewOrDefault() {
         return Boolean.TRUE.equals(preview);
