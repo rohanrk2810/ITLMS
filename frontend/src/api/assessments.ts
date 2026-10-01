@@ -227,12 +227,36 @@ export interface CodingCaseResult {
   memoryKb: number | null
 }
 
+export interface ComparisonBucket {
+  from: number
+  to: number
+  count: number
+  yours: boolean
+}
+
+/**
+ * How a run that passed every test compares with other students who solved the same question. When too few have,
+ * `available` is false and only the counts are given: a percentage over a handful means nothing.
+ */
+export interface RunComparison {
+  available: boolean
+  sampleSize: number
+  minimumSample: number
+  runtimeBeatsPercent: number | null
+  memoryBeatsPercent: number | null
+  yourRuntimeMs: number
+  yourMemoryKb: number | null
+  runtimeBuckets: ComparisonBucket[]
+  memoryBuckets: ComparisonBucket[]
+}
+
 export interface CodingRunResponse {
   questionId: number
   passed: number
   total: number
   compileError: string | null
   cases: CodingCaseResult[]
+  comparison?: RunComparison | null
 }
 
 /** Runs a coding question's test cases against the code, and keeps the code as the answer. */

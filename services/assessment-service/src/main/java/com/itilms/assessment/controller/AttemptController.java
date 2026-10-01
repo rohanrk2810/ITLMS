@@ -36,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 public class AttemptController {
 
     private final AttemptService attemptService;
+    private final com.itilms.assessment.service.CodingComparisonService comparisons;
 
     @Operation(summary = "The paper for a running attempt", description = "Never includes the answer key.")
     @PreAuthorize("hasRole('STUDENT')")
@@ -58,8 +59,12 @@ public class AttemptController {
     @PreAuthorize("hasRole('STUDENT')")
     @PostMapping("/{id}/questions/{questionId}/run-tests")
     public CodingRunResponse runTests(@PathVariable Long id, @PathVariable Long questionId,
-                                      @Valid @RequestBody RunTestsRequest request) {
-        return attemptService.runTests(id, questionId, request.sourceCode());
+                                      @Valid @RequestBody RunTestsRequest request,
+                                      @org.springframework.security.core.annotation.AuthenticationPrincipal
+                                      com.itilms.common.security.AppPrincipal student) {
+        CodingRunResponse response = attemptService.runTests(id, questionId, request.sourceCode());
+        // A run that passed every test is compared with other students' best; anything else comes back unchanged.
+        return comparisons.attach(response, student == null ? null : student.profileId());
     }
 
     /** The code to test. */

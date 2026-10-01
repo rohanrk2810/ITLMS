@@ -20,8 +20,28 @@ public record CodingRunResponse(
         int total,
         @Schema(description = "The compiler's messages when the program did not compile; otherwise null")
         String compileError,
-        List<Case> cases
+        List<Case> cases,
+        @Schema(description = "How this run compares with other students; only when every test passed")
+        Comparison comparison
 ) {
+
+    /**
+     * Faster-than figures against the other students who solved this question. When fewer than {@code minimumSample}
+     * have, {@code available} is false and nothing else is filled in: a percentage over a handful means nothing.
+     */
+    public record Comparison(boolean available, int sampleSize, int minimumSample, Integer runtimeBeatsPercent,
+                             Integer memoryBeatsPercent, int yourRuntimeMs, Integer yourMemoryKb,
+                             List<Bucket> runtimeBuckets, List<Bucket> memoryBuckets) {
+    }
+
+    /** One column of a histogram: how many students fell in from..to, and whether this student is one of them. */
+    public record Bucket(int from, int to, int count, boolean yours) {
+    }
+
+    public CodingRunResponse withComparison(Comparison comparison) {
+        return new CodingRunResponse(questionId, passed, total, compileError, cases, comparison);
+    }
+
 
     /** Time and memory are measurements, not answers, so a hidden case shows them too. */
     public record Case(int number, boolean hidden, boolean passed, String input, String expectedOutput,
@@ -35,6 +55,6 @@ public record CodingRunResponse(
                 : new Case(c.number(), false, c.passed(), c.input(), c.expected(), c.actual(), c.error(),
                         c.timeSeconds(), c.memoryKb())).toList();
         return new CodingRunResponse(questionId, verdict.passedCount(), verdict.cases().size(),
-                verdict.compileError(), cases);
+                verdict.compileError(), cases, null);
     }
 }
