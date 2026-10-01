@@ -35,7 +35,14 @@ public class CodingJudge {
 
     /** One test case's outcome. {@code input}, {@code expected} and {@code actual} are for the caller to hide or show. */
     public record CaseResult(int number, boolean hidden, boolean passed, int weight,
-                             String input, String expected, String actual, String error) {
+                             String input, String expected, String actual, String error,
+                             Double timeSeconds, Integer memoryKb) {
+
+        /** A case with no measurements (the runner reported none). */
+        public CaseResult(int number, boolean hidden, boolean passed, int weight,
+                          String input, String expected, String actual, String error) {
+            this(number, hidden, passed, weight, input, expected, actual, error, null, null);
+        }
     }
 
     /** The whole run. {@code compileError} is set when the program did not compile; every case then failed. */
@@ -85,7 +92,8 @@ public class CodingJudge {
                 passed = outputsMatch(run.stdout(), testCase.getExpectedOutput());
             }
             outcomes.add(new CaseResult(i + 1, testCase.isHidden(), passed, testCase.getWeight(),
-                    testCase.getInput(), testCase.getExpectedOutput(), run.stdout(), error));
+                    testCase.getInput(), testCase.getExpectedOutput(), run.stdout(), error,
+                    run.timeSeconds(), run.memoryKb()));
         }
         return new Verdict(compileError, outcomes);
     }

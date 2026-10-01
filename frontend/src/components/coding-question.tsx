@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, Play, XCircle } from 'lucide-react'
 import { type AttemptQuestion, type CodingRunResponse, runCodingTests } from '@/api/assessments'
 import { apiErrorMessage } from '@/api/client'
 import { codeLanguageLabel } from '@/api/code'
+import { CodeResultPanel } from '@/components/code-result-panel'
 import { Button } from '@/components/ui/button'
 import { CLIPBOARD_OK_ATTRIBUTE } from '@/lib/use-test-guard'
 import { cn } from '@/lib/utils'
@@ -30,16 +31,22 @@ interface CodingQuestionProps {
  */
 export function CodingQuestion({ attemptId, question, code, onChange, savedPassed, savedTotal, onTested }: CodingQuestionProps) {
   const [result, setResult] = useState<CodingRunResponse | null>(null)
+  /** The code the tests ran against, so the complexity estimate matches the results shown. */
+  const [ranCode, setRanCode] = useState('')
   const [runError, setRunError] = useState<string | null>(null)
   const language = question.codeLanguage
 
   const mutation = useMutation({
-    mutationFn: () => runCodingTests(attemptId, question.id, code),
+    mutationFn: async () => {
+      const submitted = code
+      return { response: await runCodingTests(attemptId, question.id, submitted), submitted }
+    },
     onMutate: () => {
       setRunError(null)
     },
-    onSuccess: (response) => {
+    onSuccess: ({ response, submitted }) => {
       setResult(response)
+      setRanCode(submitted)
       onTested(question.id, response.passed, response.total)
     },
     onError: (error) => setRunError(apiErrorMessage(error, 'Could not run the tests. Your code is kept; try again.')),
@@ -95,7 +102,26 @@ export function CodingQuestion({ attemptId, question, code, onChange, savedPasse
       )}
 
       {result ? (
-        <RunResult result={result} />
+        <>
+          <RunResult result={result} />
+          <CodeResultPanel
+            language={language}
+            ranCode={ranCode}
+            headlineLabel="Test Cases"
+            headline={`${result.passed}/${result.total} Passed`}
+            ok={result.passed === result.total}
+            timeSeconds={slowest(result.cases.map((c) => c.timeSeconds))}
+            memoryKb={slowest(result.cases.map((c) => c.memoryKb))}
+            cases={result.cases.map((c) => ({
+              number: c.number,
+              hidden: c.hidden,
+              passed: c.passed,
+              timeSeconds: c.timeSeconds,
+              memoryKb: c.memoryKb,
+            }))}
+            analyse={!result.compileError}
+          />
+        </>
       ) : (
         savedTotal != null && (
           <p className="text-xs text-muted-foreground">
@@ -105,6 +131,12 @@ export function CodingQuestion({ attemptId, question, code, onChange, savedPasse
       )}
     </div>
   )
+}
+
+/** The largest of the measurements that exist: each test runs on its own, so the worst one is the one to watch. */
+function slowest(values: Array<number | null>): number | null {
+  const present = values.filter((v): v is number => v != null)
+  return present.length === 0 ? null : Math.max(...present)
 }
 
 function Labelled({ label, text }: { label: string; text: string | null }) {
