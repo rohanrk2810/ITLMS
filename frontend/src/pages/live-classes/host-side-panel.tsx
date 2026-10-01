@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AskQuestionPanel } from './ask-question-panel'
 import { RoomControlsBody } from './host-controls-panel'
+import { MonitoringEventsPanel } from './monitoring-events-panel'
 
 /** The trainer's/staff's sidebar in a live class: room controls and asking the class questions. */
 export function HostSidePanel({ liveSessionId, classSessionId }: { liveSessionId: number; classSessionId: number }) {
@@ -10,12 +11,16 @@ export function HostSidePanel({ liveSessionId, classSessionId }: { liveSessionId
         <TabsList className="mb-3 w-full">
           <TabsTrigger value="controls">Room controls</TabsTrigger>
           <TabsTrigger value="questions">Questions</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
         </TabsList>
         <TabsContent value="controls">
           <RoomControlsBody liveSessionId={liveSessionId} />
         </TabsContent>
         <TabsContent value="questions">
           <AskQuestionPanel liveSessionId={liveSessionId} classSessionId={classSessionId} />
+        </TabsContent>
+        <TabsContent value="monitoring">
+          <MonitoringEventsPanel classSessionId={classSessionId} />
         </TabsContent>
       </Tabs>
     </aside>
