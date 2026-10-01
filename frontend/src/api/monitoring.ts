@@ -9,6 +9,7 @@ export interface MonitoringSetting {
   enabled: boolean
   faceVisibility: boolean
   cameraRequired: boolean
+  microphoneRequired: boolean
   warningAfterSeconds: number
   showWarning: boolean
   warningMessage: string | null
@@ -22,6 +23,8 @@ export interface MonitoringSettingInput {
   enabled: boolean
   faceVisibility: boolean
   cameraRequired: boolean
+  /** Students must allow the microphone to join. Permission only: nothing is listened to. */
+  microphoneRequired: boolean
   warningAfterSeconds: number
   showWarning: boolean
   warningMessage: string
@@ -33,6 +36,7 @@ export interface EffectiveMonitoring {
   enabled: boolean
   faceVisibility: boolean
   cameraRequired: boolean
+  microphoneRequired: boolean
   warningAfterSeconds: number
   showWarning: boolean
   warningMessage: string | null
@@ -46,6 +50,8 @@ export type MonitoringEventType =
   | 'MULTIPLE_FACES'
   | 'CAMERA_DISABLED'
   | 'CAMERA_PERMISSION_DENIED'
+  | 'MICROPHONE_DISABLED'
+  | 'MICROPHONE_PERMISSION_DENIED'
 
 export interface MonitoringEvent {
   id: number

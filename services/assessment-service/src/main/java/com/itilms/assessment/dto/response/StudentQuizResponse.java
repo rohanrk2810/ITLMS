@@ -34,6 +34,9 @@ public record StudentQuizResponse(
         @Schema(description = "The camera must be on: allowed before starting and watched for a visible face")
         boolean requireCamera,
 
+        @Schema(description = "The microphone must be on and is checked for sound (level only, nothing recorded)")
+        boolean requireMicrophone,
+
         @Schema(description = "True when the test is open right now")
         boolean openNow,
 
@@ -58,7 +61,7 @@ public record StudentQuizResponse(
                 q.getId(), q.getCourseId(), q.getBatchId(), q.getTitle(), q.getInstructions(),
                 q.getDurationMinutes(), q.getTotalMarks(), q.getPassPercentage(), q.getAttemptsAllowed(),
                 attemptsUsed, q.getAvailableFrom(), q.getAvailableUntil(), q.isMandatory(),
-                q.isSecureMode(), q.getMaxViolations(), q.isRequireCamera(),
+                q.isSecureMode(), q.getMaxViolations(), q.isRequireCamera(), q.isRequireMicrophone(),
                 open, canStart, inProgressAttemptId, best,
                 best == null ? null : q.passed(best));
     }

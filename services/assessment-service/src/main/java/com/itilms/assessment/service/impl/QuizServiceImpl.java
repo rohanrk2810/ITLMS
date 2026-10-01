@@ -82,6 +82,7 @@ public class QuizServiceImpl implements QuizService {
                 .secureMode(Boolean.TRUE.equals(request.secureMode()))
                 .maxViolations(request.maxViolations() == null ? 2 : request.maxViolations())
                 .requireCamera(Boolean.TRUE.equals(request.requireCamera()))
+                .requireMicrophone(Boolean.TRUE.equals(request.requireMicrophone()))
                 .trainerId(caller.trainerIdOrNull())
                 .status(QuizStatus.DRAFT)
                 .build());
@@ -136,6 +137,9 @@ public class QuizServiceImpl implements QuizService {
         }
         if (request.requireCamera() != null) {
             quiz.setRequireCamera(request.requireCamera());
+        }
+        if (request.requireMicrophone() != null) {
+            quiz.setRequireMicrophone(request.requireMicrophone());
         }
         quizRepository.save(quiz);
         return detail(quiz);

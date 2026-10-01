@@ -62,6 +62,9 @@ public record CreateQuizRequest(
 
         @Schema(description = "The student's camera must be on: allowed before starting, and monitored for a "
                 + "visible face during the test. Default false.")
-        Boolean requireCamera
+        Boolean requireCamera,
+
+        @Schema(description = "The student's microphone must be on and is checked for sound (level only, nothing is recorded). Default false.")
+        Boolean requireMicrophone
 ) {
 }

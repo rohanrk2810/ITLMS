@@ -534,6 +534,39 @@ class AttemptServiceImplTest {
     }
 
     @Test
+    @DisplayName("Microphone events warn and are recorded on a test that needs the microphone, and never end it")
+    void microphoneEventsWarnAndNeverTerminate() {
+        quiz.setRequireMicrophone(true);
+        quiz.setSecureMode(true);
+        quiz.setMaxViolations(1);
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        for (ViolationType type : List.of(ViolationType.MICROPHONE_DISABLED, ViolationType.MICROPHONE_PERMISSION_DENIED,
+                ViolationType.SPEECH_DETECTED, ViolationType.SPEECH_DETECTED)) {
+            var outcome = service.recordViolation(9L, report(type));
+            assertThat(outcome.message()).isEqualTo(type.warning()).startsWith("Warning:");
+            assertThat(outcome.counted()).isFalse();
+            assertThat(outcome.terminated()).isFalse();
+        }
+
+        assertThat(a.getViolationCount()).isZero();
+        verify(scorer, never()).terminate(any(), any(), any());
+        verify(violations, org.mockito.Mockito.times(4)).save(any());
+    }
+
+    @Test
+    @DisplayName("A microphone event on a test that does not use the microphone is ignored, even when the camera is on")
+    void microphoneEventIgnoredWithoutMicrophone() {
+        quiz.setRequireCamera(true);
+        attempt(STUDENT, Instant.now().plusSeconds(600));
+
+        var outcome = service.recordViolation(9L, report(ViolationType.SPEECH_DETECTED));
+
+        assertThat(outcome.message()).isNull();
+        verify(violations, never()).save(any());
+    }
+
+    @Test
     @DisplayName("A camera event on a test that does not use the camera is ignored")
     void cameraEventIgnoredWithoutCamera() {
         quiz.setSecureMode(true);
