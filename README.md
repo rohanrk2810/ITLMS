@@ -22,6 +22,10 @@ Built from `IT_Institute_LMS_Complete_Project_Documentation.pdf`, with two delib
 | **Notifications** | In-app notifications, announcements (by role/batch/course), email via an outbox (never loses a message if mail is briefly down) |
 | **Files** | Uploads with type/size rules per category, access control, controlled download |
 | **Reporting** | Institute dashboard, exports (CSV/Excel/PDF), and a cross-service audit log |
+| **Practice code editor** | Run code inside lessons in a sandbox (Judge0 or Piston), with code analysis ([docs/08](docs/08-code-execution.md), [docs/16](docs/16-code-analysis.md)) |
+| **Test portal** | Timed tests with secure test mode ([docs/09](docs/09-test-portal.md)) and student progress reports ([docs/10](docs/10-student-progress-report.md)) |
+| **Live-class extras** | Recording and content protection, live monitoring, optional microphone ([docs/11](docs/11-live-recording-and-content-protection.md), [docs/15](docs/15-live-class-monitoring.md), [docs/18](docs/18-microphone-option.md)) |
+| **Accounts and branding** | Single active login per user, admin-set branding and sign-in background, language choice ([docs/12](docs/12-single-active-login.md), [docs/13](docs/13-branding.md), [docs/17](docs/17-language-choice.md)) |
 
 ## Architecture, in brief
 
@@ -61,9 +65,12 @@ Open **http://localhost:5173** and sign in with the administrator from `deploy/d
 
 ### Setting this up on a machine that has never run it before
 
-⚠️ This repository has not been pushed to any remote yet — get the code onto the new machine first (copy the folder, a drive, or push it somewhere and clone from there).
-
-1. **Install:** JDK 21+, Maven 3.9+, Docker Desktop (give it **at least 6 GB** memory in Settings → Resources), Node.js 20+.
+1. **Get the code and install the tools:**
+   ```bash
+   git clone https://github.com/rohanrk2810/ITLMS.git
+   cd ITLMS
+   ```
+   Needs JDK 21+, Maven 3.9+, Docker Desktop (give it **at least 6 GB** memory in Settings → Resources), Node.js 20+.
 2. **Build the jars** (from the repository root — builds all 17 Maven modules):
    ```bash
    mvn -DskipTests package
@@ -108,6 +115,7 @@ Every business service's own port (8081–8091) is deliberately **not** publishe
 | [docs/05-local-setup.md](docs/05-local-setup.md) | Running it day to day, and troubleshooting it |
 | [docs/06-test-plan.md](docs/06-test-plan.md) | What's tested, and how |
 | [docs/07-deployment-guide.md](docs/07-deployment-guide.md) | What a real deployment adds on top of local Docker Compose |
+| [docs/08](docs/08-code-execution.md) – [docs/18](docs/18-microphone-option.md) | Feature write-ups: code execution, test portal, progress report, recording, single login, branding, certificate workflow, live monitoring, code analysis, language choice, microphone |
 | http://localhost:8080/swagger-ui.html | Every endpoint, live, from one page (once the stack is up) |
 
 ## Project layout
@@ -125,8 +133,6 @@ docs/              architecture, ERD, API reference, test plan, deployment guide
 ## Status
 
 All 12 business services, the platform (gateway, discovery, config server) and the frontend are built and have run together in Docker behind the gateway — a 116-check end-to-end smoke test passes against the full stack, including the frontend.
-
-Nothing has been pushed to a remote yet; the work sits on stacked feature branches, all fast-forwarded onto `master` locally.
 
 Still open: Kubernetes manifests (Compose first, by design — Doc departure D5), MinIO storage wired in code but not yet exercised end-to-end, no CI image-build/deploy step, no staging environment. Full list: [docs/07-deployment-guide.md § Still not done](docs/07-deployment-guide.md#still-not-done).
 
