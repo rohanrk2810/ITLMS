@@ -49,7 +49,9 @@ export interface JoinTokenResponse {
   recording: boolean
   scheduledStartAt: string
   scheduledEndAt: string
-  expiresAt: string
+  expiresAt: string | null
+  /** Set when the class runs on Google Meet, Zoom etc.; there is then no room, token or server URL. */
+  externalUrl: string | null
 }
 
 /** My upcoming live classes - students and trainers see their own batches. */

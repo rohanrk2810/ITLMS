@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDate } from '@/lib/format'
+import { type ClassProvider, newJitsiRoomUrl } from '@/lib/jitsi'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const SESSION_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -240,7 +241,17 @@ function AddSessionDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [form, setForm] = useState<Partial<CreateSessionInput>>({})
+  const [provider, setProvider] = useState<ClassProvider>('BUILTIN')
   const queryClient = useQueryClient()
+
+  function changeProvider(next: ClassProvider) {
+    setProvider(next)
+    setForm({
+      ...form,
+      meetingUrl: next === 'JITSI' ? newJitsiRoomUrl() : undefined,
+      mode: next === 'BUILTIN' ? undefined : 'ONLINE',
+    })
+  }
 
   const mutation = useMutation({
     mutationFn: () => createSession({ ...form, batchId } as CreateSessionInput),
@@ -248,6 +259,7 @@ function AddSessionDialog({
       toast.success('Session scheduled')
       onOpenChange(false)
       setForm({})
+      setProvider('BUILTIN')
       void queryClient.invalidateQueries({ queryKey: ['batches', String(batchId), 'sessions'] })
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not schedule the session.')),
@@ -293,6 +305,32 @@ function AddSessionDialog({
           <div className="flex flex-col gap-2">
             <Label htmlFor="topic">Topic</Label>
             <Input id="topic" onChange={(event) => setForm({ ...form, topic: event.target.value })} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="provider">How will this class run?</Label>
+            <select
+              id="provider"
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+              value={provider}
+              onChange={(event) => changeProvider(event.target.value as ClassProvider)}
+            >
+              <option value="BUILTIN">Built-in live room (attendance &amp; monitoring)</option>
+              <option value="JITSI">Jitsi (opens inside this site)</option>
+              <option value="EXTERNAL">Google Meet / Zoom link (opens in a new tab)</option>
+            </select>
+            {provider === 'EXTERNAL' && (
+              <Input
+                type="url"
+                required
+                placeholder="https://meet.google.com/abc-defg-hij"
+                onChange={(event) => setForm({ ...form, meetingUrl: event.target.value.trim(), mode: 'ONLINE' })}
+              />
+            )}
+            {provider === 'JITSI' && (
+              <p className="text-xs text-muted-foreground">
+                A private room link is created for this class. Attendance and monitoring are not tracked for Jitsi.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>

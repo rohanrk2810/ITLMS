@@ -88,7 +88,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .endTime(end)
                 .topic(trim(request.topic()))
                 .mode(mode)
-                .meetingUrl(mode.needsLiveRoom() ? trim(request.meetingUrl()) : null)
+                .meetingUrl(mode.needsLiveRoom() ? meetingUrl(request.meetingUrl()) : null)
                 .room(trim(request.room()))
                 .status(SessionStatus.SCHEDULED)
                 .build());
@@ -134,7 +134,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         session.setEndTime(end);
         session.setTopic(trim(request.topic()));
         session.setMode(mode);
-        session.setMeetingUrl(mode.needsLiveRoom() ? trim(request.meetingUrl()) : null);
+        session.setMeetingUrl(mode.needsLiveRoom() ? meetingUrl(request.meetingUrl()) : null);
         session.setRoom(trim(request.room()));
         if (request.trainerId() != null) {
             session.setTrainerId(request.trainerId());
@@ -469,6 +469,24 @@ public class ScheduleServiceImpl implements ScheduleService {
         } catch (IllegalArgumentException | NullPointerException ex) {
             throw new BusinessRuleException("Mode must be ONLINE, OFFLINE or HYBRID");
         }
+    }
+
+    /** A link to an outside meeting (Google Meet, Zoom...) replaces the built-in room, so it must be a web link. */
+    private String meetingUrl(String value) {
+        String url = trim(value);
+        if (url == null) {
+            return null;
+        }
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            String scheme = uri.getScheme();
+            if ((!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) || uri.getHost() == null) {
+                throw new IllegalArgumentException();
+            }
+        } catch (java.net.URISyntaxException | IllegalArgumentException ex) {
+            throw new BusinessRuleException("The meeting link must be a valid http(s) address");
+        }
+        return url;
     }
 
     private String trim(String value) {

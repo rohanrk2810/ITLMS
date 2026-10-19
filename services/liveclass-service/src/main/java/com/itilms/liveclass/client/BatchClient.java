@@ -54,7 +54,8 @@ public interface BatchClient {
             String topic,
             String mode,
             String status,
-            boolean live
+            boolean live,
+            String meetingUrl
     ) {
     }
 

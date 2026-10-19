@@ -191,6 +191,18 @@ public class LiveClassServiceImpl implements LiveClassService {
             throw new BusinessRuleException("OUTSIDE_JOIN_WINDOW", joinWindowMessage(session, now, earlyMinutes));
         }
 
+        // A class held on Google Meet, Zoom etc. has no room here: the caller has passed
+        // the enrolment and time checks above, so hand them the link instead of a token.
+        BatchClient.SessionDetail detail = batchClient.session(classSessionId);
+        if (detail != null && detail.meetingUrl() != null && !detail.meetingUrl().isBlank()) {
+            log.info("Sent {} {} to the external link for session {}", role, caller.userId(), session.getId());
+            return JoinTokenResponse.external(
+                    session.getId(), session.getClassSessionId(), session.getBatchId(),
+                    session.getBatchCode(), session.getCourseTitle(), session.getTopic(),
+                    caller.fullName(), role.name(), role.isRoomAdmin() || role == ParticipantRole.STAFF,
+                    session.getScheduledStartAt(), session.getScheduledEndAt(), detail.meetingUrl());
+        }
+
         roomProvisioner.ensureRoom(session);
 
         String identity = IDENTITY_PREFIX + caller.userId();
@@ -216,7 +228,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 role.name(), canPublish, roomAdmin,
                 allowed.microphone(), allowed.camera(), allowed.screenShare(), session.isRecordingEnabled(),
                 session.getScheduledStartAt(), session.getScheduledEndAt(),
-                liveKit.expiryFrom(now));
+                liveKit.expiryFrom(now), null);
     }
 
     /**
