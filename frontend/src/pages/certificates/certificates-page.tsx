@@ -198,13 +198,22 @@ function EligibilityCard({
               <p className="text-sm text-muted-foreground">
                 Request {openRequest?.status === 'APPROVED' ? 'approved, certificate being issued' : 'pending approval'}.
               </p>
-            ) : query.data.eligible ? (
-              <Button size="sm" className="self-start" onClick={() => request.mutate()} disabled={request.isPending}>
-                {request.isPending ? 'Submitting...' : 'Request certificate'}
-              </Button>
-            ) : query.data.outstandingWork.length > 0 ? (
-              <p className="text-xs text-muted-foreground">Still outstanding: {query.data.outstandingWork.join(', ')}</p>
-            ) : null}
+            ) : (
+              <>
+                <Button size="sm" className="self-start" onClick={() => request.mutate()} disabled={request.isPending}>
+                  {request.isPending ? 'Submitting...' : 'Request certificate'}
+                </Button>
+                {!query.data.eligible && (
+                  <p className="text-xs text-muted-foreground">
+                    You can request now. The institute will see that{' '}
+                    {query.data.outstandingWork.length > 0
+                      ? `these are still outstanding: ${query.data.outstandingWork.join(', ')}`
+                      : 'some conditions are not met yet'}
+                    , and the certificate is issued only once they are met.
+                  </p>
+                )}
+              </>
+            )}
           </>
         )}
       </CardContent>

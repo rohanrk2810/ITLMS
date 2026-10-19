@@ -112,13 +112,15 @@ class CertificateRequestServiceImplTest {
     }
 
     @Test
-    void ineligibleStudentIsRefusedAndNothingIsSaved() {
+    void studentWhoIsNotYetEligibleMayStillAskAndTheShortfallIsRecorded() {
         signInAs("STUDENT", STUDENT);
+        stubHappyRequest();
         when(certificateService.eligibility(STUDENT, COURSE)).thenReturn(eligibility(false));
 
-        assertThatThrownBy(() -> service.request(COURSE))
-                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("Attendance");
-        verify(requests, never()).save(any());
+        var response = service.request(COURSE);
+
+        assertThat(response.status()).isEqualTo("PENDING");
+        verify(requests).save(any(CertificateRequest.class));
     }
 
     @Test

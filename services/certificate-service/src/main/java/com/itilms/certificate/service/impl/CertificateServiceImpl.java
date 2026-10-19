@@ -132,8 +132,13 @@ public class CertificateServiceImpl implements CertificateService {
         EligibilityRules.Facts facts = gather(studentId, courseId);
         List<EligibilityResponse.Criterion> criteria =
                 EligibilityRules.evaluate(facts, props.getCriteria(), props.getCurrencySymbol());
-        if (!EligibilityRules.eligible(criteria)) {
-            throw new BusinessRuleException("NOT_ELIGIBLE", "Not yet eligible: " + EligibilityRules.unmetSummary(criteria));
+        // Only an administrator reaches this point, and issuing is their decision: a student who has not met every
+        // condition can still be given a certificate. That is allowed, but never silent - the evidence stored with the
+        // certificate shows what was unmet, and the audit entry says it was issued over that.
+        boolean overridden = !EligibilityRules.eligible(criteria);
+        if (overridden) {
+            log.warn("Certificate for student {} / course {} issued by user {} although unmet: {}",
+                    studentId, courseId, issuer.userId(), EligibilityRules.unmetSummary(criteria));
         }
 
         AdmissionClient.Student student = admissionClient.lookup(List.of(studentId)).stream().findFirst()
@@ -195,7 +200,8 @@ public class CertificateServiceImpl implements CertificateService {
         }
         events.audit(SERVICE_NAME, "CERTIFICATE_ISSUED", "Certificate", certificate.getId(), null,
                 Map.of("certificateNo", certificate.getCertificateNo(), "studentId", studentId,
-                        "courseId", courseId, "requestId", open == null ? "none" : open.getId()));
+                        "courseId", courseId, "requestId", open == null ? "none" : open.getId(),
+                        "eligibilityOverridden", overridden));
 
         log.info("Issued certificate {} to student {} for course {}", certificate.getCertificateNo(), studentId, courseId);
         return CertificateResponse.from(certificate, url);

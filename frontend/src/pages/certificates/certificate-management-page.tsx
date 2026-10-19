@@ -353,6 +353,12 @@ function RequestDialog({ id, onClose }: { id: number | null; onClose: () => void
                 <p className="mb-1 font-medium">
                   Eligibility now: {eligibility.eligible ? 'eligible' : 'NOT eligible'}
                 </p>
+                {!eligibility.eligible && (
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    You can still approve and issue; the certificate is then issued over the unmet conditions below,
+                    and this is recorded.
+                  </p>
+                )}
                 <ul className="flex flex-col gap-1">
                   {eligibility.criteria
                     .filter((c) => c.outcome !== 'NOT_REQUIRED')
@@ -393,7 +399,18 @@ function RequestDialog({ id, onClose }: { id: number | null; onClose: () => void
               </Button>
             )}
             {request.status === 'PENDING' ? (
-              <Button disabled={busy} onClick={() => approve.mutate()}>
+              <Button
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    eligibility?.eligible === false &&
+                    !window.confirm('This student has not met every condition. Approve and issue the certificate anyway?')
+                  ) {
+                    return
+                  }
+                  approve.mutate()
+                }}
+              >
                 Approve
               </Button>
             ) : (

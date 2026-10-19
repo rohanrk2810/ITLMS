@@ -27,7 +27,6 @@ import com.itilms.certificate.repository.CertificateRepository;
 import com.itilms.certificate.repository.CertificateRequestRepository;
 import com.itilms.certificate.service.CertificateRequestService;
 import com.itilms.certificate.service.CertificateService;
-import com.itilms.certificate.service.EligibilityRules;
 import com.itilms.common.dto.PageResponse;
 import com.itilms.common.event.EventPublisher;
 import com.itilms.common.event.KafkaTopics;
@@ -82,12 +81,9 @@ public class CertificateRequestServiceImpl implements CertificateRequestService 
             throw new DuplicateResourceException("You already have a certificate request open for this course.");
         }
 
-        // The same checks, against the same services, that an admin's issue will repeat.
+        // A student may ask at any time. Where they stand is recorded with the request so the administrator sees it,
+        // and issuing re-checks the same conditions, so nothing is issued before they are met.
         EligibilityResponse eligibility = certificateService.eligibility(studentId, courseId);
-        if (!eligibility.eligible()) {
-            throw new BusinessRuleException("NOT_ELIGIBLE",
-                    "Not yet eligible: " + EligibilityRules.unmetSummary(eligibility.criteria()));
-        }
 
         AdmissionClient.Student student = admissionClient.lookup(List.of(studentId)).stream().findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
