@@ -206,8 +206,8 @@ services:
           level: info
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:7880:7880"
-      - "${BIND_ADDRESS:-127.0.0.1}:7881:7881"
-      - "${BIND_ADDRESS:-127.0.0.1}:7882:7882/udp"
+      - "${LIVEKIT_BIND_ADDRESS:-${BIND_ADDRESS:-127.0.0.1}}:7881:7881"
+      - "${LIVEKIT_BIND_ADDRESS:-${BIND_ADDRESS:-127.0.0.1}}:7882:7882/udp"
 
   # Records a class on request: a headless Chromium composites the room the same
   # way a viewer would see it, and ffmpeg encodes what it renders to a file on
