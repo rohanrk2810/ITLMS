@@ -64,7 +64,7 @@ class DeliveryRulesTest {
         @Test
         @DisplayName("An event delivered twice by Kafka notifies and emails nobody a second time")
         void repeatIsSilent() {
-            when(mailer.isEnabled()).thenReturn(true);
+            when(mailer.sendsNotificationEmails()).thenReturn(true);
             when(notifications.insertIfAbsent(anyString(), anyLong(), any(), any(), any(), any())).thenReturn(0);
 
             assertThat(dispatcher.deliver("evt-1", List.of(1L, 2L), content, true)).isZero();
@@ -74,7 +74,7 @@ class DeliveryRulesTest {
         @Test
         @DisplayName("Only people with an address and an active account get an email")
         void emailsActiveAddressesOnly() {
-            when(mailer.isEnabled()).thenReturn(true);
+            when(mailer.sendsNotificationEmails()).thenReturn(true);
             when(composer.compose(any(), eq(Secrets.NONE))).thenReturn(EMAIL);
             when(notifications.insertIfAbsent(anyString(), anyLong(), any(), any(), any(), any())).thenReturn(1);
             List<Recipient> people = List.of(
@@ -88,12 +88,29 @@ class DeliveryRulesTest {
         @Test
         @DisplayName("While email is off nothing is queued, so switching it on later sends no stale backlog")
         void noBacklogWhileOff() {
-            when(mailer.isEnabled()).thenReturn(false);
+            when(mailer.sendsNotificationEmails()).thenReturn(false);
             when(notifications.insertIfAbsent(anyString(), anyLong(), any(), any(), any(), any())).thenReturn(1);
 
             assertThat(dispatcher.deliver("evt-1", List.of(1L), content, true)).isEqualTo(1);
             verify(outbox, never()).saveAll(any());
         }
+    }
+
+    @Test
+    @DisplayName("Mail enabled but ordinary notification email off: in-app only, nothing queued")
+    void passwordOnlyMailQueuesNothingForOrdinaryNotifications() {
+        NotificationRepository notifications = mock(NotificationRepository.class);
+        EmailOutboxRepository outbox = mock(EmailOutboxRepository.class);
+        Mailer mailer = mock(Mailer.class);
+        when(mailer.isEnabled()).thenReturn(true);
+        when(mailer.sendsNotificationEmails()).thenReturn(false);
+        when(notifications.insertIfAbsent(anyString(), anyLong(), any(), any(), any(), any())).thenReturn(1);
+        NotificationDispatcher dispatcher = new NotificationDispatcher(
+                notifications, mock(RecipientRepository.class), outbox, mock(EmailComposer.class), mailer);
+
+        assertThat(dispatcher.deliver("evt-1", List.of(1L), new Content("FEE_DUE", "Fee due", "Pay", "/fees"), true))
+                .isEqualTo(1);
+        verify(outbox, never()).saveAll(any());
     }
 
     @Nested

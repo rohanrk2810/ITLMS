@@ -41,6 +41,9 @@ itilms:
     # once the institute supplies real SMTP credentials. A failed send must
     # never lose the in-app notification, so the two are written separately.
     enabled: ${MAIL_ENABLED:false}
+    # Ordinary notifications (fees, results, announcements, jobs) are emailed only when this is also true.
+    # Passwords for new accounts and password-reset codes need just MAIL_ENABLED.
+    notifications-enabled: ${MAIL_NOTIFICATIONS_ENABLED:false}
     from: ${MAIL_FROM:no-reply@itinstitute.local}
     from-name: ${MAIL_FROM_NAME:IT Institute}
 
