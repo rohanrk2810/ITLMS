@@ -8,13 +8,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useCaptcha } from '@/lib/use-captcha'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const navigate = useNavigate()
+  const captcha = useCaptcha()
   const mutation = useMutation({
-    mutationFn: () => forgotPassword(email),
+    mutationFn: () => forgotPassword(email, captcha.token),
     onSuccess: () => void navigate(`/reset-password?email=${encodeURIComponent(email)}`),
+    onError: () => captcha.reset(), // a token works once
   })
 
   function handleSubmit(event: FormEvent) {
@@ -44,7 +47,8 @@ export function ForgotPasswordPage() {
           {mutation.isError && (
             <p className="text-sm text-destructive">{apiErrorMessage(mutation.error, 'Could not send the code.')}</p>
           )}
-          <Button type="submit" disabled={mutation.isPending}>
+          {captcha.widget}
+          <Button type="submit" disabled={mutation.isPending || (captcha.enabled && !captcha.token)}>
             {mutation.isPending ? 'Sending...' : 'Send code'}
           </Button>
         </form>

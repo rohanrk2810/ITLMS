@@ -28,6 +28,13 @@ itilms:
     admin-last-name: Administrator
     enabled: ${BOOTSTRAP_ENABLED:true}
 
+  # "Verify you are human" (Cloudflare Turnstile) on sign-in, registration and forgot-password. Off unless switched
+  # on; when on, both keys are required and the service refuses to start without them.
+  captcha:
+    enabled: ${CAPTCHA_ENABLED:false}
+    site-key: ${CAPTCHA_SITE_KEY:}
+    secret: ${CAPTCHA_SECRET:}
+
   security:
     # Off unless the institute takes admissions online. When off, accounts are
     # created by staff as part of the admission workflow (Doc S7.1).

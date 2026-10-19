@@ -9,12 +9,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useCaptcha } from '@/lib/use-captcha'
 
 export function LoginPage() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
+  const captcha = useCaptcha()
 
   useEffect(() => {
     try {
@@ -29,14 +31,17 @@ export function LoginPage() {
   }, [])
 
   const mutation = useMutation({
-    mutationFn: () => login(identifier, password),
+    mutationFn: () => login(identifier, password, captcha.token),
     onSuccess: () => {
       // A temporary password sends every route to /app/change-password anyway
       // (see ProtectedRoute), so there is nothing special to do with that case here.
       const state = location.state as { from?: { pathname?: string } } | null
       void navigate(state?.from?.pathname ?? '/app', { replace: true })
     },
-    onError: (error) => toast.error(apiErrorMessage(error, 'Could not sign in. Check your details and try again.')),
+    onError: (error) => {
+      toast.error(apiErrorMessage(error, 'Could not sign in. Check your details and try again.'))
+      captcha.reset() // a token works once
+    },
   })
 
   function handleSubmit(event: FormEvent) {
@@ -78,7 +83,8 @@ export function LoginPage() {
               required
             />
           </div>
-          <Button type="submit" className="mt-2" disabled={mutation.isPending}>
+          {captcha.widget}
+          <Button type="submit" className="mt-2" disabled={mutation.isPending || (captcha.enabled && !captcha.token)}>
             {mutation.isPending ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>

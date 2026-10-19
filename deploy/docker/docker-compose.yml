@@ -357,6 +357,10 @@ services:
       <<: *service-env
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@itinstitute.local}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in deploy/docker/.env}
+      # "Verify you are human" (Cloudflare Turnstile). Off by default; see .env.example.
+      CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
+      CAPTCHA_SITE_KEY: ${CAPTCHA_SITE_KEY:-}
+      CAPTCHA_SECRET: ${CAPTCHA_SECRET:-}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1"]

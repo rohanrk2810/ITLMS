@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useCaptcha } from '@/lib/use-captcha'
 
 /** Doc S8.1, S11: public self-registration always creates a STUDENT account. Staff accounts come from POST /api/users. */
 export function RegisterPage() {
@@ -20,9 +21,10 @@ export function RegisterPage() {
   // Set once the backend actually refuses, rather than guessed in advance.
   const [closed, setClosed] = useState(false)
   const navigate = useNavigate()
+  const captcha = useCaptcha()
 
   const mutation = useMutation({
-    mutationFn: () => register(form),
+    mutationFn: () => register(form, captcha.token),
     onSuccess: () => {
       toast.success('Account created')
       void navigate('/app', { replace: true })
@@ -38,6 +40,7 @@ export function RegisterPage() {
         }
       }
       toast.error(apiErrorMessage(error, 'Could not create the account.'))
+      captcha.reset() // a token works once
     },
   })
 
@@ -135,7 +138,8 @@ export function RegisterPage() {
             {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
             <p className="text-xs text-muted-foreground">At least 8 characters, with upper case, lower case and a digit.</p>
           </div>
-          <Button type="submit" className="mt-2" disabled={mutation.isPending}>
+          {captcha.widget}
+          <Button type="submit" className="mt-2" disabled={mutation.isPending || (captcha.enabled && !captcha.token)}>
             {mutation.isPending ? 'Creating account...' : 'Create account'}
           </Button>
         </form>

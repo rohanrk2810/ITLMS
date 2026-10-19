@@ -42,6 +42,13 @@ public record RegisterRequest(
 
         @Schema(example = "Secret@123")
         @ValidPassword
-        String password
+        String password,
+        @Schema(description = "The 'verify you are human' token; required only when the captcha is switched on")
+        @Size(max = 4096, message = "Captcha token is too long")
+        String captchaToken
 ) {
+
+    public RegisterRequest(String firstName, String lastName, String email, String phone, String password) {
+        this(firstName, lastName, email, phone, password, null);
+    }
 }
