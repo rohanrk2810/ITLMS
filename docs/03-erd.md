@@ -21,11 +21,11 @@ Owns accounts, credentials, sessions. Does **not** own student/trainer profiles 
 | phone | VARCHAR(20) | UNIQUE |
 | password_hash | VARCHAR(100) | BCrypt |
 | role | VARCHAR(30) | CHECK: ADMIN, COORDINATOR, TRAINER, STUDENT, PLACEMENT, FINANCE |
-| status | VARCHAR(20) | CHECK: ACTIVE, INACTIVE, BLOCKED |
+| status | VARCHAR(20) | CHECK: ACTIVE, INACTIVE, BLOCKED, DELETED. DELETED is a soft delete (V6): name becomes "Deleted user", e-mail `deleted-<id>@deleted.invalid`, phone cleared, password replaced; the row stays so other services' history still points at the id |
 | profile_id, profile_code | BIGINT, VARCHAR(30) | *cross-svc* → admission-service's `students`/`trainers`. Written only from `ProfileLinkedEvent`, never from a request |
 | failed_attempts, locked_until | INTEGER, TIMESTAMPTZ | brute-force lockout, cleared on successful sign-in |
 | must_change_password | BOOLEAN | |
-| last_login_at, created_at, updated_at, created_by, updated_by | | |
+| last_login_at, deleted_at, created_at, updated_at, created_by, updated_by | | |
 
 ### `refresh_tokens`
 | Column | Type | Notes |

@@ -48,6 +48,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final com.itilms.identity.repository.PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EventPublisher events;
 
@@ -57,6 +58,7 @@ public class UserServiceImpl implements UserService {
         Specification<User> spec = Specification.allOf(
                 UserSpecifications.hasRole(role),
                 UserSpecifications.hasStatus(status),
+                UserSpecifications.hideDeletedUnlessAsked(status),
                 UserSpecifications.matches(query));
 
         return PageResponse.from(userRepository.findAll(spec, pageable), UserResponse::from);
@@ -217,6 +219,51 @@ public class UserServiceImpl implements UserService {
 
         log.info("User {} status {} -> {} ({})", id, previous, target, request.reason());
         return UserResponse.from(user);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id, String reason) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        if (user.getStatus() == UserStatus.DELETED) {
+            return;   // already gone; deleting twice is not an error
+        }
+
+        Long actingUserId = SecurityUtils.currentUserId();
+        if (user.getId().equals(actingUserId)) {
+            throw new BusinessRuleException("You cannot delete your own account");
+        }
+        if (user.getRole() == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE
+                && userRepository.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
+            throw new BusinessRuleException(
+                    "This is the last active administrator. Promote another user before deleting it.");
+        }
+
+        UserRole role = user.getRole();
+        UserStatus previous = user.getStatus();
+
+        // A password nobody knows, so even a leftover token or a database edit cannot sign this account in.
+        user.markDeleted(passwordEncoder.encode(Codes.temporaryPassword() + Codes.temporaryPassword()));
+        userRepository.save(user);
+
+        refreshTokenRepository.revokeAllForUser(id, Instant.now());
+        passwordResetTokenRepository.invalidateAllForUser(id, Instant.now());
+
+        // Tell the services that copy this person's name, e-mail and phone to forget them, and mark the account as no
+        // longer active for notifications.
+        events.publishAfterCommit(KafkaTopics.USER_UPDATED,
+                UserCreatedEvent.of(user.getId(), user.getEmail(), user.getPhone(), user.fullName(), role.name()));
+        events.publishAfterCommit(KafkaTopics.USER_STATUS_CHANGED,
+                UserStatusChangedEvent.of(id, user.getEmail(), previous.name(), UserStatus.DELETED.name(),
+                        actingUserId));
+
+        // The audit record keeps the id, role and reason, but not the e-mail or phone that were just wiped.
+        events.audit(SERVICE_NAME, "USER_DELETED", "User", id,
+                Map.of("status", previous.name(), "role", role.name()),
+                Map.of("status", UserStatus.DELETED.name(), "reason", String.valueOf(reason)));
+
+        log.info("Administrator deleted user {} ({})", id, reason);
     }
 
     @Override

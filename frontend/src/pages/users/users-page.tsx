@@ -1,11 +1,11 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Plus } from 'lucide-react'
+import { KeyRound, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { type CreateTrainerInput, type TrainerResponse, createTrainer } from '@/api/trainers'
-import { type CreateUserInput, createUser, resetUserPassword, searchUsers, updateUserStatus } from '@/api/users'
+import { type CreateUserInput, createUser, deleteUser, resetUserPassword, searchUsers, updateUserStatus } from '@/api/users'
 import type { UserResponse } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
   ACTIVE: 'default',
   INACTIVE: 'secondary',
   BLOCKED: 'destructive',
+  DELETED: 'outline',
 }
 
 export function UsersPage() {
@@ -131,6 +132,7 @@ export function UsersPage() {
                       <KeyRound className="size-3.5" />
                       Reset password
                     </Button>
+                    <DeleteUserDialog user={user} />
                   </TableCell>
                 )}
               </TableRow>
@@ -146,6 +148,65 @@ export function UsersPage() {
         </Table>
       )}
     </div>
+  )
+}
+
+/** Soft delete behind a confirmation and a reason: the account is wiped but its history in other services stays. */
+function DeleteUserDialog({ user }: { user: UserResponse }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: () => deleteUser(user.id, reason.trim()),
+    onSuccess: (message) => {
+      toast.success(message.message)
+      setOpen(false)
+      setReason('')
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not delete the user.')),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="text-destructive">
+          <Trash2 className="size-3.5" />
+          Delete
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete {user.fullName}?</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 text-sm">
+          <p>
+            They can no longer sign in, and their name, e-mail and phone are wiped, so that e-mail and phone can be used by
+            a new account. Fees, attendance and certificates stay in the records under &quot;Deleted user&quot;.
+            <strong> This cannot be undone.</strong>
+          </p>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`delete-reason-${user.id}`}>Reason (kept in the audit log)</Label>
+            <Input
+              id={`delete-reason-${user.id}`}
+              value={reason}
+              maxLength={255}
+              placeholder="e.g. Test account / left the institute"
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="destructive" disabled={!reason.trim() || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Deleting...' : 'Delete user'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
