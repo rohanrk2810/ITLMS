@@ -239,7 +239,7 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 ### `LiveClassController` — `/api/liveclass`
 | Method | Path | Role | Does |
 |---|---|---|---|
-| POST | /api/liveclass/class-sessions/{classSessionId}/join | any signed-in user | Join — checks batch-service that the caller belongs, mints a signed LiveKit token (student token ≠ editable into a trainer token) |
+| POST | /api/liveclass/class-sessions/{classSessionId}/join | any signed-in user | Join — checks batch-service that the caller belongs, mints a signed LiveKit token (student token ≠ editable into a trainer token). If the session has an external/Jitsi `meetingUrl`, no token is minted: `externalUrl` is returned instead (see [docs/20](20-class-delivery-options.md)) |
 | GET | /api/liveclass/class-sessions/{classSessionId} | any signed-in user | Room status for a timetable session |
 | GET | /api/liveclass/upcoming | any signed-in user | My upcoming live classes |
 | GET | /api/liveclass/past | any signed-in user | My finished live classes, most recent first - where a recording is reviewed from |

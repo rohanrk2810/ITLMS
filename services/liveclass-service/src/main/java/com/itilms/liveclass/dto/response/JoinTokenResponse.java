@@ -62,6 +62,21 @@ public record JoinTokenResponse(
         Instant scheduledEndAt,
 
         @Schema(description = "When the token stops working")
-        Instant expiresAt
+        Instant expiresAt,
+
+        @Schema(description = "Set when the class is held on an outside platform (Google Meet, Zoom...); "
+                + "there is then no LiveKit room, token or server URL, and the browser opens this link")
+        String externalUrl
 ) {
+
+    /** A class held elsewhere: the caller has passed every check, and is sent to the link. */
+    public static JoinTokenResponse external(Long liveSessionId, Long classSessionId, Long batchId,
+                                             String batchCode, String courseTitle, String topic,
+                                             String displayName, String role, boolean roomAdmin,
+                                             Instant scheduledStartAt, Instant scheduledEndAt,
+                                             String externalUrl) {
+        return new JoinTokenResponse(liveSessionId, classSessionId, batchId, batchCode, courseTitle, topic,
+                null, null, null, null, displayName, role, false, roomAdmin, false, false, false, false,
+                scheduledStartAt, scheduledEndAt, null, externalUrl);
+    }
 }
