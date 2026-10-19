@@ -165,7 +165,8 @@ public class CourseServiceImpl implements CourseService {
                             LessonProgress progress = progressByLesson.get(lesson.getId());
                             return LessonResponse.unlocked(lesson,
                                     enrolled ? (progress != null && progress.isCompleted()) : null,
-                                    enrolled ? (progress == null ? 0 : progress.getWatchedSeconds()) : null);
+                                    enrolled ? (progress == null ? 0 : progress.getWatchedSeconds()) : null,
+                                    enrolled ? progress : null);
                         }
                         return LessonResponse.locked(lesson);
                     })

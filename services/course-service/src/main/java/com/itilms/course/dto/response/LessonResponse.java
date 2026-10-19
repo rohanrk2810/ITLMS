@@ -37,18 +37,38 @@ public record LessonResponse(
         String codeLanguage,
         String starterCode,
         @Schema(description = "Practice editor: the student may pick another language")
-        boolean allowLanguageChoice
+        boolean allowLanguageChoice,
+        @Schema(description = "The student's camera checks a face is in view while this video plays")
+        boolean videoMonitoring,
+        boolean pauseOnNoFace,
+        boolean autoResume,
+        Integer faceGraceSeconds,
+        @Schema(description = "Enrolled student only: share of the video actually watched, 0-100")
+        Integer watchedPercent,
+        Integer faceAwaySeconds,
+        Integer facePauses
 ) {
 
     /** Full content, for an enrolled student or for staff. */
     public static LessonResponse unlocked(Lesson lesson, Boolean completed, Integer watchedSeconds) {
+        return unlocked(lesson, completed, watchedSeconds, null);
+    }
+
+    /** As above, with what the enrolled student has actually watched (null for staff and previews). */
+    public static LessonResponse unlocked(Lesson lesson, Boolean completed, Integer watchedSeconds,
+                                          com.itilms.course.entity.LessonProgress progress) {
         return new LessonResponse(
                 lesson.getId(), lesson.getModuleId(), lesson.getTitle(), lesson.getType().name(),
                 lesson.getContentUrl(), lesson.getContentFileRef(), lesson.getTextContent(),
                 lesson.getDurationMinutes(), lesson.getSequenceNo(),
                 lesson.isPreview(), lesson.isMandatory(), true, completed, watchedSeconds,
                 lesson.getCodeLanguage() == null ? null : lesson.getCodeLanguage().name(),
-                lesson.getStarterCode(), lesson.isAllowLanguageChoice());
+                lesson.getStarterCode(), lesson.isAllowLanguageChoice(),
+                lesson.isVideoMonitoring(), lesson.isPauseOnNoFace(), lesson.isAutoResume(),
+                lesson.getFaceGraceSeconds(),
+                progress == null ? null : progress.watchedPercent(),
+                progress == null ? null : progress.getFaceAwaySeconds(),
+                progress == null ? null : progress.getFacePauses());
     }
 
     /**
@@ -62,6 +82,7 @@ public record LessonResponse(
                 lesson.getId(), lesson.getModuleId(), lesson.getTitle(), lesson.getType().name(),
                 null, null, null,
                 lesson.getDurationMinutes(), lesson.getSequenceNo(),
-                lesson.isPreview(), lesson.isMandatory(), false, null, null, null, null, false);
+                lesson.isPreview(), lesson.isMandatory(), false, null, null, null, null, false,
+                false, false, false, 5, null, null, null);
     }
 }

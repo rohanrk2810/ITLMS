@@ -69,6 +69,25 @@ public class Lesson extends AuditableEntity {
     @Builder.Default
     private boolean allowLanguageChoice = false;
 
+    /** The student's camera checks that a face is in view while this video plays. */
+    @Column(name = "video_monitoring", nullable = false)
+    @Builder.Default
+    private boolean videoMonitoring = false;
+
+    /** The video pauses when the face has been missing for {@link #faceGraceSeconds}. Needs video monitoring. */
+    @Column(name = "pause_on_no_face", nullable = false)
+    @Builder.Default
+    private boolean pauseOnNoFace = false;
+
+    /** A video paused for a missing face carries on by itself when the face is back; otherwise the student resumes. */
+    @Column(name = "auto_resume", nullable = false)
+    @Builder.Default
+    private boolean autoResume = false;
+
+    @Column(name = "face_grace_seconds", nullable = false)
+    @Builder.Default
+    private Integer faceGraceSeconds = 5;
+
     /** Drives the estimated course length shown to students. */
     @Column(name = "duration_minutes", nullable = false)
     @Builder.Default

@@ -63,6 +63,15 @@ public class ProgressController {
         return progressService.courseProgressOf(studentId);
     }
 
+    @Operation(summary = "Who watched a video lesson, and how much",
+            description = "Per enrolled student: share actually watched, time the face was missing, times the "
+                    + "video paused for it. For trainers and staff.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping("/lessons/{lessonId}/watch-report")
+    public List<com.itilms.course.dto.response.LessonWatchResponse> watchReport(@PathVariable Long lessonId) {
+        return progressService.watchReport(lessonId);
+    }
+
     @Operation(summary = "Progress for a batch",
             description = "The trainer's view of how their class is getting on.")
     @PreAuthorize(Roles.ACADEMIC)

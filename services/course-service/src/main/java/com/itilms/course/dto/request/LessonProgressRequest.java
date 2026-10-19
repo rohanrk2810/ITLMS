@@ -19,6 +19,27 @@ public record LessonProgressRequest(
         Integer watchedSeconds,
 
         @Schema(description = "True to mark the lesson finished, false to un-mark it")
-        Boolean completed
+        Boolean completed,
+
+        @Schema(description = "Seconds actually played (not skipped), cumulative. Only moves forward.")
+        @Min(value = 0, message = "Played seconds cannot be negative")
+        Integer playedSeconds,
+
+        @Schema(description = "Length of the video, as the player reports it")
+        @Min(value = 0, message = "Duration cannot be negative")
+        Integer durationSeconds,
+
+        @Schema(description = "Seconds the camera check found no face while playing, cumulative")
+        @Min(value = 0, message = "Face-away seconds cannot be negative")
+        Integer faceAwaySeconds,
+
+        @Schema(description = "Times the video was paused for a missing face, cumulative")
+        @Min(value = 0, message = "Pauses cannot be negative")
+        Integer facePauses
 ) {
+
+    /** A report with no playback detail (an older client). */
+    public LessonProgressRequest(Integer watchedSeconds, Boolean completed) {
+        this(watchedSeconds, completed, null, null, null, null);
+    }
 }

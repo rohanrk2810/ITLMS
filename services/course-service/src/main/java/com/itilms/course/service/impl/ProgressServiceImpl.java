@@ -93,6 +93,8 @@ public class ProgressServiceImpl implements ProgressService {
         if (request.watchedSeconds() != null) {
             progress.recordWatched(request.watchedSeconds());
         }
+        progress.recordPlayback(request.playedSeconds(), request.durationSeconds(), request.faceAwaySeconds(),
+                request.facePauses());
         if (Boolean.TRUE.equals(request.completed())) {
             progress.markComplete();
         } else if (Boolean.FALSE.equals(request.completed())) {
@@ -159,6 +161,31 @@ public class ProgressServiceImpl implements ProgressService {
                 .map(ProgressResponse::from)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "This student is not enrolled in that course"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.itilms.course.dto.response.LessonWatchResponse> watchReport(Long lessonId) {
+        Long courseId = courseRepository.findCourseIdByLessonId(lessonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson", lessonId));
+
+        java.util.Map<Long, LessonProgress> byEnrollment = new java.util.HashMap<>();
+        progressRepository.findByLessonId(lessonId).forEach(p -> byEnrollment.put(p.getEnrollmentId(), p));
+
+        // One row per enrolled student, including those who have not started: a trainer wants to see who has not.
+        return enrollmentRepository.findByCourseId(courseId).stream()
+                .map(enrollment -> {
+                    LessonProgress p = byEnrollment.get(enrollment.getId());
+                    return new com.itilms.course.dto.response.LessonWatchResponse(
+                            enrollment.getStudentId(), enrollment.getBatchId(),
+                            p == null ? 0 : p.watchedPercent(),
+                            p == null ? 0 : p.getPlayedSeconds(),
+                            p == null ? 0 : p.getDurationSeconds(),
+                            p == null ? 0 : p.getFaceAwaySeconds(),
+                            p == null ? 0 : p.getFacePauses(),
+                            p != null && p.isCompleted());
+                })
+                .toList();
     }
 
     @Override
