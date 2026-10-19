@@ -10,10 +10,10 @@ ISSUED certificate --Revoke (admin, reason)--> REVOKED  (verifies as REVOKED)
 ```
 
 ## Rules enforced in the service (annotations are only a first gate)
-- Request needs eligibility (the existing completion rule, checked against the owning services), no valid certificate for the course, and no other open (PENDING/APPROVED) request. A partial unique index backs the last rule in the database.
+- A student may request at any time, eligible or not: the request needs only no valid certificate for the course and no other open (PENDING/APPROVED) request. Where they stand against the completion rule (checked against the owning services) is stored with the request and shown to the admin; an administrator may approve and **issue** over unmet conditions (the app asks them to confirm); the certificate's stored evidence shows what was unmet and the audit entry carries `eligibilityOverridden=true`. A partial unique index backs the last rule in the database.
 - The batch comes from the student's own enrolment, never the request body.
 - Approve, reject, issue and revoke are ADMIN only. A trainer can list/open requests **only** if `itilms.certificate.trainer-access=true` (default off, read only, no eligibility checks). Students see only their own.
-- Issue re-checks eligibility, writes the certificate, renders the PDF (proving it can be produced) and marks the request ISSUED in one transaction. A failure leaves the request APPROVED and no certificate.
+- Issue re-evaluates eligibility (recorded as evidence, not a gate), writes the certificate, renders the PDF (proving it can be produced) and marks the request ISSUED in one transaction. A failure leaves the request APPROVED and no certificate.
 - The admin's detail view re-checks eligibility live, since a payment may have been reversed after the request.
 
 ## API (all under `/api/certificates`)
