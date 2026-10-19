@@ -27,6 +27,7 @@ Built from `IT_Institute_LMS_Complete_Project_Documentation.pdf`, with two delib
 | **Live-class extras** | Recording and content protection, live monitoring, optional microphone ([docs/11](docs/11-live-recording-and-content-protection.md), [docs/15](docs/15-live-class-monitoring.md), [docs/18](docs/18-microphone-option.md)) |
 | **Class delivery options** | Per session: built-in live room, embedded Jitsi, or a Google Meet / Zoom link ([docs/20](docs/20-class-delivery-options.md)) |
 | **Video lesson monitoring** | Opt-in per lesson: camera check, auto-pause when the face is missing, and who-watched-how-much ([docs/21](docs/21-video-lesson-monitoring.md)) |
+| **Human check (captcha)** | Optional Cloudflare Turnstile on sign-in, registration and forgot-password, verified on the server ([docs/22](docs/22-human-check-captcha.md)) |
 | **Accounts and branding** | Single active login per user, admin-set branding and sign-in background, language choice ([docs/12](docs/12-single-active-login.md), [docs/13](docs/13-branding.md), [docs/17](docs/17-language-choice.md)) |
 
 ## Architecture, in brief

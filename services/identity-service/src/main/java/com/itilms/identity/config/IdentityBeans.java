@@ -47,6 +47,7 @@ public class IdentityBeans {
                 "/api/auth/logout",
                 "/api/auth/forgot-password",
                 "/api/auth/reset-password",
+                "/api/auth/captcha-config",
                 "/api/public/branding/**"
         };
     }

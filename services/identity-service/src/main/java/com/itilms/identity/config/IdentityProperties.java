@@ -15,6 +15,25 @@ public class IdentityProperties {
 
     private Bootstrap bootstrap = new Bootstrap();
     private Security security = new Security();
+    private Captcha captcha = new Captcha();
+
+    /**
+     * The "verify you are human" check (Cloudflare Turnstile) on sign-in, registration and forgot-password.
+     *
+     * <p>Off by default, so a plain local run works with no keys. When on, the secret is required: the service
+     * refuses to start rather than quietly run unprotected.
+     */
+    @Getter
+    @Setter
+    public static class Captcha {
+        private boolean enabled = false;
+        /** Public. Handed to the browser so it can show the widget. */
+        private String siteKey = "";
+        /** Secret. Only this service ever sees it. */
+        private String secret = "";
+        private String verifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+        private Duration timeout = Duration.ofSeconds(5);
+    }
 
     /**
      * The first administrator.

@@ -24,6 +24,7 @@ import com.itilms.identity.dto.response.AuthResponse;
 import com.itilms.identity.dto.response.SessionResponse;
 import com.itilms.identity.dto.response.UserResponse;
 import com.itilms.identity.service.AuthService;
+import com.itilms.identity.service.CaptchaVerifier;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -50,6 +51,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final CaptchaVerifier captcha;
 
     @Operation(summary = "Sign in",
             description = "Accepts an email address or a phone number. Returns an access token, "
@@ -63,7 +65,16 @@ public class AuthController {
     @SecurityRequirements
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        captcha.require(request.captchaToken(), metadata(http).ipAddress());
         return authService.login(request, metadata(http));
+    }
+
+    @Operation(summary = "Is the 'verify you are human' check on, and with which public key",
+            description = "The sign-in, registration and forgot-password forms read this to decide whether to show the widget.")
+    @SecurityRequirements
+    @GetMapping("/captcha-config")
+    public CaptchaVerifier.Config captchaConfig() {
+        return captcha.config();
     }
 
     @Operation(summary = "Register as a student",
@@ -73,6 +84,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
                                                  HttpServletRequest http) {
+        captcha.require(request.captchaToken(), metadata(http).ipAddress());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(authService.register(request, metadata(http)));
     }
@@ -122,6 +134,7 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ApiMessage forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
                                      HttpServletRequest http) {
+        captcha.require(request.captchaToken(), metadata(http).ipAddress());
         authService.forgotPassword(request, metadata(http));
         return ApiMessage.ok("If that address belongs to an account, a 6-digit reset code has been sent to it.");
     }

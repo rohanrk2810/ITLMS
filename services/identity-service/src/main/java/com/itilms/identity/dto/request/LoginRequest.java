@@ -23,6 +23,14 @@ public record LoginRequest(
         @Schema(example = "Secret@123")
         @NotBlank(message = "Password is required")
         @Size(max = 200, message = "Password is too long")
-        String password
+        String password,
+        @Schema(description = "The 'verify you are human' token; required only when the captcha is switched on")
+        @Size(max = 4096, message = "Captcha token is too long")
+        String captchaToken
 ) {
+
+    /** A request with no captcha token (the captcha is off, or an older client). */
+    public LoginRequest(String identifier, String password) {
+        this(identifier, password, null);
+    }
 }
