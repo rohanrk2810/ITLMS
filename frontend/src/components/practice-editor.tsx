@@ -50,6 +50,10 @@ interface PracticeEditorProps {
   allowLanguageChoice?: boolean
   /** Keeps each lesson's draft separate, so a half-written exercise survives leaving the page. Render with key={lessonId} so moving between lessons starts fresh. */
   lessonId: number
+  /** Heading; "Try it yourself" for a lesson. */
+  title?: string
+  /** Dark editor, for a dark surrounding panel. */
+  dark?: boolean
 }
 
 /**
@@ -59,7 +63,7 @@ interface PracticeEditorProps {
  * The editor is Monaco (the engine of VS Code) with snippets and keyword suggestions; see code-editor.tsx.
  * Ctrl/Cmd+Enter runs.
  */
-export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId, allowLanguageChoice = false }: PracticeEditorProps) {
+export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId, allowLanguageChoice = false, title = 'Try it yourself', dark }: PracticeEditorProps) {
   const [language, setLanguage] = useState<CodeLanguageCode>(lessonLanguage)
   // Each language keeps its own draft; the lesson's own language keeps the plain key, as before choice existed.
   const draftKey = language === lessonLanguage ? `itilms.practice.${lessonId}` : `itilms.practice.${lessonId}.${language}`
@@ -131,7 +135,7 @@ export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId
     <section className="flex flex-col gap-3 rounded-lg border bg-card p-4" aria-label={`${label} practice editor`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold">Try it yourself</h2>
+          <h2 className="text-sm font-semibold">{title}</h2>
           <p className="text-xs text-muted-foreground">
             {label}
             {language === 'SQL' && ' (runs on SQLite, starting from an empty database)'}
@@ -165,6 +169,7 @@ export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId
           onChange={handleChange}
           onRun={() => canRunRef.current && mutation.mutate()}
           height={editorHeight(lineCount)}
+          dark={dark}
           ariaLabel={`${label} code`}
         />
       </Suspense>

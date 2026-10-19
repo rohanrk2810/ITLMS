@@ -88,6 +88,8 @@ public class LiveAttendanceServiceImpl implements LiveAttendanceService {
         if (session.getEgressId() != null) {
             liveKit.stopEgressQuietly(session.getEgressId());
         }
+        // A browser recording that is still open when the class ends becomes the recording of what it received.
+        session.finishBrowserRecording();
 
         // Nobody's leave event arrives when the room is torn down around them, or
         // when a laptop lid closes and LiveKit's own timeout is what ends the

@@ -110,6 +110,21 @@ public class LiveSession extends AuditableEntity {
     @Column(name = "recording_started_at")
     private Instant recordingStartedAt;
 
+    /** The host's browser is recording and sending the class in pieces (see {@link #startBrowserRecording}). */
+    @Column(name = "browser_recording_active", nullable = false)
+    @Builder.Default
+    private boolean browserRecordingActive = false;
+
+    /** How many pieces of a browser recording have been received, in order. The next one expected has this number. */
+    @Column(name = "recording_chunks", nullable = false)
+    @Builder.Default
+    private int recordingChunks = 0;
+
+    /** Size of a browser recording received so far. */
+    @Column(name = "recording_bytes", nullable = false)
+    @Builder.Default
+    private long recordingBytes = 0;
+
     /** Where Egress is writing the file on the volume this service and Egress both mount. Not exposed to callers. */
     @Column(name = "recording_file_path", length = 500)
     private String recordingFilePath;
@@ -195,6 +210,38 @@ public class LiveSession extends AuditableEntity {
         }
         if (status == LiveSessionStatus.SCHEDULED) {
             status = LiveSessionStatus.LIVE;
+        }
+    }
+
+    /** A capture is running, by LiveKit Egress or from the host's browser. */
+    public boolean isBeingRecorded() {
+        return egressId != null || browserRecordingActive;
+    }
+
+    public void startBrowserRecording(String filePath, Instant at) {
+        browserRecordingActive = true;
+        recordingFilePath = filePath;
+        recordingStartedAt = at;
+        recordingUrl = null;
+        recordingChunks = 0;
+        recordingBytes = 0;
+        recordingEnabled = true;
+    }
+
+    /**
+     * Ends a browser recording. What was received so far becomes the recording; a recording that received nothing
+     * leaves the class with none rather than a broken link. Also called when the class ends while the host's
+     * browser is still sending, so a closed tab never loses a lecture.
+     */
+    public void finishBrowserRecording() {
+        if (!browserRecordingActive) {
+            return;
+        }
+        browserRecordingActive = false;
+        if (recordingBytes > 0 && recordingFilePath != null) {
+            recordingUrl = "browser-upload";
+        } else {
+            recordingFilePath = null;
         }
     }
 

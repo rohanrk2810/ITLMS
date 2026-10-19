@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { LiveKitRoom, VideoConference } from '@livekit/components-react'
-import { ChevronLeft, ExternalLink } from 'lucide-react'
+import { LiveKitRoom, VideoConference, useParticipants } from '@livekit/components-react'
+import { ChevronLeft, Clock, ExternalLink, Users } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import '@livekit/components-styles'
+import './live-room.css'
 
 import { type JoinTokenResponse, joinLiveClass } from '@/api/live-classes'
 import { apiErrorMessage } from '@/api/client'
@@ -69,34 +70,34 @@ export function LiveClassRoomPage() {
 
   const room = (
     <div className="-m-6 flex h-[calc(100dvh-3.5rem)] flex-col">
-      <div className="flex items-center gap-3 border-b bg-card px-4 py-2">
-        <Link to="/app/live-classes" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="size-4" />
-          Leave
-        </Link>
-        <span className="text-sm font-medium">{credentials.topic ?? credentials.courseTitle}</span>
-      </div>
       <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
-        <LiveKitRoom
-          serverUrl={credentials.serverUrl}
-          token={credentials.token}
-          connect
-          video={credentials.canCamera}
-          audio={credentials.canMic}
-          data-lk-theme="default"
-          style={{ height: '100%' }}
-          onDisconnected={() => void navigate('/app/live-classes')}
-        >
-          <ContentProtection
-            active={!credentials.roomAdmin}
-            watermarkLabel={user ? `${user.fullName} · ${user.email}` : ''}
-            className="h-full"
+          <LiveKitRoom
+            serverUrl={credentials.serverUrl}
+            token={credentials.token}
+            connect
+            video={credentials.canCamera}
+            audio={credentials.canMic}
+            data-lk-theme="default"
+            className="class-room"
+            style={{ height: '100%' }}
+            onDisconnected={() => void navigate('/app/live-classes')}
           >
-            <VideoConference />
-          </ContentProtection>
-          {!credentials.roomAdmin && <LiveQuestionPanel classSessionId={credentials.classSessionId} />}
-        </LiveKitRoom>
+            <div className="flex h-full flex-col">
+              <RoomBar title={credentials.topic ?? credentials.courseTitle} startsAt={credentials.scheduledStartAt} />
+              {/* The recording captures exactly this box: the class itself, without the side panel or the bar. */}
+              <div id="class-stage" className="min-h-0 flex-1">
+                <ContentProtection
+                  active={!credentials.roomAdmin}
+                  watermarkLabel={user ? `${user.fullName} · ${user.email}` : ''}
+                  className="h-full"
+                >
+                  <VideoConference />
+                </ContentProtection>
+              </div>
+            </div>
+            {!credentials.roomAdmin && <LiveQuestionPanel classSessionId={credentials.classSessionId} />}
+          </LiveKitRoom>
         </div>
         {credentials.roomAdmin && (
           <HostSidePanel liveSessionId={credentials.liveSessionId} classSessionId={credentials.classSessionId} />
@@ -110,6 +111,41 @@ export function LiveClassRoomPage() {
     room
   ) : (
     <ClassMonitorGate classSessionId={credentials.classSessionId}>{room}</ClassMonitorGate>
+  )
+}
+
+/** Top bar of the room: a pulsing LIVE badge, the class name, how long it has been running and who is in it. */
+function RoomBar({ title, startsAt }: { title: string; startsAt: string }) {
+  const people = useParticipants().length
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const seconds = Math.max(0, Math.floor((now - new Date(startsAt).getTime()) / 1000))
+  const clock = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
+    .map((n) => String(n).padStart(2, '0'))
+    .join(':')
+
+  return (
+    <div className="class-room-bar">
+      <Link to="/app/live-classes" className="flex items-center gap-1 text-sm text-white/70 hover:text-white">
+        <ChevronLeft className="size-4" />
+        Leave
+      </Link>
+      <span className="live-pill">LIVE</span>
+      <span className="truncate text-sm font-semibold">{title}</span>
+      <span className="ml-auto flex items-center gap-2">
+        <span className="class-room-chip">
+          <Clock className="size-3.5" />
+          {clock}
+        </span>
+        <span className="class-room-chip">
+          <Users className="size-3.5" />
+          {people}
+        </span>
+      </span>
+    </div>
   )
 }
 

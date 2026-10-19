@@ -107,6 +107,96 @@ class RecordingServiceTest {
         assertThatThrownBy(() -> service.fileFor(1L)).isInstanceOf(ResourceNotFoundException.class);
     }
 
+    // ---- recording from the host's browser ----
+
+    private void useTempStorage(java.nio.file.Path dir, long maxBytes) {
+        LiveKitProperties props = new LiveKitProperties();
+        props.setApiKey("k");
+        props.setApiSecret("s");
+        props.setRecordingStoragePath(dir.toString());
+        props.setBrowserRecordingMaxBytes(maxBytes);
+        service = new RecordingService(sessions, hostAccess, liveKit, props, mock(EventPublisher.class));
+        when(sessions.findByIdForUpdate(1L)).thenReturn(Optional.of(session));
+    }
+
+    @Test
+    void browserRecordingStartsAppendsInOrderAndFinishesWithAFile(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws Exception {
+        useTempStorage(dir, 1024);
+
+        service.startBrowser(1L);
+        assertThat(session.isBrowserRecordingActive()).isTrue();
+        assertThat(session.getRecordingFilePath()).endsWith(".webm");
+
+        service.appendChunk(1L, 0, new byte[] {1, 2, 3});
+        var state = service.appendChunk(1L, 1, new byte[] {4, 5});
+        assertThat(state.nextChunk()).isEqualTo(2);
+        assertThat(state.bytes()).isEqualTo(5);
+
+        service.stopBrowser(1L);
+        assertThat(session.isBrowserRecordingActive()).isFalse();
+        assertThat(session.getRecordingUrl()).isNotNull();
+        assertThat(java.nio.file.Files.readAllBytes(java.nio.file.Path.of(session.getRecordingFilePath())))
+                .containsExactly(1, 2, 3, 4, 5);
+    }
+
+    @Test
+    void aRetriedPieceIsAcknowledgedButNotWrittenTwice(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws Exception {
+        useTempStorage(dir, 1024);
+        service.startBrowser(1L);
+        service.appendChunk(1L, 0, new byte[] {1, 2});
+
+        var state = service.appendChunk(1L, 0, new byte[] {1, 2});
+
+        assertThat(state.nextChunk()).isEqualTo(1);
+        assertThat(java.nio.file.Files.size(java.nio.file.Path.of(session.getRecordingFilePath()))).isEqualTo(2);
+    }
+
+    @Test
+    void aPieceThatSkipsAheadIsRefused(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        useTempStorage(dir, 1024);
+        service.startBrowser(1L);
+        assertThatThrownBy(() -> service.appendChunk(1L, 3, new byte[] {1}))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasFieldOrPropertyWithValue("code", "CHUNK_OUT_OF_ORDER");
+    }
+
+    @Test
+    void anEmptyPieceAndAnOversizedRecordingAreRefused(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        useTempStorage(dir, 4);
+        service.startBrowser(1L);
+        assertThatThrownBy(() -> service.appendChunk(1L, 0, new byte[0])).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> service.appendChunk(1L, 0, new byte[5]))
+                .hasFieldOrPropertyWithValue("code", "RECORDING_TOO_LARGE");
+    }
+
+    @Test
+    void stoppingWithNothingReceivedLeavesNoRecording(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        useTempStorage(dir, 1024);
+        service.startBrowser(1L);
+        service.stopBrowser(1L);
+        assertThat(session.getRecordingUrl()).isNull();
+        assertThat(session.getRecordingFilePath()).isNull();
+    }
+
+    @Test
+    void browserRecordingCannotStartOverAnotherCaptureOrAClassThatIsNotLive(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        useTempStorage(dir, 1024);
+        session.setEgressId("EG_1");
+        assertThatThrownBy(() -> service.startBrowser(1L)).hasFieldOrPropertyWithValue("code", "ALREADY_RECORDING");
+
+        session.setEgressId(null);
+        service.startBrowser(1L);
+        assertThatThrownBy(() -> service.startBrowser(1L)).hasFieldOrPropertyWithValue("code", "ALREADY_RECORDING");
+        assertThatThrownBy(() -> service.start(1L)).hasFieldOrPropertyWithValue("code", "ALREADY_RECORDING");
+
+        session.finishBrowserRecording();
+        session.setStatus(LiveSessionStatus.SCHEDULED);
+        assertThatThrownBy(() -> service.startBrowser(1L)).hasFieldOrPropertyWithValue("code", "CLASS_NOT_LIVE");
+    }
+
     @Test
     void fileForChecksHostOrEnrolledNotJustHost() {
         session.setRecordingUrl("/api/liveclass/sessions/1/recording");

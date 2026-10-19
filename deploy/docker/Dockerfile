@@ -23,7 +23,8 @@ FROM eclipse-temurin:21-jre-alpine
 # Never run as root. A remote-code-execution bug in a dependency should land
 # an attacker in an unprivileged account, not in control of the container.
 RUN addgroup -S itilms && adduser -S -G itilms itilms \
- && mkdir -p /app/storage \
+ && mkdir -p /app/storage /recordings \
+ && chown itilms:itilms /recordings \
  && chown -R itilms:itilms /app
 
 WORKDIR /app

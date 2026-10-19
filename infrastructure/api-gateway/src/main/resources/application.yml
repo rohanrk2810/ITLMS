@@ -329,6 +329,15 @@ spring:
         # payloads) and must not be rate limited - a busy room emits a burst
         # of participant events and dropping them would corrupt attendance.
         # ---------------------------------------------------------------
+        # Recording pieces go up (and the finished file comes down) over connections that outlast the circuit
+        # breaker's few seconds, so these paths get their own route with a long timeout and no breaker.
+        - id: liveclass-recording
+          uri: lb://liveclass-service
+          predicates:
+            - Path=/api/liveclass/sessions/*/recording,/api/liveclass/sessions/*/recording/**
+          metadata:
+            response-timeout: 600000
+            connect-timeout: 5000
         - id: liveclass-service
           uri: lb://liveclass-service
           predicates:

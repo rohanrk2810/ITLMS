@@ -118,6 +118,7 @@ export function CodingQuestion({
             onChange={onChange}
             onRun={() => !mutation.isPending && code.trim() && mutation.mutate()}
             height={288}
+            suggestions={question.allowSuggestions}
             ariaLabel={`${codeLanguageLabel(language)} answer`}
           />
         </Suspense>

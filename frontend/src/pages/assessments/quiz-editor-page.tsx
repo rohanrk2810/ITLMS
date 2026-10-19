@@ -269,7 +269,8 @@ function QuestionKey({ question }: { question: QuizQuestionWithKey }) {
       <div className="flex flex-col gap-1 text-sm">
         <p className="text-muted-foreground">
           {question.codeLanguage ? codeLanguageLabel(question.codeLanguage) : 'No language'}
-          {question.allowLanguageChoice && ' (students may choose another)'} &middot;{' '}
+          {question.allowLanguageChoice && ' (students may choose another)'}
+          {question.type === 'CODING' && (question.allowSuggestions ? ' · suggestions on' : ' · suggestions off')} &middot;{' '}
           {question.testCases.length} test case{question.testCases.length === 1 ? '' : 's'}
         </p>
         {question.starterCode && (
@@ -322,6 +323,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
   const [codeLanguage, setCodeLanguage] = useState<CodeLanguageCode>('JAVA')
   const [starterCode, setStarterCode] = useState('')
   const [allowChoice, setAllowChoice] = useState(false)
+  const [allowSuggestions, setAllowSuggestions] = useState(false)
   const [testCases, setTestCases] = useState<TestCaseInput[]>([BLANK_CASE])
 
   const isChoice = type === 'SINGLE_CHOICE' || type === 'MULTI_CHOICE' || type === 'TRUE_FALSE'
@@ -332,6 +334,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
     setAccepted('')
     setStarterCode('')
     setAllowChoice(false)
+    setAllowSuggestions(false)
     setTestCases([BLANK_CASE])
   }
 
@@ -345,6 +348,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
       ...base,
       codeLanguage,
       allowLanguageChoice: allowChoice && codeLanguage !== 'SQL',
+      allowSuggestions,
       starterCode: starterCode || undefined,
       testCases,
     }
@@ -523,6 +527,16 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
                   </span>
                 </label>
               )}
+              <label className="flex items-start gap-2 text-sm">
+                <Checkbox checked={allowSuggestions} onCheckedChange={(v) => setAllowSuggestions(v === true)} />
+                <span>
+                  Show code suggestions to students
+                  <span className="block text-xs text-muted-foreground">
+                    Off by default, so the exam tests what the student knows. Turn it on to let the editor offer
+                    autocomplete and snippets while they answer.
+                  </span>
+                </span>
+              </label>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="starterCode">Starter code (optional)</Label>
                 <textarea

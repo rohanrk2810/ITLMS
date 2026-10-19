@@ -62,7 +62,8 @@ public record AttemptViewResponse(
                            @Schema(description = "CODING only: the cases the student may see. Hidden ones are not sent.")
                            List<SampleTest> sampleTests,
                            int hiddenTestCount,
-                           @Schema(description = "CODING only: the student may pick the language") boolean allowLanguageChoice) {
+                           @Schema(description = "CODING only: the student may pick the language") boolean allowLanguageChoice,
+                           @Schema(description = "CODING only: the editor may offer code suggestions") boolean allowSuggestions) {
     }
 
     public record SampleTest(String input, String expectedOutput) {
@@ -87,7 +88,7 @@ public record AttemptViewResponse(
                         q.getTestCases().stream().filter(c -> !c.isHidden())
                                 .map(c -> new SampleTest(c.getInput(), c.getExpectedOutput())).toList(),
                         (int) q.getTestCases().stream().filter(QuizTestCase::isHidden).count(),
-                        q.isAllowLanguageChoice()))
+                        q.isAllowLanguageChoice(), q.isAllowSuggestions()))
                 .toList();
         List<SavedAnswer> savedAnswers = saved.stream()
                 .map(a -> new SavedAnswer(a.getQuestionId(), Set.copyOf(a.getSelectedOptionIds()), a.getAnswerText(),

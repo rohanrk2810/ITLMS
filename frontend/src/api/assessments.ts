@@ -64,6 +64,8 @@ export interface AttemptQuestion {
   hiddenTestCount: number
   /** CODING only: the author lets the student answer in another language. */
   allowLanguageChoice: boolean
+  /** CODING only: the editor may offer code suggestions. Off unless the author allows it. */
+  allowSuggestions: boolean
 }
 
 export interface SavedAnswer {
@@ -355,6 +357,7 @@ export interface QuizQuestionWithKey {
   acceptedAnswers: string[]
   testCases: QuizTestCase[]
   allowLanguageChoice: boolean
+  allowSuggestions: boolean
 }
 
 export interface QuizTestCase {
@@ -436,6 +439,8 @@ export interface QuestionInput {
   codeLanguage?: CodeLanguageCode
   /** CODING only: let students answer in another language. Ignored for SQL. */
   allowLanguageChoice?: boolean
+  /** CODING only: the editor offers code suggestions to students. Off by default. */
+  allowSuggestions?: boolean
   starterCode?: string
   /** SHORT_ANSWER only. */
   acceptedAnswers?: string[]
