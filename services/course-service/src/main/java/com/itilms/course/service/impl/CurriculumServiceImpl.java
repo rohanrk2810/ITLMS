@@ -166,6 +166,10 @@ public class CurriculumServiceImpl implements CurriculumService {
                 .codeLanguage(codeLanguage)
                 .starterCode(starterCodeOrNull(codeLanguage, request))
                 .allowLanguageChoice(choiceAllowed(codeLanguage, request))
+                .videoMonitoring(request.videoMonitoringFor(type == LessonType.VIDEO))
+                .pauseOnNoFace(request.pauseOnNoFaceFor(type == LessonType.VIDEO))
+                .autoResume(request.autoResumeFor(type == LessonType.VIDEO))
+                .faceGraceSeconds(request.faceGraceOrDefault())
                 .durationMinutes(request.durationMinutes() == null ? 0 : request.durationMinutes())
                 .sequenceNo(sequence)
                 .preview(request.previewOrDefault())
@@ -216,6 +220,10 @@ public class CurriculumServiceImpl implements CurriculumService {
         lesson.setCodeLanguage(codeLanguage);
         lesson.setStarterCode(starterCodeOrNull(codeLanguage, request));
         lesson.setAllowLanguageChoice(choiceAllowed(codeLanguage, request));
+        lesson.setVideoMonitoring(request.videoMonitoringFor(type == LessonType.VIDEO));
+        lesson.setPauseOnNoFace(request.pauseOnNoFaceFor(type == LessonType.VIDEO));
+        lesson.setAutoResume(request.autoResumeFor(type == LessonType.VIDEO));
+        lesson.setFaceGraceSeconds(request.faceGraceOrDefault());
         lesson.setDurationMinutes(request.durationMinutes() == null ? 0 : request.durationMinutes());
         lesson.setPreview(request.previewOrDefault());
         lesson.setMandatory(request.mandatoryOrDefault());

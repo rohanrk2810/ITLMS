@@ -32,6 +32,9 @@ public interface ProgressService {
 
     ProgressResponse progressFor(Long studentId, Long courseId);
 
+    /** How every enrolled student got on with one video lesson: share watched, face-away time, pauses. */
+    List<com.itilms.course.dto.response.LessonWatchResponse> watchReport(Long lessonId);
+
     /** Progress for a whole batch — the trainer's performance view. */
     List<ProgressResponse> batchProgress(Long batchId);
 

@@ -38,6 +38,9 @@ const CoursesIndexPage = lazy(() =>
 const CourseDetailIndexPage = lazy(() =>
   import('@/pages/courses/course-detail-index-page').then((m) => ({ default: m.CourseDetailIndexPage })),
 )
+const LessonWatchReportPage = lazy(() =>
+  import('@/pages/courses/lesson-watch-report-page').then((m) => ({ default: m.LessonWatchReportPage })),
+)
 const LessonPlayerPage = lazy(() =>
   import('@/pages/courses/lesson-player-page').then((m) => ({ default: m.LessonPlayerPage })),
 )
@@ -259,6 +262,10 @@ export default function App() {
                   </Route>
 
                   <Route element={<ProtectedRoute roles={STUDENT_RECORD_ROLES} />}>
+                    <Route
+                      path="/app/courses/:courseId/lessons/:lessonId/watch-report"
+                      element={<LessonWatchReportPage />}
+                    />
                     <Route path="/app/students" element={<StudentsPage />} />
                     <Route path="/app/students/:studentId" element={<StudentDetailPage />} />
                   </Route>

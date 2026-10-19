@@ -18,6 +18,8 @@ public interface LessonProgressRepository extends JpaRepository<LessonProgress, 
 
     List<LessonProgress> findByEnrollmentId(Long enrollmentId);
 
+    List<LessonProgress> findByLessonId(Long lessonId);
+
     /**
      * How many of the given lessons this enrolment has finished.
      *

@@ -38,6 +38,17 @@ export interface LessonResponse {
   starterCode: string | null
   /** Practice editor: the student may pick another language. */
   allowLanguageChoice: boolean
+  /** The student's camera checks that a face is in view while this video plays. */
+  videoMonitoring: boolean
+  /** Pause the video when the face has been missing for faceGraceSeconds. */
+  pauseOnNoFace: boolean
+  /** A video paused for a missing face resumes by itself; otherwise the student presses Resume. */
+  autoResume: boolean
+  faceGraceSeconds: number
+  /** Enrolled student only: share of the video actually watched (not skipped), 0-100. */
+  watchedPercent: number | null
+  faceAwaySeconds: number | null
+  facePauses: number | null
 }
 
 export interface ModuleResponse {
@@ -111,7 +122,15 @@ export async function lookupCourses(courseIds: number[]): Promise<CourseSummaryR
 
 export async function recordLessonProgress(
   lessonId: number | string,
-  body: { watchedSeconds?: number; completed?: boolean },
+  body: {
+    watchedSeconds?: number
+    completed?: boolean
+    /** Seconds actually played (not skipped), cumulative. */
+    playedSeconds?: number
+    durationSeconds?: number
+    faceAwaySeconds?: number
+    facePauses?: number
+  },
 ): Promise<ProgressResponse> {
   const { data } = await apiClient.post<ProgressResponse>(`/api/progress/lessons/${lessonId}`, body)
   return data
@@ -157,6 +176,11 @@ export interface LessonInput {
   starterCode?: string
   /** Practice editor: let the student pick the language. Ignored for SQL. */
   allowLanguageChoice?: boolean
+  /** VIDEO only. Each of these is its own switch and is off unless turned on. */
+  videoMonitoring?: boolean
+  pauseOnNoFace?: boolean
+  autoResume?: boolean
+  faceGraceSeconds?: number
 }
 
 /** The staff view across every status, not just published courses. */
@@ -202,6 +226,49 @@ export async function deleteModule(moduleId: number | string): Promise<void> {
 
 export async function addLesson(moduleId: number | string, input: LessonInput): Promise<LessonResponse> {
   const { data } = await apiClient.post<LessonResponse>(`/api/modules/${moduleId}/lessons`, input)
+  return data
+}
+
+export async function updateLesson(lessonId: number | string, input: LessonInput): Promise<LessonResponse> {
+  const { data } = await apiClient.put<LessonResponse>(`/api/lessons/${lessonId}`, input)
+  return data
+}
+
+/** The full authoring input for a lesson as it stands, so one setting can be changed without losing the rest. */
+export function lessonInputOf(lesson: LessonResponse): LessonInput {
+  return {
+    title: lesson.title,
+    type: lesson.type,
+    contentUrl: lesson.contentUrl ?? undefined,
+    contentFileRef: lesson.contentFileRef ?? undefined,
+    textContent: lesson.textContent ?? undefined,
+    durationMinutes: lesson.durationMinutes ?? undefined,
+    preview: lesson.preview,
+    mandatory: lesson.mandatory,
+    codeLanguage: lesson.codeLanguage ?? undefined,
+    starterCode: lesson.starterCode ?? undefined,
+    allowLanguageChoice: lesson.allowLanguageChoice,
+    videoMonitoring: lesson.videoMonitoring,
+    pauseOnNoFace: lesson.pauseOnNoFace,
+    autoResume: lesson.autoResume,
+    faceGraceSeconds: lesson.faceGraceSeconds,
+  }
+}
+
+/** How one student got on with one video lesson. */
+export interface LessonWatch {
+  studentId: number
+  batchId: number | null
+  watchedPercent: number
+  playedSeconds: number
+  durationSeconds: number
+  faceAwaySeconds: number
+  facePauses: number
+  completed: boolean
+}
+
+export async function getLessonWatchReport(lessonId: number | string): Promise<LessonWatch[]> {
+  const { data } = await apiClient.get<LessonWatch[]>(`/api/progress/lessons/${lessonId}/watch-report`)
   return data
 }
 

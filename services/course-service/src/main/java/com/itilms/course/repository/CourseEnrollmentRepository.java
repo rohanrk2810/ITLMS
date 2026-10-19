@@ -23,6 +23,8 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
 
     List<CourseEnrollment> findByBatchId(Long batchId);
 
+    List<CourseEnrollment> findByCourseId(Long courseId);
+
     /**
      * Every enrolment on a course.
      *

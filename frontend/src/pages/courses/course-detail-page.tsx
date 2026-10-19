@@ -106,6 +106,9 @@ export function CourseDetailPage() {
                         Mandatory
                       </Badge>
                     )}
+                    {lesson.type === 'VIDEO' && lesson.watchedPercent != null && lesson.watchedPercent > 0 && (
+                      <span className="text-xs text-muted-foreground">Watched {lesson.watchedPercent}%</span>
+                    )}
                     {lesson.durationMinutes && (
                       <span className="text-xs text-muted-foreground">{lesson.durationMinutes}m</span>
                     )}

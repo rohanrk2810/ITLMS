@@ -15,9 +15,11 @@ import {
   deleteModule,
   getCourseDetail,
   type LessonInput,
+  lessonInputOf,
   type LessonResponse,
   publishCourse,
   updateCourse,
+  updateLesson,
 } from '@/api/courses'
 import { uploadFile } from '@/api/files'
 import { Badge } from '@/components/ui/badge'
@@ -28,9 +30,27 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { VideoMonitoringOptions } from '@/components/video-monitoring-options'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const LESSON_TYPES: LessonResponse['type'][] = ['VIDEO', 'PDF', 'NOTE', 'LINK', 'TEXT']
+
+/** The monitoring switches of an existing video lesson. Each change is saved at once and replaces nothing else. */
+function LessonMonitoringEditor({ lesson, onSaved }: { lesson: LessonResponse; onSaved: () => void }) {
+  const mutation = useMutation({
+    mutationFn: (change: Partial<LessonInput>) => updateLesson(lesson.id, { ...lessonInputOf(lesson), ...change }),
+    onSuccess: onSaved,
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not change the lesson.')),
+  })
+  return (
+    <details className="text-xs">
+      <summary className="cursor-pointer text-muted-foreground">Camera monitoring for this video</summary>
+      <div className="mt-2">
+        <VideoMonitoringOptions value={lesson} disabled={mutation.isPending} onChange={(change) => mutation.mutate(change)} />
+      </div>
+    </details>
+  )
+}
 
 export function CourseEditorPage() {
   const { courseId } = useParams<{ courseId: string }>()
@@ -224,23 +244,38 @@ export function CourseEditorPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 {module.lessons.map((lesson) => (
-                  <div key={lesson.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                    <span>
-                      {lesson.title} <span className="text-xs text-muted-foreground">({lesson.type})</span>
-                      {lesson.mandatory && (
-                        <Badge variant="outline" className="ml-2 text-[10px]">
-                          Mandatory
-                        </Badge>
-                      )}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => deleteLessonMutation.mutate(lesson.id)}
-                      disabled={deleteLessonMutation.isPending}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                  <div key={lesson.id} className="flex flex-col gap-2 rounded-md border px-3 py-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>
+                        {lesson.title} <span className="text-xs text-muted-foreground">({lesson.type})</span>
+                        {lesson.mandatory && (
+                          <Badge variant="outline" className="ml-2 text-[10px]">
+                            Mandatory
+                          </Badge>
+                        )}
+                        {lesson.videoMonitoring && (
+                          <Badge variant="secondary" className="ml-2 text-[10px]">
+                            Camera-watched
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        {lesson.type === 'VIDEO' && (
+                          <Button asChild size="sm" variant="outline">
+                            <Link to={`/app/courses/${courseId}/lessons/${lesson.id}/watch-report`}>Who watched</Link>
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteLessonMutation.mutate(lesson.id)}
+                          disabled={deleteLessonMutation.isPending}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </span>
+                    </div>
+                    {lesson.type === 'VIDEO' && <LessonMonitoringEditor lesson={lesson} onSaved={invalidate} />}
                   </div>
                 ))}
                 <AddLessonDialog moduleId={module.id} onAdded={invalidate} />
@@ -391,6 +426,9 @@ function AddLessonDialog({ moduleId, onAdded }: { moduleId: number; onAdded: () 
                 onChange={(event) => setForm({ ...form, contentUrl: event.target.value })}
               />
             </div>
+          )}
+          {form.type === 'VIDEO' && (
+            <VideoMonitoringOptions value={form} onChange={(change) => setForm({ ...form, ...change })} />
           )}
           {form.type === 'PDF' && (
             <div className="flex flex-col gap-2">

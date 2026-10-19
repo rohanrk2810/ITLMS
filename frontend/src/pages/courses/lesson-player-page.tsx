@@ -1,4 +1,4 @@
-import { type SyntheticEvent, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
@@ -6,12 +6,12 @@ import { toast } from 'sonner'
 
 import { apiClient } from '@/api/client'
 import { getCourseDetail, type LessonResponse, recordLessonProgress } from '@/api/courses'
+import { EmbeddedVideo } from '@/components/embedded-video'
+import { LessonVideo, type PlaybackReport, type VideoSource } from '@/components/lesson-video'
 import { PracticeEditor } from '@/components/practice-editor'
+import { youtubeIdOf } from '@/lib/youtube'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-
-/** How often watch time is saved while a video plays, so a closed tab loses at most this much. */
-const WATCH_SAVE_INTERVAL_MS = 15_000
 
 function flattenLessons(modules: { lessons: LessonResponse[] }[]): LessonResponse[] {
   return modules.flatMap((m) => m.lessons)
@@ -59,11 +59,24 @@ export function LessonPlayerPage() {
   })
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-  const lastSavedSecondsRef = useRef(0)
 
   const lessons = courseQuery.data ? flattenLessons(courseQuery.data.modules) : []
   const index = lessons.findIndex((l) => String(l.id) === lessonId)
   const lesson = index >= 0 ? lessons[index] : undefined
+  const youtubeId = lesson?.type === 'VIDEO' && lesson.contentUrl ? youtubeIdOf(lesson.contentUrl) : null
+  // YouTube is played through its player API and a direct file in our own player, so both can be counted and
+  // monitored; other links (Google Drive, Vimeo) stay in a plain frame.
+  const embedUrl = lesson?.type === 'VIDEO' && lesson.contentUrl ? toEmbedUrl(lesson.contentUrl) : null
+  const cameraWatched = !!lesson?.videoMonitoring && lesson.completed !== null
+  // Only a lesson the instructor chose to monitor goes through the monitoring player; every other YouTube, Vimeo or
+  // Drive link plays exactly as it always did, in the plain embedded player.
+  const videoSource: VideoSource | null = youtubeId && cameraWatched
+    ? { kind: 'youtube', id: youtubeId }
+    : lesson?.type === 'VIDEO' && lesson.contentUrl && !embedUrl
+      ? { kind: 'file', src: lesson.contentUrl }
+      : embedUrl && cameraWatched && lesson
+        ? { kind: 'embed', src: embedUrl, title: lesson.title, durationSeconds: (lesson.durationMinutes ?? 0) * 60 }
+        : null
   const prev = index > 0 ? lessons[index - 1] : undefined
   const next = index >= 0 && index < lessons.length - 1 ? lessons[index + 1] : undefined
 
@@ -88,21 +101,13 @@ export function LessonPlayerPage() {
     }
   }, [lesson?.id, lesson?.type, lesson?.contentFileRef])
 
-  async function saveProgress(watchedSeconds?: number, completed?: boolean) {
+  async function saveProgress(watchedSeconds?: number, completed?: boolean, playback?: Partial<PlaybackReport>) {
     if (!lesson) return
     try {
-      await recordLessonProgress(lesson.id, { watchedSeconds, completed })
+      await recordLessonProgress(lesson.id, { watchedSeconds, completed, ...playback })
       await queryClient.invalidateQueries({ queryKey: ['courses'] })
     } catch {
       // Progress is saved again on the next tick or the next explicit action; one failed beat isn't worth a toast.
-    }
-  }
-
-  function handleTimeUpdate(event: SyntheticEvent<HTMLVideoElement>) {
-    const seconds = Math.floor(event.currentTarget.currentTime)
-    if (seconds - lastSavedSecondsRef.current >= WATCH_SAVE_INTERVAL_MS / 1000) {
-      lastSavedSecondsRef.current = seconds
-      void saveProgress(seconds, undefined)
     }
   }
 
@@ -143,25 +148,21 @@ export function LessonPlayerPage() {
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
-        {lesson.type === 'VIDEO' && lesson.contentUrl && toEmbedUrl(lesson.contentUrl) && (
-          <iframe
+        {lesson.type === 'VIDEO' && lesson.contentUrl && videoSource && (
+          <LessonVideo
             key={lesson.id}
-            title={lesson.title}
-            src={toEmbedUrl(lesson.contentUrl)!}
-            className="aspect-video w-full bg-black"
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
-        )}
-        {lesson.type === 'VIDEO' && lesson.contentUrl && !toEmbedUrl(lesson.contentUrl) && (
-          <video
-            key={lesson.id}
-            src={lesson.contentUrl}
-            controls
-            className="aspect-video w-full bg-black"
-            onTimeUpdate={handleTimeUpdate}
+            source={videoSource}
+            watchedPercent={lesson.watchedPercent ?? 0}
+            monitored={lesson.videoMonitoring && lesson.completed !== null}
+            pauseOnNoFace={lesson.pauseOnNoFace}
+            autoResume={lesson.autoResume}
+            graceSeconds={lesson.faceGraceSeconds}
+            onReport={(report) => void saveProgress(report.watchedSeconds, undefined, report)}
             onEnded={() => void saveProgress(undefined, true)}
           />
+        )}
+        {lesson.type === 'VIDEO' && lesson.contentUrl && !videoSource && toEmbedUrl(lesson.contentUrl) && (
+          <EmbeddedVideo key={lesson.id} src={toEmbedUrl(lesson.contentUrl)!} title={lesson.title} />
         )}
         {lesson.type === 'PDF' &&
           (pdfUrl ? (
