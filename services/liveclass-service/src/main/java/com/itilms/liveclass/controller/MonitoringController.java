@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.itilms.common.security.Roles;
+import com.itilms.liveclass.dto.MonitoringDtos;
 import com.itilms.liveclass.dto.MonitoringDtos.EffectiveResponse;
 import com.itilms.liveclass.dto.MonitoringDtos.EventRequest;
 import com.itilms.liveclass.dto.MonitoringDtos.EventResponse;
@@ -46,9 +47,10 @@ public class MonitoringController {
         return service.listSettings();
     }
 
-    @Operation(summary = "Switch monitoring on or off at one level (admin)",
-            description = "Levels: INSTITUTE, COURSE, BATCH, SESSION (the timetable session id). The most specific wins.")
-    @PreAuthorize(Roles.ADMIN_ONLY)
+    @Operation(summary = "Switch monitoring on or off at one level (admin; a class's trainer for that one class)",
+            description = "Levels: INSTITUTE, COURSE, BATCH, SESSION (the timetable session id). The most specific wins. "
+                    + "Only SESSION is open to a trainer, and only for a class they teach.")
+    @PreAuthorize(Roles.ACADEMIC)
     @PutMapping("/monitoring/settings")
     public SettingResponse save(@Valid @RequestBody SettingRequest request) {
         return service.save(request);
@@ -76,6 +78,13 @@ public class MonitoringController {
     public ResponseEntity<Void> report(@PathVariable Long classSessionId, @Valid @RequestBody EventRequest request) {
         service.record(classSessionId, request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    @Operation(summary = "One line per student: what monitoring noted in this class (its trainer, or staff)")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping("/class-sessions/{classSessionId}/monitoring/report")
+    public List<MonitoringDtos.StudentReport> report(@PathVariable Long classSessionId) {
+        return service.reportOf(classSessionId);
     }
 
     @Operation(summary = "The monitoring log of a class (its trainer, or staff)")

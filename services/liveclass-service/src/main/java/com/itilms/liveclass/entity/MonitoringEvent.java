@@ -26,7 +26,11 @@ public class MonitoringEvent {
 
     public enum Type {
         FACE_NOT_DETECTED, FACE_RESTORED, MULTIPLE_FACES, CAMERA_DISABLED, CAMERA_PERMISSION_DENIED,
-        MICROPHONE_DISABLED, MICROPHONE_PERMISSION_DENIED
+        MICROPHONE_DISABLED, MICROPHONE_PERMISSION_DENIED,
+        /** The student left the class tab or window; the duration is how long they were away. */
+        TAB_AWAY,
+        /** Written by the server when it removed the student; never accepted from a browser. */
+        REMOVED_BY_MONITORING
     }
 
     public enum Severity {

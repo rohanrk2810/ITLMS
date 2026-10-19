@@ -64,6 +64,30 @@ public class MonitoringSetting extends AuditableEntity {
     @Column(name = "log_events", nullable = false)
     private boolean logEvents;
 
+    /** Note when the student leaves the class tab or window. */
+    @Column(name = "tab_switch_check", nullable = false)
+    private boolean tabSwitchCheck;
+
+    /** Seconds with the face missing or the tab left are taken off the student's attended time. */
+    @Column(name = "attendance_penalty", nullable = false)
+    private boolean attendancePenalty;
+
+    /** More than one face, or a missing face, is CRITICAL straight away. */
+    @Column(name = "strict_severity", nullable = false)
+    private boolean strictSeverity;
+
+    /** Remove the student from the room after {@link #autoRemoveAfterCritical} CRITICAL notes. */
+    @Column(name = "auto_remove", nullable = false)
+    private boolean autoRemove;
+
+    @Column(name = "auto_remove_after_critical", nullable = false)
+    @Builder.Default
+    private int autoRemoveAfterCritical = 3;
+
+    /** The trainer's panel raises an alert for each CRITICAL note. */
+    @Column(name = "alert_trainer", nullable = false)
+    private boolean alertTrainer;
+
     @Column(name = "updated_by")
     private Long updatedBy;
 }

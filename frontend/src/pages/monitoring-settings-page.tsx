@@ -35,6 +35,12 @@ const BLANK: MonitoringSettingInput = {
   showWarning: true,
   warningMessage: '',
   logEvents: true,
+  tabSwitchCheck: false,
+  attendancePenalty: false,
+  strictSeverity: false,
+  autoRemove: false,
+  autoRemoveAfterCritical: 3,
+  alertTrainer: false,
 }
 
 /** ADMIN: switch live-class camera monitoring on or off, for the whole institute or for one course, batch or class. */
@@ -220,6 +226,35 @@ export function MonitoringSettingsPage() {
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={form.logEvents} onCheckedChange={(v) => set('logEvents', v === true)} />
             Record events for trainer review
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={form.tabSwitchCheck} onCheckedChange={(v) => set('tabSwitchCheck', v === true)} />
+            Note when a student leaves the class tab
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={form.strictSeverity} onCheckedChange={(v) => set('strictSeverity', v === true)} />
+            Strict: missing or extra faces count as critical at once
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={form.attendancePenalty} onCheckedChange={(v) => set('attendancePenalty', v === true)} />
+            Take face-missing and tab-left time off attendance
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={form.alertTrainer} onCheckedChange={(v) => set('alertTrainer', v === true)} />
+            Alert the trainer on every critical note
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={form.autoRemove} onCheckedChange={(v) => set('autoRemove', v === true)} />
+            Remove a student after this many critical notes:
+            <Input
+              className="h-7 w-16"
+              type="number"
+              min={1}
+              max={20}
+              disabled={!form.autoRemove}
+              value={form.autoRemoveAfterCritical}
+              onChange={(e) => set('autoRemoveAfterCritical', Number(e.target.value))}
+            />
           </label>
 
           <div className="flex flex-col gap-2">

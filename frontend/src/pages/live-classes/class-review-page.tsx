@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ContentProtection } from '@/components/content-protection'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
+import { MonitoringReportTable } from './monitoring-events-panel'
 import { QuestionHistoryList } from './question-history-list'
 
 const CodeEditor = lazy(() => import('@/components/code-editor'))
@@ -152,7 +153,18 @@ export function ClassReviewPage() {
       )}
 
       {isHost ? (
-        <QuestionHistoryList classSessionId={Number(classSessionId)} questions={questions} onRefresh={refresh} />
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Monitoring summary</CardTitle>
+              <CardDescription>What camera monitoring noted for each student in this class.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MonitoringReportTable classSessionId={Number(classSessionId)} />
+            </CardContent>
+          </Card>
+          <QuestionHistoryList classSessionId={Number(classSessionId)} questions={questions} onRefresh={refresh} />
+        </>
       ) : (
         <div className="flex flex-col gap-3">
           <h2 className="font-medium">Questions asked in this class</h2>

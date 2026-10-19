@@ -67,6 +67,7 @@ public class LiveAttendanceServiceImpl implements LiveAttendanceService {
     private final LiveKitGateway liveKit;
     private final LiveClassProperties props;
     private final EventPublisher events;
+    private final com.itilms.liveclass.service.MonitoringService monitoring;
 
     @Override
     @Transactional
@@ -127,13 +128,17 @@ public class LiveAttendanceServiceImpl implements LiveAttendanceService {
             if (!participant.getRole().countsTowardsAttendance() || participant.getStudentId() == null) {
                 continue;
             }
-            int percent = percentOf(participant.getAttendedSeconds(), windowSeconds);
+            // With the attendance-penalty switch on, time the face was missing or the class tab was left is not
+            // counted as attended. Zero when the switch is off, so the usual rule is unchanged.
+            int attended = Math.max(0, participant.getAttendedSeconds()
+                    - monitoring.penaltySeconds(session, participant.getStudentId()));
+            int percent = percentOf(attended, windowSeconds);
             String status = verdict(percent);
             participant.applyComputed(percent, status);
 
             entries.add(new LiveAttendanceComputedEvent.Entry(
                     participant.getStudentId(), participant.getUserId(),
-                    participant.getAttendedSeconds(), percent, status));
+                    attended, percent, status));
         }
 
         participantRepository.saveAll(participants);

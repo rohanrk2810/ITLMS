@@ -15,6 +15,12 @@ export interface MonitoringSetting {
   warningMessage: string | null
   logEvents: boolean
   updatedAt: string
+  tabSwitchCheck: boolean
+  attendancePenalty: boolean
+  strictSeverity: boolean
+  autoRemove: boolean
+  autoRemoveAfterCritical: number
+  alertTrainer: boolean
 }
 
 export interface MonitoringSettingInput {
@@ -29,6 +35,12 @@ export interface MonitoringSettingInput {
   showWarning: boolean
   warningMessage: string
   logEvents: boolean
+  tabSwitchCheck: boolean
+  attendancePenalty: boolean
+  strictSeverity: boolean
+  autoRemove: boolean
+  autoRemoveAfterCritical: number
+  alertTrainer: boolean
 }
 
 /** What applies to one class. `enabled` is false unless an administrator switched monitoring on. */
@@ -42,6 +54,12 @@ export interface EffectiveMonitoring {
   warningMessage: string | null
   logEvents: boolean
   source: string
+  tabSwitchCheck: boolean
+  attendancePenalty: boolean
+  strictSeverity: boolean
+  autoRemove: boolean
+  autoRemoveAfterCritical: number
+  alertTrainer: boolean
 }
 
 export type MonitoringEventType =
@@ -52,6 +70,8 @@ export type MonitoringEventType =
   | 'CAMERA_PERMISSION_DENIED'
   | 'MICROPHONE_DISABLED'
   | 'MICROPHONE_PERMISSION_DENIED'
+  | 'TAB_AWAY'
+  | 'REMOVED_BY_MONITORING'
 
 export interface MonitoringEvent {
   id: number
@@ -102,3 +122,46 @@ export async function listMonitoringEvents(classSessionId: number): Promise<Moni
   )
   return data
 }
+
+/** One student's monitoring summary for a class. */
+export interface StudentMonitoringReport {
+  studentId: number
+  studentName: string | null
+  faceAbsences: number
+  faceAbsentSeconds: number
+  tabSwitches: number
+  tabAwaySeconds: number
+  multipleFaces: number
+  cameraProblems: number
+  warnings: number
+  critical: number
+  removed: boolean
+  penaltySeconds: number
+}
+
+export async function getMonitoringReport(classSessionId: number): Promise<StudentMonitoringReport[]> {
+  const { data } = await apiClient.get<StudentMonitoringReport[]>(
+    `/api/liveclass/class-sessions/${classSessionId}/monitoring/report`,
+  )
+  return data
+}
+
+/** The switches that can each be turned on or off on their own, with the words a person sees for them. */
+export const MONITORING_SWITCHES = [
+  { key: 'faceVisibility', label: 'Face check', hint: 'Warn and note when the face is not visible.' },
+  { key: 'tabSwitchCheck', label: 'Tab-switch check', hint: 'Note when a student leaves the class tab or window.' },
+  { key: 'strictSeverity', label: 'Strict severity', hint: 'A missing face or a second face counts as critical at once.' },
+  {
+    key: 'attendancePenalty',
+    label: 'Attendance penalty',
+    hint: 'Time with the face missing or the tab left is not counted as attended.',
+  },
+  { key: 'alertTrainer', label: 'Alert the trainer', hint: 'Show an alert here for every critical note.' },
+  {
+    key: 'autoRemove',
+    label: 'Auto-remove',
+    hint: 'Remove a student from the room after several critical notes (they may rejoin).',
+  },
+] as const
+
+export type MonitoringSwitchKey = (typeof MONITORING_SWITCHES)[number]['key']

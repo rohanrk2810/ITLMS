@@ -10,6 +10,11 @@ public interface MonitoringEventRepository extends JpaRepository<MonitoringEvent
 
     List<MonitoringEvent> findByLiveSessionIdOrderByOccurredAtAscIdAsc(Long liveSessionId);
 
+    List<MonitoringEvent> findByLiveSessionIdAndStudentIdOrderByOccurredAtAscIdAsc(Long liveSessionId, Long studentId);
+
+    long countByLiveSessionIdAndStudentIdAndSeverity(Long liveSessionId, Long studentId,
+                                                     MonitoringEvent.Severity severity);
+
     /** Used to cap what one student can write into one class. */
     long countByLiveSessionIdAndStudentId(Long liveSessionId, Long studentId);
 }

@@ -21,6 +21,8 @@ import com.itilms.liveclass.dto.MonitoringDtos.EventRequest;
 import com.itilms.liveclass.dto.MonitoringDtos.EventResponse;
 import com.itilms.liveclass.dto.MonitoringDtos.SettingRequest;
 import com.itilms.liveclass.dto.MonitoringDtos.SettingResponse;
+import com.itilms.liveclass.dto.MonitoringDtos.StudentReport;
+import com.itilms.liveclass.livekit.LiveKitGateway;
 import com.itilms.liveclass.entity.LiveParticipant;
 import com.itilms.liveclass.entity.LiveSession;
 import com.itilms.liveclass.entity.LiveSessionStatus;
@@ -58,6 +60,7 @@ public class MonitoringService {
     private final BatchClient batchClient;
     private final HostAccess hostAccess;
     private final EventPublisher events;
+    private final LiveKitGateway liveKit;
 
     /** A batch's course does not change, so it is asked for once. */
     private final Map<Long, Long> courseOfBatch = new ConcurrentHashMap<>();
@@ -74,7 +77,7 @@ public class MonitoringService {
 
     @Transactional
     public SettingResponse save(SettingRequest request) {
-        AppPrincipal admin = requireAdmin();
+        AppPrincipal admin = requireSettingsEditor(request);
         long scopeId = request.scopeType() == MonitoringSetting.Scope.INSTITUTE ? 0
                 : request.scopeId() == null ? -1 : request.scopeId();
         if (scopeId < 0 || (request.scopeType() != MonitoringSetting.Scope.INSTITUTE && scopeId == 0)) {
@@ -93,6 +96,13 @@ public class MonitoringService {
         row.setWarningMessage(request.warningMessage() == null || request.warningMessage().isBlank()
                 ? null : request.warningMessage().trim());
         row.setLogEvents(request.logEvents() == null || request.logEvents());
+        row.setTabSwitchCheck(Boolean.TRUE.equals(request.tabSwitchCheck()));
+        row.setAttendancePenalty(Boolean.TRUE.equals(request.attendancePenalty()));
+        row.setStrictSeverity(Boolean.TRUE.equals(request.strictSeverity()));
+        row.setAutoRemove(Boolean.TRUE.equals(request.autoRemove()));
+        row.setAutoRemoveAfterCritical(
+                request.autoRemoveAfterCritical() == null ? 3 : request.autoRemoveAfterCritical());
+        row.setAlertTrainer(Boolean.TRUE.equals(request.alertTrainer()));
         row.setUpdatedBy(admin.userId());
         row = settings.save(row);
 
@@ -182,19 +192,130 @@ public class MonitoringService {
         }
 
         Instant now = Instant.now();
-        eventRepository.save(MonitoringEvent.builder()
+        MonitoringEvent.Severity severity =
+                MonitoringRules.severity(request.type(), request.durationSeconds(), effective.strictSeverity());
+        eventRepository.save(saveable(session, caller, participant, request.type(), severity, request.durationSeconds(),
+                request.detail(), now));
+
+        if (effective.autoRemove() && severity == MonitoringEvent.Severity.CRITICAL) {
+            removeIfOverLimit(session, caller, participant, effective, now);
+        }
+    }
+
+    private MonitoringEvent saveable(LiveSession session, AppPrincipal student, LiveParticipant participant, MonitoringEvent.Type type,
+                                     MonitoringEvent.Severity severity, Integer durationSeconds, String detail,
+                                     Instant now) {
+        return MonitoringEvent.builder()
                 .liveSessionId(session.getId())
-                .studentId(caller.profileId())
-                .studentUserId(caller.userId())
+                .studentId(student.profileId())
+                .studentUserId(student.userId())
                 .studentName(participant.getDisplayName())
-                .eventType(request.type())
-                .severity(MonitoringRules.severity(request.type(), request.durationSeconds()))
+                .eventType(type)
+                .severity(severity)
                 .occurredAt(now)
                 .offsetSeconds(QuestionGrader.offsetSeconds(
                         session.getStartedAt() != null ? session.getStartedAt() : session.getScheduledStartAt(), now))
-                .durationSeconds(request.durationSeconds())
-                .detail(request.detail())
-                .build());
+                .durationSeconds(durationSeconds)
+                .detail(detail)
+                .build();
+    }
+
+    /**
+     * Removes a student from the room once their CRITICAL notes reach the limit (and again at each further multiple,
+     * so a student who rejoins gets a fresh run). Removal never fails the report: if the media server cannot be
+     * reached the notes are still kept and the trainer can act.
+     */
+    private void removeIfOverLimit(LiveSession session, AppPrincipal student, LiveParticipant participant,
+                                   Effective effective, Instant now) {
+        long critical = eventRepository.countByLiveSessionIdAndStudentIdAndSeverity(
+                session.getId(), student.profileId(), MonitoringEvent.Severity.CRITICAL);
+        int limit = Math.max(1, effective.autoRemoveAfterCritical());
+        if (critical == 0 || critical % limit != 0) {
+            return;
+        }
+        try {
+            liveKit.removeParticipant(session.getRoomName(), participant.getIdentity());
+        } catch (RuntimeException ex) {
+            log.warn("Could not remove user {} from live session {} after {} critical notes", student.userId(),
+                    session.getId(), critical, ex);
+            return;
+        }
+        eventRepository.save(saveable(session, student, participant, MonitoringEvent.Type.REMOVED_BY_MONITORING,
+                MonitoringEvent.Severity.CRITICAL, null, "Removed after " + critical + " critical notes", now));
+        events.audit(SERVICE_NAME, "MONITORING_AUTO_REMOVED", "LiveSession", session.getId(), null,
+                Map.of("userId", student.userId(), "criticalNotes", critical));
+        log.info("Removed user {} from live session {} by monitoring ({} critical notes)", student.userId(),
+                session.getId(), critical);
+    }
+
+    /**
+     * Seconds to take off one student's attended time for this class, when the attendance-penalty switch is on.
+     * Called when attendance is settled; zero when the switch is off or nothing was noted.
+     */
+    @Transactional(readOnly = true)
+    public int penaltySeconds(LiveSession session, Long studentId) {
+        Effective effective = effective(session);
+        if (!effective.enabled() || !effective.attendancePenalty() || studentId == null) {
+            return 0;
+        }
+        return MonitoringRules.penaltySeconds(
+                eventRepository.findByLiveSessionIdAndStudentIdOrderByOccurredAtAscIdAsc(session.getId(), studentId),
+                effective);
+    }
+
+    /** One line per student: what monitoring noted, for the class trainer and staff. */
+    @Transactional(readOnly = true)
+    public List<StudentReport> reportOf(Long classSessionId) {
+        LiveSession session = requireByClassSession(classSessionId);
+        hostAccess.requireHostOf(session);
+        Effective effective = effective(session);
+
+        Map<Long, List<MonitoringEvent>> byStudent = new java.util.LinkedHashMap<>();
+        for (MonitoringEvent e : eventRepository.findByLiveSessionIdOrderByOccurredAtAscIdAsc(session.getId())) {
+            byStudent.computeIfAbsent(e.getStudentId(), k -> new ArrayList<>()).add(e);
+        }
+
+        List<StudentReport> report = new ArrayList<>();
+        byStudent.forEach((studentId, list) -> {
+            int absences = 0;
+            int absentSeconds = 0;
+            int tabSwitches = 0;
+            int tabSeconds = 0;
+            int multiple = 0;
+            int cameraProblems = 0;
+            int warnings = 0;
+            int critical = 0;
+            boolean removed = false;
+            for (MonitoringEvent e : list) {
+                int duration = e.getDurationSeconds() == null ? 0 : e.getDurationSeconds();
+                switch (e.getEventType()) {
+                    case FACE_RESTORED -> {
+                        absences++;
+                        absentSeconds += duration;
+                    }
+                    case TAB_AWAY -> {
+                        tabSwitches++;
+                        tabSeconds += duration;
+                    }
+                    case MULTIPLE_FACES -> multiple++;
+                    case CAMERA_DISABLED, CAMERA_PERMISSION_DENIED -> cameraProblems++;
+                    case REMOVED_BY_MONITORING -> removed = true;
+                    default -> { }
+                }
+                if (e.getSeverity() == MonitoringEvent.Severity.WARNING) {
+                    warnings++;
+                } else if (e.getSeverity() == MonitoringEvent.Severity.CRITICAL) {
+                    critical++;
+                }
+            }
+            // The penalty is shown by what it would be, so a trainer sees the effect even before attendance is settled.
+            int penalty = MonitoringRules.penaltySeconds(list, effective);
+            report.add(new StudentReport(studentId, list.get(0).getStudentName(), absences, absentSeconds,
+                    tabSwitches, tabSeconds, multiple, cameraProblems, warnings, critical, removed, penalty));
+        });
+        report.sort(java.util.Comparator.comparingInt(StudentReport::critical).reversed()
+                .thenComparing(java.util.Comparator.comparingInt(StudentReport::warnings).reversed()));
+        return report;
     }
 
     /** The class trainer and staff read what was noted. */
@@ -208,6 +329,22 @@ public class MonitoringService {
     }
 
     // -----------------------------------------------------------------
+
+    /**
+     * An admin may set any level. A class's own trainer (or staff) may set only that one class - never a batch,
+     * course or the institute - so a trainer decides for the lecture they are teaching and nothing wider.
+     */
+    private AppPrincipal requireSettingsEditor(SettingRequest request) {
+        AppPrincipal caller = SecurityUtils.requirePrincipal();
+        if (caller.isAdmin()) {
+            return caller;
+        }
+        if (request.scopeType() != MonitoringSetting.Scope.SESSION || request.scopeId() == null) {
+            throw new ForbiddenOperationException("Only an administrator can change monitoring settings for more than one class.");
+        }
+        hostAccess.requireHostOf(requireByClassSession(request.scopeId()));
+        return caller;
+    }
 
     private AppPrincipal requireAdmin() {
         AppPrincipal caller = SecurityUtils.requirePrincipal();
@@ -225,6 +362,8 @@ public class MonitoringService {
     private static EffectiveResponse toResponse(Effective e) {
         return new EffectiveResponse(e.enabled(), e.faceVisibility(), e.cameraRequired(), e.microphoneRequired(),
                 e.warningAfterSeconds(),
-                e.showWarning(), e.warningMessage(), e.logEvents(), e.source());
+                e.showWarning(), e.warningMessage(), e.logEvents(), e.source(),
+                e.tabSwitchCheck(), e.attendancePenalty(), e.strictSeverity(), e.autoRemove(),
+                e.autoRemoveAfterCritical(), e.alertTrainer());
     }
 }

@@ -17,6 +17,7 @@ import { CAMERA_PROBLEM_TEXT, CameraError, openCamera, stopStream } from '@/lib/
 import { MIC_PROBLEM_TEXT, MicError, openMicrophone } from '@/lib/microphone'
 import { useMicMonitor } from '@/lib/use-mic-monitor'
 import { useClassMonitor } from '@/lib/use-class-monitor'
+import { useTabMonitor } from '@/lib/use-tab-monitor'
 
 /**
  * Wraps a student's live-class room. When an administrator has switched monitoring on for this class the student
@@ -85,6 +86,13 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
               seconds&quot;.
             </li>
             <li>Your trainer and the administrator can see those notes.</li>
+            {settings.tabSwitchCheck && <li>Leaving this class tab or window is noted.</li>}
+            {settings.attendancePenalty && (
+              <li>Time with your face missing or this tab left is not counted in your attendance.</li>
+            )}
+            {settings.autoRemove && (
+              <li>Repeated serious notes remove you from the class; you may rejoin.</li>
+            )}
           </ul>
           {settings.microphoneRequired && (
             <p className="text-muted-foreground">
@@ -154,9 +162,30 @@ function ClassMonitorRunner({
   })
   const micProblem = settings.microphoneRequired && (micStatus === 'off' || micStatus === 'denied')
 
+  const [awayNotice, setAwayNotice] = useState<number | null>(null)
+  const lastAway = useTabMonitor({
+    enabled: settings.tabSwitchCheck,
+    onAway: (seconds) => onEvent('TAB_AWAY', seconds, 'Left the class tab or window'),
+  })
+  useEffect(() => {
+    if (lastAway === null) return
+    setAwayNotice(lastAway)
+    const timer = setTimeout(() => setAwayNotice(null), 8000)
+    return () => clearTimeout(timer)
+  }, [lastAway])
+
   return (
     <>
       <CameraPreview stream={stream} video={video} status={status} />
+      {settings.showWarning && awayNotice !== null && (
+        <div
+          role="status"
+          className="pointer-events-none fixed top-28 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-md border border-amber-500 bg-amber-100 px-4 py-2 text-sm font-medium text-amber-900 shadow-lg dark:bg-amber-950 dark:text-amber-100"
+        >
+          <TriangleAlert className="size-4 shrink-0" />
+          You left the class for {awayNotice} seconds. Please stay on this page.
+        </div>
+      )}
       {settings.showWarning && micProblem && !warn && (
         <div
           role="status"

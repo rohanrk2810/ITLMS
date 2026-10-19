@@ -56,6 +56,7 @@ class MonitoringServiceTest {
     @Mock BatchClient batchClient;
     @Mock HostAccess hostAccess;
     @Mock EventPublisher events;
+    @Mock com.itilms.liveclass.livekit.LiveKitGateway liveKit;
 
     MonitoringService service;
     LiveSession session;
@@ -63,7 +64,7 @@ class MonitoringServiceTest {
     @BeforeEach
     void setUp() {
         service = new MonitoringService(settings, eventRepository, sessions, participants, batchClient, hostAccess,
-                events);
+                events, liveKit);
         session = new LiveSession();
         session.setId(LIVE_SESSION);
         session.setClassSessionId(CLASS_SESSION);
