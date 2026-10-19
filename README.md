@@ -91,7 +91,7 @@ Open **http://localhost:5173** and sign in with the administrator from `deploy/d
    ```
 5. **Sign in** at http://localhost:5173 with the admin credentials from step 3. This is a brand-new, empty database — none of another machine's courses, batches or students carry over automatically.
 
-Full instructions — running a single service from an IDE, live classes over a LAN, and what to do when something breaks — are in **[docs/05-local-setup.md](docs/05-local-setup.md)**. Taking this beyond one developer's machine (reverse proxy/HTTPS, real email, MinIO, resource sizing, backups): **[docs/07-deployment-guide.md](docs/07-deployment-guide.md)**.
+Full instructions — running a single service from an IDE, live classes over a LAN, and what to do when something breaks — are in **[docs/05-local-setup.md](docs/05-local-setup.md)**. Taking this beyond one developer's machine: the step-by-step server process is in [Deploying to a server](#deploying-to-a-server-step-by-step) below, and the reasoning (reverse proxy/HTTPS, real email, MinIO, resource sizing, backups) is in **[docs/07-deployment-guide.md](docs/07-deployment-guide.md)**.
 
 ### What runs where
 
@@ -106,6 +106,180 @@ Full instructions — running a single service from an IDE, live classes over a 
 Every business service's own port (8081–8091) is deliberately **not** published — everything reaches them through the gateway, exactly as it would in production.
 
 ---
+
+## Deploying to a server (step by step)
+
+This is the exact process used to put IT-ILMS on a cloud server (an Azure Linux VM). The same steps work on any Ubuntu server. Replace `<SERVER_IP>` with the server's public IP address and `<YOU>` with your own values. **Never paste a password, a key, or a whole screen of command output into the terminal or into a chat.**
+
+### What the server needs
+
+| | |
+|---|---|
+| Machine | Ubuntu 24.04 (or 22.04), **x86_64**, at least **2 vCPU and 8 GiB RAM** (the stack uses about 4.5 GiB), 64 GiB disk. Azure size used: `Standard_B2as_v2`. |
+| Ports open to the internet | **22** (SSH), **80** and **443** (web), **7881 TCP** and **7882 UDP** (live-class video). In Azure these are *inbound port rules* on the VM's network security group. UDP 7882 is a separate rule from TCP 7881. |
+| Address | Camera and microphone only work on **HTTPS**, so the site needs a host name. With no domain of your own, `app.<SERVER_IP>.sslip.io` works for testing (sslip.io turns the IP into a name). For real use, buy a domain and point `app.`, `api.` and `live.` records at the server. |
+| Not set up on this server | Live-class recording (LiveKit Egress) needs its own configuration; leave it stopped (step 7). The code editor's sandbox (Piston) is optional and needs step 7b; an ARM server cannot run it, an x86 server can. |
+
+### 1. SSH key (on your own computer, PowerShell)
+
+```powershell
+ssh-keygen -t ed25519 -f $env:USERPROFILE\.ssh\itilms_server
+Get-Content $env:USERPROFILE\.ssh\itilms_server.pub     # paste this PUBLIC key into the cloud's "create VM" form
+```
+
+Log in with `ssh -i $env:USERPROFILE\.ssh\itilms_server azureuser@<SERVER_IP>`. The private key (the file without `.pub`) never leaves your computer.
+
+### 2. Install the tools (on the server)
+
+```bash
+sudo apt update && sudo apt install -y git curl openjdk-21-jdk
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker azureuser          # then log out and back in (exit, ssh again)
+sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+cd /tmp && curl -O https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz && sudo tar xzf apache-maven-3.9.9-bin.tar.gz -C /opt && sudo ln -s /opt/apache-maven-3.9.9/bin/mvn /usr/local/bin/mvn && cd ~
+```
+
+Check: `docker ps` runs without `sudo`, `mvn -version` shows Maven 3.9.9 and Java 21, `free -h` shows 4 GiB of swap.
+
+### 3. Get the code and build it
+
+```bash
+cd ~ && git clone https://github.com/rohanrk2810/ITLMS.git && cd ITLMS
+nohup mvn -DskipTests clean package > ~/build.log 2>&1 &
+tail -3 ~/build.log                        # repeat until it shows BUILD SUCCESS (a few minutes)
+ls ~/ITLMS/services/*/target/*.jar | wc -l # 14
+```
+
+Always use `clean`: a stale jar can bundle an old copy of the shared library, and the service then crashes at start.
+
+### 4. Create the server's `.env`
+
+```bash
+cd ~/ITLMS/deploy/docker && cp .env.example .env
+
+# three secrets, generated on the server (nobody has to see them)
+sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
+sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n/+=')|" .env
+sed -i "s|^LIVEKIT_API_SECRET=.*|LIVEKIT_API_SECRET=$(openssl rand -hex 32)|" .env
+awk -F= '/^(POSTGRES_PASSWORD|JWT_SECRET|LIVEKIT_API_SECRET)=/ {print $1, length($2)}' .env   # lengths about 48, 58, 64; never 0
+
+# the first administrator (8+ characters with upper case, lower case and a digit; letters and digits are safest)
+sed -i 's|^BOOTSTRAP_ADMIN_EMAIL=.*|BOOTSTRAP_ADMIN_EMAIL=<YOU>@example.com|; s|^BOOTSTRAP_ADMIN_PASSWORD=.*|BOOTSTRAP_ADMIN_PASSWORD=<A_PASSWORD_YOU_CHOOSE>|' .env
+
+# the addresses (with sslip.io; with a domain use app.<domain>, api.<domain>, live.<domain>)
+sed -i 's|^FRONTEND_URL=.*|FRONTEND_URL=https://app.<SERVER_IP>.sslip.io|; s|^LIVEKIT_WS_URL=.*|LIVEKIT_WS_URL=wss://live.<SERVER_IP>.sslip.io|; s|^LIVEKIT_NODE_IP=.*|LIVEKIT_NODE_IP=<SERVER_IP>|; s|^# LIVEKIT_BIND_ADDRESS=.*|LIVEKIT_BIND_ADDRESS=0.0.0.0|' .env
+echo 'VITE_API_BASE_URL=https://api.<SERVER_IP>.sslip.io' >> .env
+
+grep -n "^[A-Z_]*=CHANGE_ME" .env          # must print nothing
+```
+
+Do not change `BIND_ADDRESS`. Leaving it at `127.0.0.1` keeps the database, Kafka and the mail catcher off the internet; only the reverse proxy and the LiveKit media ports are public.
+
+**Real e-mail (password and reset-code mail only)** with a Gmail address (2-Step Verification on, then an *App password* from <https://myaccount.google.com/apppasswords>):
+
+```bash
+cd ~/ITLMS/deploy/docker && sed -i '/^MAIL_/d' .env && printf '%s\n' 'MAIL_ENABLED=true' 'MAIL_NOTIFICATIONS_ENABLED=false' 'MAIL_HOST=smtp.gmail.com' 'MAIL_PORT=587' 'MAIL_USERNAME=<YOU>@gmail.com' 'MAIL_SMTP_AUTH=true' 'MAIL_SMTP_TLS=true' 'MAIL_FROM=<YOU>@gmail.com' 'MAIL_FROM_NAME=<Institute name>' >> .env
+read -s -p "Gmail App password: " P && echo && printf 'MAIL_PASSWORD=%s\n' "${P// /}" >> .env && unset P
+```
+
+**Optional human check** ([docs/22](docs/22-human-check-captcha.md)): create a Turnstile widget at Cloudflare, add the site's host name to it, then:
+
+```bash
+cd ~/ITLMS/deploy/docker && sed -i '/^CAPTCHA_/d' .env && printf '%s\n' 'CAPTCHA_ENABLED=true' 'CAPTCHA_SITE_KEY=<the Site Key>' >> .env
+read -s -p "Turnstile Secret Key: " S && echo && printf 'CAPTCHA_SECRET=%s\n' "$S" >> .env && unset S
+```
+
+### 5. Start everything
+
+```bash
+cd ~/ITLMS/deploy/docker
+nohup docker compose up -d --build > ~/compose.log 2>&1 &
+docker compose ps --format '{{.Name}} {{.Status}}'   # wait until every row says (healthy); 10-15 minutes on 2 vCPU
+```
+
+### 6. HTTPS with Caddy
+
+```bash
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl gnupg && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list && sudo apt update && sudo apt install -y caddy
+
+printf '%s\n' 'app.<SERVER_IP>.sslip.io {' '    reverse_proxy 127.0.0.1:5173' '}' 'api.<SERVER_IP>.sslip.io {' '    reverse_proxy 127.0.0.1:8080' '}' 'live.<SERVER_IP>.sslip.io {' '    reverse_proxy 127.0.0.1:7880' '}' | sudo tee /etc/caddy/Caddyfile && sudo systemctl reload caddy
+```
+
+Caddy fetches and renews the HTTPS certificates by itself.
+
+### 7. Stop what this server cannot run
+
+```bash
+cd ~/ITLMS/deploy/docker && docker compose stop livekit-egress
+```
+
+### 7b. Code editor (Piston sandbox, optional)
+
+Without it the practice editor and coding questions say that running code is not set up. Piston is not started by a plain `docker compose up`; it needs an x86 server with cgroup v2 (Ubuntu 22.04 and 24.04 have it) and about 1.5 GiB of extra RAM while code runs.
+
+```bash
+stat -fc %T /sys/fs/cgroup                 # must print cgroup2fs
+cd ~/ITLMS/deploy/docker && docker compose --profile piston up -d piston
+
+# install the languages once (a few minutes); they are kept in a Docker volume
+docker compose --profile piston exec -T piston node - install java@15.0.2 python@3.12.0 gcc@10.2.0 mono@6.12.0 sqlite3@3.36.0 < ~/ITLMS/deploy/scripts/piston-packages.js
+
+# tell the code-run service to use it
+sed -i '/^CODEEXEC_ENGINE=/d; /^PISTON_URL=/d' .env && printf '%s
+' 'CODEEXEC_ENGINE=piston' 'PISTON_URL=http://piston:2000' >> .env
+docker compose up -d --no-deps codeexec-service
+```
+
+Then press **Run** in a lesson's practice editor. Java here is version 15 (no records), and PL/SQL is not supported. Details and limits: [docs/08](docs/08-code-execution.md).
+
+### 8. Check it
+
+```bash
+curl -sI https://app.<SERVER_IP>.sslip.io | head -1      # HTTP/2 200
+```
+
+Open `https://app.<SERVER_IP>.sslip.io` and sign in with the administrator from step 4. **Change that password straight away** (menu, *Change password*). Then create a test user with your own e-mail and check that the password mail arrives.
+
+### Updating the live server after a code change
+
+On your computer: commit and `git push`. Then on the server, **rebuild and restart only what changed**:
+
+```bash
+cd ~/ITLMS && git pull
+mvn -q -DskipTests clean package -pl services/identity-service -am     # the service(s) you changed; several: -pl a,b
+cd deploy/docker && docker compose up -d --build --no-deps identity-service
+```
+
+For the frontend only: `docker compose up -d --build --no-deps frontend`. **Always add `--no-deps`**: without it Docker also recreates the gateway and the platform services, and the whole site is down for a few minutes.
+
+### After the server is stopped and started again
+
+Nothing to run. The containers start by themselves, but 12 Java services take **8-15 minutes** to be ready on 2 vCPU. Signing in earlier shows errors or 502; wait and try again. Check with `docker compose ps --format '{{.Name}} {{.Status}}'`.
+
+### Backups (nothing is automatic)
+
+```bash
+mkdir -p ~/backups && for db in $(docker exec itilms-postgres-1 psql -U itilms -At -c "select datname from pg_database where datname like 'itilms_%'"); do docker exec itilms-postgres-1 pg_dump -U itilms "$db" | gzip > ~/backups/$db-$(date +%F).sql.gz; done
+```
+
+Copy `~/backups` off the server (for example with `scp`). A deleted VM takes its data with it.
+
+### Stopping the bill
+
+A running cloud VM costs money. When you no longer need it, delete the **resource group** that holds it (Azure portal, *Resource groups*, the group, *Delete*): that removes the VM, disk, IP and network together. Stopping a VM is not enough, its disk and IP keep charging.
+
+### Things that went wrong, and why
+
+| What you see | Cause and fix |
+|---|---|
+| Courses empty, or a service crashes with `ClassNotFoundException` | The jar was built without `clean`; rebuild with `mvn clean package -pl <service> -am`. |
+| Everything is down after changing one service | `--no-deps` was left out; wait for the stack to come back, then use it next time. |
+| Sign-in says 500 and the gateway log shows a `NullPointerException` on the client address | Fixed in the gateway (commit `1dde8b5`); update the server. |
+| "Please confirm you are not a robot" but no box | The gateway must list `/api/auth/captcha-config` as public (fixed, commit `6870d7e`), and the Turnstile widget must list the site's host name. |
+| Live class stuck on "connecting" | UDP **7882** (not just TCP 7881) must be open on the cloud firewall, and `LIVEKIT_NODE_IP` must be the server's public IP. |
+| A convert or create fails with 422 "already exists" | The phone number or e-mail is used by another account; on the Users page, *Delete* (a soft delete) frees them. |
+| Terminal prints `command not found` for lines of output | You pasted command *output* into the shell. Paste only the command. |
+| Windows PowerShell says `&&` is not a valid separator | That command is for the **server** (Linux); run it after `ssh`. |
 
 ## Documentation
 
