@@ -323,46 +323,63 @@ public class AuthServiceImpl implements AuthService {
 
         passwordResetTokenRepository.invalidateAllForUser(user.getId(), Instant.now());
 
-        String rawToken = jwtIssuer.generateRefreshToken();
+        String otp = String.format("%06d", OTP_RANDOM.nextInt(1_000_000));
         passwordResetTokenRepository.save(PasswordResetToken.builder()
                 .userId(user.getId())
-                .tokenHash(jwtIssuer.hash(rawToken))
-                .expiresAt(jwtIssuer.passwordResetExpiry())
+                .tokenHash(otpHash(user.getId(), otp))
+                .expiresAt(Instant.now().plus(OTP_TTL))
                 .requestedIp(metadata.ipAddress())
                 .build());
 
-        // The raw token travels only in the email body. It is never logged,
-        // never returned in the HTTP response, and kept out of the action URL:
-        // anything in the URL could end up stored as an in-app notification,
-        // and a stored raw token undoes the point of keeping only its hash here.
-        // notification-service builds the link from the metadata, in the email only.
+        // The code travels only in the email body. It is never logged, never
+        // returned in the HTTP response, and kept out of the message text:
+        // that could end up stored as an in-app notification, and a stored
+        // raw code undoes the point of keeping only its hash here.
         events.publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED,
                 new NotificationRequestedEvent(
                         com.itilms.common.event.DomainEvent.newId(), Instant.now(),
                         java.util.List.of(user.getId()), null, null,
-                        "PASSWORD_RESET", "Reset your password",
-                        "Use the link below to choose a new password. It expires in 2 hours.",
-                        "/reset-password", true,
-                        java.util.Map.of("resetToken", rawToken, "email", user.getEmail())));
+                        "PASSWORD_RESET", "Your password reset code",
+                        "Use the code below to reset your password. It expires in 10 minutes. "
+                                + "If you did not ask for this, ignore this email.",
+                        null, true,
+                        java.util.Map.of("resetOtp", otp, "email", user.getEmail())));
 
-        log.info("Password reset token issued for user {}", user.getId());
+        log.info("Password reset code issued for user {}", user.getId());
     }
 
+    private static final java.security.SecureRandom OTP_RANDOM = new java.security.SecureRandom();
+    private static final java.time.Duration OTP_TTL = java.time.Duration.ofMinutes(10);
+    private static final int MAX_OTP_ATTEMPTS = 5;
+
+    /** Bound to the user, so the same 6 digits for two people never share a hash. */
+    private String otpHash(Long userId, String otp) {
+        return jwtIssuer.hash(userId + ":" + otp);
+    }
+
+    // noRollbackFor: the wrong-attempt counter must survive the exception that rejects the code.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = BusinessRuleException.class)
     public void resetPassword(ResetPasswordRequest request) {
+        String invalid = "This code is not valid or has expired. Please request a new one.";
+        User user = userRepository.findByEmailIgnoreCase(request.email().trim())
+                .orElseThrow(() -> new BusinessRuleException(invalid));
         PasswordResetToken token = passwordResetTokenRepository
-                .findByTokenHash(jwtIssuer.hash(request.token()))
-                .orElseThrow(() -> new BusinessRuleException(
-                        "This reset link is not valid. Please request a new one."));
+                .findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(user.getId())
+                .filter(PasswordResetToken::isUsable)
+                .orElseThrow(() -> new BusinessRuleException(invalid));
 
-        if (!token.isUsable()) {
-            throw new BusinessRuleException(
-                    "This reset link has already been used or has expired. Please request a new one.");
+        if (token.getAttempts() >= MAX_OTP_ATTEMPTS) {
+            throw new BusinessRuleException("Too many wrong codes. Please request a new one.");
         }
-
-        User user = userRepository.findById(token.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", token.getUserId()));
+        boolean matches = java.security.MessageDigest.isEqual(
+                token.getTokenHash().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                otpHash(user.getId(), request.otp()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        if (!matches) {
+            token.setAttempts(token.getAttempts() + 1);
+            passwordResetTokenRepository.save(token);
+            throw new BusinessRuleException(invalid);
+        }
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         user.setMustChangePassword(false);

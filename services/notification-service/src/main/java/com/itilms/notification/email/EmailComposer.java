@@ -38,6 +38,7 @@ public class EmailComposer {
         context.setVariable("link", link);
         context.setVariable("linkLabel", label);
         context.setVariable("temporaryPassword", secrets.temporaryPassword());
+        context.setVariable("otp", secrets.resetOtp());
         String html = templates.process("email/notification", context);
 
         StringBuilder text = new StringBuilder(content.title()).append("\n\n");
@@ -46,6 +47,9 @@ public class EmailComposer {
         }
         if (secrets.temporaryPassword() != null) {
             text.append("Temporary password: ").append(secrets.temporaryPassword()).append("\n\n");
+        }
+        if (secrets.resetOtp() != null) {
+            text.append("Your code: ").append(secrets.resetOtp()).append("\n\n");
         }
         if (link != null) {
             text.append(label).append(": ").append(link).append("\n\n");

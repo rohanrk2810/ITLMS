@@ -115,7 +115,7 @@ public class AuthController {
         return ApiMessage.ok("Password changed. Please sign in again on your other devices.");
     }
 
-    @Operation(summary = "Request a password reset link",
+    @Operation(summary = "Email a 6-digit password reset code",
             description = "Always returns 200, whether or not the address is registered. "
                     + "This prevents the endpoint being used to discover who has an account.")
     @SecurityRequirements
@@ -123,10 +123,10 @@ public class AuthController {
     public ApiMessage forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
                                      HttpServletRequest http) {
         authService.forgotPassword(request, metadata(http));
-        return ApiMessage.ok("If that address belongs to an account, a reset link has been sent to it.");
+        return ApiMessage.ok("If that address belongs to an account, a 6-digit reset code has been sent to it.");
     }
 
-    @Operation(summary = "Set a new password using a reset token")
+    @Operation(summary = "Set a new password using the emailed 6-digit code")
     @SecurityRequirements
     @PostMapping("/reset-password")
     public ApiMessage resetPassword(@Valid @RequestBody ResetPasswordRequest request) {

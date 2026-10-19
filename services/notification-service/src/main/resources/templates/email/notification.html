@@ -24,6 +24,12 @@
                         th:text="${temporaryPassword}">xxxx</strong>
             </div>
 
+            <div th:if="${otp}"
+                 style="margin:0 0 20px;padding:18px 16px;background:#f3f4f6;border-radius:6px;text-align:center;">
+                <strong style="font-family:Consolas,monospace;font-size:30px;letter-spacing:8px;"
+                        th:text="${otp}">000000</strong>
+            </div>
+
             <p th:if="${link}" style="margin:0;">
                 <a th:href="${link}" th:text="${linkLabel}"
                    style="display:inline-block;padding:11px 20px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-size:15px;">Open</a>

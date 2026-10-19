@@ -16,6 +16,9 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
 
     Optional<PasswordResetToken> findByTokenHash(String tokenHash);
 
+    /** The code a person can currently be typing in: their newest request that is not yet used. */
+    Optional<PasswordResetToken> findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(Long userId);
+
     /**
      * Requesting a new reset link invalidates any earlier one. Without this a
      * user who requested three links would have three usable doors, each with

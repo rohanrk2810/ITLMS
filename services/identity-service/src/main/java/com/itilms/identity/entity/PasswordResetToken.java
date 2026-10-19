@@ -40,6 +40,11 @@ public class PasswordResetToken {
     @Column(name = "used_at")
     private Instant usedAt;
 
+    /** Wrong codes entered against this request; it is closed after too many. */
+    @Column(name = "attempts", nullable = false)
+    @Builder.Default
+    private int attempts = 0;
+
     @Column(name = "requested_ip", length = 45)
     private String requestedIp;
 

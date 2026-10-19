@@ -11,12 +11,13 @@ import { Label } from '@/components/ui/label'
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') ?? ''
+  const [email, setEmail] = useState(searchParams.get('email') ?? '')
+  const [otp, setOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const navigate = useNavigate()
 
   const mutation = useMutation({
-    mutationFn: () => resetPassword(token, newPassword),
+    mutationFn: () => resetPassword(email, otp, newPassword),
     onSuccess: () => {
       setTimeout(() => void navigate('/login', { replace: true }), 1500)
     },
@@ -27,30 +28,40 @@ export function ResetPasswordPage() {
     mutation.mutate()
   }
 
-  if (!token) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Reset link invalid</CardTitle>
-          <CardDescription>This link is missing its token. Request a new one.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link to="/forgot-password" className="text-sm font-medium hover:underline">
-            Request a new link
-          </Link>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Set a new password</CardTitle>
-        <CardDescription>You&apos;ll be signed out of every other device.</CardDescription>
+        <CardTitle>Enter your code</CardTitle>
+        <CardDescription>
+          We emailed a 6-digit code. It expires in 10 minutes. You&apos;ll be signed out of every other device.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="otp">6-digit code</Label>
+            <Input
+              id="otp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              pattern="\d{6}"
+              value={otp}
+              onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+              required
+            />
+          </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="newPassword">New password</Label>
             <Input
@@ -72,6 +83,11 @@ export function ResetPasswordPage() {
             {mutation.isPending ? 'Saving...' : 'Set new password'}
           </Button>
         </form>
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          <Link to="/forgot-password" className="font-medium text-foreground hover:underline">
+            Send a new code
+          </Link>
+        </p>
       </CardContent>
     </Card>
   )

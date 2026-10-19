@@ -361,13 +361,15 @@ class AuthServiceImplTest {
             verify(passwordResetTokenRepository).invalidateAllForUser(eq(1L), any(Instant.class));
             ArgumentCaptor<PasswordResetToken> saved = ArgumentCaptor.forClass(PasswordResetToken.class);
             verify(passwordResetTokenRepository).save(saved.capture());
-            assertThat(saved.getValue().getTokenHash()).isEqualTo("hash:raw-1");
 
             ArgumentCaptor<NotificationRequestedEvent> event = ArgumentCaptor.forClass(NotificationRequestedEvent.class);
             verify(events).publishAfterCommit(eq(KafkaTopics.NOTIFICATION_REQUESTED), event.capture());
-            assertThat(event.getValue().metadata()).containsEntry("resetToken", "raw-1");
-            assertThat(event.getValue().actionUrl()).as("the raw token never goes in a URL that might be stored")
-                    .doesNotContain("raw-1");
+            String otp = event.getValue().metadata().get("resetOtp");
+            assertThat(otp).matches("\\d{6}");
+            assertThat(saved.getValue().getTokenHash()).as("only a hash bound to the user is stored")
+                    .isEqualTo("hash:1:" + otp);
+            assertThat(event.getValue().message()).as("the code never goes in text that might be stored")
+                    .doesNotContain(otp);
         }
 
         @Test
@@ -387,12 +389,13 @@ class AuthServiceImplTest {
             user.setMustChangePassword(true);
             user.setFailedAttempts(5);
             user.setLockedUntil(Instant.now().plus(Duration.ofMinutes(10)));
-            PasswordResetToken token = resetToken(1, "reset");
-            when(passwordResetTokenRepository.findByTokenHash("hash:reset")).thenReturn(Optional.of(token));
-            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            PasswordResetToken token = resetToken(1, "1:123456");
+            when(userRepository.findByEmailIgnoreCase("asha@test.local")).thenReturn(Optional.of(user));
+            when(passwordResetTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(1L))
+                    .thenReturn(Optional.of(token));
             when(passwordEncoder.encode("NewPassw0rd!")).thenReturn("new-hash");
 
-            service.resetPassword(new ResetPasswordRequest("reset", "NewPassw0rd!"));
+            service.resetPassword(new ResetPasswordRequest("asha@test.local", "123456", "NewPassw0rd!"));
 
             assertThat(user.getPasswordHash()).isEqualTo("new-hash");
             assertThat(user.isMustChangePassword()).isFalse();
@@ -403,36 +406,72 @@ class AuthServiceImplTest {
         }
 
         @Test
-        void aResetLinkWorksOnceOnly() {
-            PasswordResetToken token = resetToken(1, "reset");
-            when(passwordResetTokenRepository.findByTokenHash("hash:reset")).thenReturn(Optional.of(token));
-            when(userRepository.findById(1L)).thenReturn(Optional.of(user(1, UserStatus.ACTIVE)));
+        void aCodeWorksOnceOnly() {
+            PasswordResetToken token = resetToken(1, "1:123456");
+            when(userRepository.findByEmailIgnoreCase("asha@test.local")).thenReturn(Optional.of(user(1, UserStatus.ACTIVE)));
+            when(passwordResetTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(1L))
+                    .thenReturn(Optional.of(token))
+                    .thenReturn(Optional.empty());
             when(passwordEncoder.encode(anyString())).thenReturn("new-hash");
 
-            service.resetPassword(new ResetPasswordRequest("reset", "NewPassw0rd!"));
+            service.resetPassword(new ResetPasswordRequest("asha@test.local", "123456", "NewPassw0rd!"));
 
-            assertThatThrownBy(() -> service.resetPassword(new ResetPasswordRequest("reset", "Another1!")))
-                    .isInstanceOf(BusinessRuleException.class).hasMessageContaining("already been used");
+            assertThatThrownBy(() -> service.resetPassword(
+                    new ResetPasswordRequest("asha@test.local", "123456", "Another1!")))
+                    .isInstanceOf(BusinessRuleException.class).hasMessageContaining("not valid");
             verify(passwordEncoder).encode(anyString());
         }
 
         @Test
-        void anExpiredLinkIsRefusedAndChangesNothing() {
-            PasswordResetToken token = PasswordResetToken.builder().userId(1L).tokenHash("hash:late")
+        void anExpiredCodeIsRefusedAndChangesNothing() {
+            PasswordResetToken token = PasswordResetToken.builder().userId(1L).tokenHash("hash:1:123456")
                     .expiresAt(Instant.now().minusSeconds(1)).build();
-            when(passwordResetTokenRepository.findByTokenHash("hash:late")).thenReturn(Optional.of(token));
+            when(userRepository.findByEmailIgnoreCase("asha@test.local")).thenReturn(Optional.of(user(1, UserStatus.ACTIVE)));
+            when(passwordResetTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(1L))
+                    .thenReturn(Optional.of(token));
 
-            assertThatThrownBy(() -> service.resetPassword(new ResetPasswordRequest("late", "NewPassw0rd!")))
+            assertThatThrownBy(() -> service.resetPassword(
+                    new ResetPasswordRequest("asha@test.local", "123456", "NewPassw0rd!")))
                     .isInstanceOf(BusinessRuleException.class);
             verify(userRepository, never()).save(any());
             verify(refreshTokenRepository, never()).revokeAllForUser(anyLong(), any());
         }
 
         @Test
-        void aMadeUpTokenIsRefused() {
-            when(passwordResetTokenRepository.findByTokenHash("hash:guess")).thenReturn(Optional.empty());
+        void aWrongCodeIsRefusedAndCounted() {
+            PasswordResetToken token = resetToken(1, "1:123456");
+            when(userRepository.findByEmailIgnoreCase("asha@test.local")).thenReturn(Optional.of(user(1, UserStatus.ACTIVE)));
+            when(passwordResetTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(1L))
+                    .thenReturn(Optional.of(token));
 
-            assertThatThrownBy(() -> service.resetPassword(new ResetPasswordRequest("guess", "NewPassw0rd!")))
+            assertThatThrownBy(() -> service.resetPassword(
+                    new ResetPasswordRequest("asha@test.local", "999999", "NewPassw0rd!")))
+                    .isInstanceOf(BusinessRuleException.class).hasMessageContaining("not valid");
+            assertThat(token.getAttempts()).isEqualTo(1);
+            verify(passwordResetTokenRepository).save(token);
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        void afterFiveWrongCodesEvenTheRightOneIsRefused() {
+            PasswordResetToken token = resetToken(1, "1:123456");
+            token.setAttempts(5);
+            when(userRepository.findByEmailIgnoreCase("asha@test.local")).thenReturn(Optional.of(user(1, UserStatus.ACTIVE)));
+            when(passwordResetTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(1L))
+                    .thenReturn(Optional.of(token));
+
+            assertThatThrownBy(() -> service.resetPassword(
+                    new ResetPasswordRequest("asha@test.local", "123456", "NewPassw0rd!")))
+                    .isInstanceOf(BusinessRuleException.class).hasMessageContaining("Too many");
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        void anUnknownAddressIsRefusedWithTheSameMessage() {
+            when(userRepository.findByEmailIgnoreCase("ghost@test.local")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.resetPassword(
+                    new ResetPasswordRequest("ghost@test.local", "123456", "NewPassw0rd!")))
                     .isInstanceOf(BusinessRuleException.class).hasMessageContaining("not valid");
         }
     }
