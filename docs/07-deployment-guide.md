@@ -60,10 +60,21 @@ Every service also validates CORS itself (`FRONTEND_URL`), so update that variab
 
 ## 5. Email
 
-Locally, `mailpit` catches every email so nothing is ever really sent (`MAIL_ENABLED=true` pointed at `mailpit:1025`). In any other environment:
-- Point `MAIL_HOST`/`MAIL_PORT`/`MAIL_USERNAME`/`MAIL_PASSWORD` at a real SMTP relay (a transactional email provider is the usual choice) and set `MAIL_SMTP_AUTH=true`, `MAIL_SMTP_TLS=true`.
+Real email is used for **two things only**: the temporary password sent when an administrator creates an account (or resets someone's password), and the one-time code sent for "forgot password". Every other notification (fees, results, announcements, job postings) stays in-app. `MAIL_NOTIFICATIONS_ENABLED` (default `false`) would turn ordinary notification email on as well; leave it off to keep to the two cases above.
+
+How it behaves:
+- Password and reset-code emails are sent straight away and never queued, because the queue is a table and a secret must not be stored. If the send fails, the event is redelivered and sent again.
+- Ordinary notification email, when switched on, goes through the `email_outbox` table and is retried with a delay.
+- Locally, `mailpit` catches every email so nothing is ever really sent (`MAIL_ENABLED=true` pointed at `mailpit:1025`).
+
+To send for real, set in `deploy/docker/.env` and restart `notification-service`:
+- `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SMTP_AUTH=true`, `MAIL_SMTP_TLS=true`, and `MAIL_FROM` (and `MAIL_FROM_NAME`, the display name).
+- **Gmail** (free, about 500 a day): `smtp.gmail.com`, port 587; turn on 2-Step Verification and create an **App password**; use it as `MAIL_PASSWORD` and the same Gmail address as `MAIL_USERNAME` and `MAIL_FROM`.
+- **Brevo** (free, 300 a day): `smtp-relay.brevo.com`, port 587; use the SMTP login and SMTP key and a verified sender.
+- Make sure the user has an e-mail address on the account; a user with none gets nothing, and the log says so.
 - **Do not deploy `mailpit` anywhere but a developer's own machine or CI.** It is an open, unauthenticated mail catcher with no purpose once real email is configured.
-- notification-service is the only consumer of these settings. Temporary passwords and password-reset tokens go out through it and are never written to any database table or log line (see [02-documentation-review.md §7](02-documentation-review.md#7-defects-found-and-fixed-during-this-review), the fifth defect) — this holds regardless of which SMTP provider is behind `MAIL_HOST`.
+
+Mail from a free provider can land in spam. For a real institute, send from your own domain with SPF and DKIM set up (Brevo and other providers walk you through it).
 
 ## 6. File storage
 

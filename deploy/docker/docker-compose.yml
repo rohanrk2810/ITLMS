@@ -469,6 +469,9 @@ services:
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
       MAIL_SMTP_TLS: ${MAIL_SMTP_TLS:-false}
       MAIL_FROM: ${MAIL_FROM:-no-reply@itinstitute.local}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-IT Institute}
+      # Off: only new-account passwords and password-reset codes are emailed.
+      MAIL_NOTIFICATIONS_ENABLED: ${MAIL_NOTIFICATIONS_ENABLED:-false}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8089/actuator/health || exit 1"]

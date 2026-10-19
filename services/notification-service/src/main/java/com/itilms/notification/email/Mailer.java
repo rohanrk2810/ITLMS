@@ -26,6 +26,11 @@ public class Mailer {
         return props.isEnabled();
     }
 
+    /** Whether ordinary notifications are emailed too, not just passwords and reset codes. */
+    public boolean sendsNotificationEmails() {
+        return props.isEnabled() && props.isNotificationsEnabled();
+    }
+
     public void send(String to, EmailComposer.Email email) {
         MimeMessage message = sender.createMimeMessage();
         try {

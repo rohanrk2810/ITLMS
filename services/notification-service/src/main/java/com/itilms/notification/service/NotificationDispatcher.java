@@ -37,7 +37,8 @@ public class NotificationDispatcher {
 
     /**
      * @param eventId what caused this; a repeat of the same event reaches nobody twice
-     * @param email   whether to email as well. Ignored while email is switched off,
+     * @param email   whether to email as well. Ignored unless ordinary notification email is switched on
+     *                (password and reset-code emails are separate and always sent when mail is enabled),
      *                so switching it on later does not release a backlog of stale mail.
      * @return how many people were newly notified
      */
@@ -50,7 +51,7 @@ public class NotificationDispatcher {
                 newlyNotified.add(userId);
             }
         }
-        if (email && mailer.isEnabled() && !newlyNotified.isEmpty()) {
+        if (email && mailer.sendsNotificationEmails() && !newlyNotified.isEmpty()) {
             queueEmails(newlyNotified, content);
         }
         return newlyNotified.size();
