@@ -17,6 +17,7 @@ import com.itilms.common.entity.JpaAuditingConfig;
  * connects to it. Anything another service needs from this domain it asks for
  * over HTTP or learns from an event - never by reading these tables.
  */
+
 @EnableScheduling
 @EnableFeignClients
 @EnableDiscoveryClient
