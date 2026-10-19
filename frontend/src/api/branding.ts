@@ -16,12 +16,14 @@ export interface Branding {
   logoUrl: string | null
   faviconUrl: string | null
   loginBackgroundUrl: string | null
+  /** Sidebar paths students do not see (e.g. "/app/finance"). Empty: everything their role allows. */
+  studentHiddenMenu: string[]
   version: number
 }
 
 export type BrandingImageKind = 'logo' | 'favicon' | 'login-background'
 
-export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'loginBackgroundUrl' | 'version'>
+export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'loginBackgroundUrl' | 'studentHiddenMenu' | 'version'>
 
 /** Anonymous: the login page reads this before anyone is signed in. */
 export async function getBranding(): Promise<Branding> {
@@ -31,6 +33,11 @@ export async function getBranding(): Promise<Branding> {
 
 export async function updateBranding(input: UpdateBrandingInput): Promise<Branding> {
   const { data } = await apiClient.put<Branding>('/api/branding', input)
+  return data
+}
+
+export async function updateStudentMenu(hidden: string[]): Promise<Branding> {
+  const { data } = await apiClient.put<Branding>('/api/branding/student-menu', { hidden })
   return data
 }
 

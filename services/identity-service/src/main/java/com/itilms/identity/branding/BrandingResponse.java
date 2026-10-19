@@ -1,5 +1,8 @@
 package com.itilms.identity.branding;
 
+import java.util.Arrays;
+import java.util.List;
+
 /** What anyone may see: no image bytes, just where to fetch them. */
 public record BrandingResponse(
         String name,
@@ -14,6 +17,7 @@ public record BrandingResponse(
         String logoUrl,
         String faviconUrl,
         String loginBackgroundUrl,
+        List<String> studentHiddenMenu,
         long version) {
 
     static BrandingResponse from(InstituteSettings s) {
@@ -23,6 +27,7 @@ public record BrandingResponse(
                 s.getLogo() == null ? null : "/api/public/branding/logo" + v,
                 s.getFavicon() == null ? null : "/api/public/branding/favicon" + v,
                 s.getLoginBackground() == null ? null : "/api/public/branding/login-background" + v,
+                Arrays.stream(s.getStudentHiddenMenu().split(",")).filter(p -> !p.isBlank()).toList(),
                 s.getVersion());
     }
 }

@@ -108,6 +108,16 @@ public class UserController {
         return userService.updateStatus(id, request);
     }
 
+    @Operation(summary = "Choose which sidebar items one student sees",
+            description = "Replaces the institute's student menu for this student. A null list removes the personal "
+                    + "setting so they follow the institute's menu again.")
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @PutMapping("/{id}/menu")
+    public UserResponse updateMenu(@PathVariable Long id,
+                                   @Valid @RequestBody com.itilms.identity.dto.request.UserMenuRequest request) {
+        return userService.updateMenu(id, request);
+    }
+
     @Operation(summary = "Delete a user (soft delete)",
             description = "The account can no longer sign in, its sessions end, and its name, e-mail and phone are "
                     + "wiped so they can be used by a new account. Fees, attendance and certificates in other "

@@ -12,6 +12,7 @@ import {
   getBranding,
   removeBrandingImage,
   updateBranding,
+  updateStudentMenu,
   uploadBrandingImage,
 } from '@/api/branding'
 import { apiErrorMessage } from '@/api/client'
@@ -19,6 +20,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NAV_ITEMS } from '@/components/nav-items'
+import { Checkbox } from '@/components/ui/checkbox'
 import { BRANDING_KEY } from '@/lib/use-branding'
 
 const EMPTY: UpdateBrandingInput = {
@@ -195,6 +198,8 @@ export function BrandingPage() {
         </div>
       </form>
 
+      {branding && <StudentMenuCard hidden={branding.studentHiddenMenu} onSaved={apply} />}
+
       <Card>
         <CardHeader>
           <CardTitle>Logo and favicon</CardTitle>
@@ -299,5 +304,55 @@ function ImagePicker(props: {
         )}
       </div>
     </div>
+  )
+}
+
+/** ADMIN: which pages appear in a student's sidebar. */
+function StudentMenuCard({ hidden, onSaved }: { hidden: string[]; onSaved: (next: Branding) => void }) {
+  const items = NAV_ITEMS.filter((item) => item.roles.includes('STUDENT') && item.to !== '/app')
+  const [shown, setShown] = useState<Set<string>>(() => new Set(items.filter((i) => !hidden.includes(i.to)).map((i) => i.to)))
+
+  const save = useMutation({
+    mutationFn: () => updateStudentMenu(items.filter((i) => !shown.has(i.to)).map((i) => i.to)),
+    onSuccess: (next) => {
+      onSaved(next)
+      toast.success("Saved. Students' menu is updated.")
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not save the menu.')),
+  })
+
+  function toggle(path: string, on: boolean) {
+    setShown((current) => {
+      const next = new Set(current)
+      if (on) next.add(path)
+      else next.delete(path)
+      return next
+    })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Student menu</CardTitle>
+        <CardDescription>
+          Choose what appears in a student&apos;s sidebar. The dashboard is always shown. This only tidies the menu;
+          what a student may actually do is still decided by their role.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {items.map((item) => (
+            <label key={item.to} className="flex items-center gap-2 text-sm">
+              <Checkbox checked={shown.has(item.to)} onCheckedChange={(v) => toggle(item.to, v === true)} />
+              <item.icon className="size-4 text-muted-foreground" />
+              {item.label}
+            </label>
+          ))}
+        </div>
+        <Button type="button" className="self-start" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? 'Saving...' : 'Save student menu'}
+        </Button>
+      </CardContent>
+    </Card>
   )
 }

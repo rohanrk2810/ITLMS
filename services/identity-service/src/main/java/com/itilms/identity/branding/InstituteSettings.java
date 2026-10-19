@@ -72,6 +72,10 @@ public class InstituteSettings {
     @Column(name = "login_background_type")
     private String loginBackgroundType;
 
+    /** Sidebar items hidden from students: comma-separated app paths. Empty shows everything. */
+    @Column(name = "student_hidden_menu", nullable = false)
+    private String studentHiddenMenu = "";
+
     /** Bumped on every change; part of the image URLs so browsers refetch after an edit. */
     private long version = 1;
 

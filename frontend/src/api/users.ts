@@ -45,6 +45,12 @@ export async function updateUser(id: number | string, input: UpdateUserInput): P
   return data
 }
 
+/** Admin only. A student's own sidebar: the paths to hide, or null to follow the institute's menu again. */
+export async function updateUserMenu(id: number | string, hidden: string[] | null): Promise<UserResponse> {
+  const { data } = await apiClient.put<UserResponse>(`/api/users/${id}/menu`, { hidden })
+  return data
+}
+
 /** ACTIVE, INACTIVE or BLOCKED. A reason is required - this is audited (Doc S12). */
 export async function updateUserStatus(
   id: number | string,

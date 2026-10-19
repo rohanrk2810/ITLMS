@@ -26,6 +26,9 @@ public interface UserService {
 
     UserResponse updateStatus(Long id, UpdateStatusRequest request);
 
+    /** Sets or clears (null) the sidebar items hidden from one student. */
+    UserResponse updateMenu(Long id, com.itilms.identity.dto.request.UserMenuRequest request);
+
     /**
      * Soft-deletes an account: it can no longer sign in, its sessions end and its name, e-mail and phone are wiped
      * (so they can be used again). History in other services stays, pointing at the same id.

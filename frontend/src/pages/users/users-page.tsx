@@ -1,11 +1,14 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Plus, Trash2 } from 'lucide-react'
+import { KeyRound, Menu, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { type CreateTrainerInput, type TrainerResponse, createTrainer } from '@/api/trainers'
-import { type CreateUserInput, createUser, deleteUser, resetUserPassword, searchUsers, updateUserStatus } from '@/api/users'
+import { type CreateUserInput, createUser, deleteUser, resetUserPassword, searchUsers, updateUserMenu, updateUserStatus } from '@/api/users'
+import { NAV_ITEMS } from '@/components/nav-items'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useBranding } from '@/lib/use-branding'
 import type { UserResponse } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -132,6 +135,7 @@ export function UsersPage() {
                       <KeyRound className="size-3.5" />
                       Reset password
                     </Button>
+                    {user.role === 'STUDENT' && <StudentMenuDialog user={user} />}
                     <DeleteUserDialog user={user} />
                   </TableCell>
                 )}
@@ -322,6 +326,78 @@ function NewUserDialog() {
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/** Gives one student a sidebar of their own, or sends them back to the institute's menu. */
+function StudentMenuDialog({ user }: { user: UserResponse }) {
+  const [open, setOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const instituteHidden = useBranding().branding?.studentHiddenMenu ?? []
+  const items = NAV_ITEMS.filter((item) => item.roles.includes('STUDENT') && item.to !== '/app')
+  const [personal, setPersonal] = useState(user.hiddenMenu !== null)
+  const [shown, setShown] = useState<Set<string>>(
+    () => new Set(items.filter((i) => !(user.hiddenMenu ?? instituteHidden).includes(i.to)).map((i) => i.to)),
+  )
+
+  const mutation = useMutation({
+    mutationFn: () => updateUserMenu(user.id, personal ? items.filter((i) => !shown.has(i.to)).map((i) => i.to) : null),
+    onSuccess: () => {
+      toast.success(personal ? `${user.fullName} now has a menu of their own.` : `${user.fullName} follows the institute's menu.`)
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+      setOpen(false)
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not save the menu.')),
+  })
+
+  function toggle(path: string, on: boolean) {
+    setPersonal(true)
+    setShown((current) => {
+      const next = new Set(current)
+      if (on) next.add(path)
+      else next.delete(path)
+      return next
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost">
+          <Menu className="size-3.5" />
+          Menu
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Menu for {user.fullName}</DialogTitle>
+        </DialogHeader>
+        <label className="flex items-start gap-2 text-sm">
+          <Checkbox checked={!personal} onCheckedChange={(v) => setPersonal(v !== true)} />
+          <span>
+            Follow the institute&apos;s student menu
+            <span className="block text-xs text-muted-foreground">Set on the Branding page. Untick to give this student a menu of their own.</span>
+          </span>
+        </label>
+        <div className={`grid gap-3 sm:grid-cols-2 ${personal ? '' : 'opacity-50'}`}>
+          {items.map((item) => (
+            <label key={item.to} className="flex items-center gap-2 text-sm">
+              <Checkbox checked={shown.has(item.to)} onCheckedChange={(v) => toggle(item.to, v === true)} />
+              <item.icon className="size-4 text-muted-foreground" />
+              {item.label}
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
