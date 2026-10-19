@@ -76,6 +76,11 @@ public class QuizQuestion extends AuditableEntity {
     @Builder.Default
     private boolean allowLanguageChoice = false;
 
+    /** CODING only: the editor offers suggestions (autocomplete, snippets) while the student answers. */
+    @Column(name = "allow_suggestions", nullable = false)
+    @Builder.Default
+    private boolean allowSuggestions = false;
+
     /** CODING only: what the editor starts with. Shown to the student. */
     @Column(name = "starter_code", columnDefinition = "text")
     private String starterCode;

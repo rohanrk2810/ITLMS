@@ -34,6 +34,9 @@ public record LiveSessionResponse(
         @Schema(description = "A capture is running right now")
         boolean recording,
 
+        @Schema(description = "Size of the finished recording in bytes; 0 when there is none")
+        long recordingBytes,
+
         boolean attendanceComputed,
 
         @Schema(description = "True when the room will accept a join request at this moment")
@@ -52,6 +55,14 @@ public record LiveSessionResponse(
         return build(s, joinable, participants);
     }
 
+    private static long recordingSize(LiveSession s) {
+        if (s.getRecordingBytes() > 0) {
+            return s.getRecordingBytes();
+        }
+        // An Egress recording has no byte count of its own: ask the file.
+        return s.getRecordingFilePath() == null ? 0L : new java.io.File(s.getRecordingFilePath()).length();
+    }
+
     private static LiveSessionResponse build(LiveSession s, boolean joinable,
                                              List<LiveParticipantResponse> participants) {
         return new LiveSessionResponse(
@@ -60,7 +71,8 @@ public record LiveSessionResponse(
                 s.getSessionDate(), s.getStartTime(), s.getEndTime(),
                 s.getScheduledStartAt(), s.getScheduledEndAt(),
                 s.getStatus().name(), s.getStartedAt(), s.getEndedAt(),
-                s.getPeakParticipants(), s.isRecordingEnabled(), s.getRecordingUrl(), s.getEgressId() != null,
+                s.getPeakParticipants(), s.isRecordingEnabled(), s.getRecordingUrl(), s.isBeingRecorded(),
+                s.getRecordingUrl() == null ? 0L : recordingSize(s),
                 s.isAttendanceComputed(), joinable, participants);
     }
 }

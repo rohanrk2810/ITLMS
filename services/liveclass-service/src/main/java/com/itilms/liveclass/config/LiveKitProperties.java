@@ -63,6 +63,12 @@ public class LiveKitProperties {
      */
     private String recordingStoragePath = "/recordings";
 
+    /** The biggest single piece the host's browser may send while recording (one piece is a few seconds of video). */
+    private long browserRecordingMaxChunkBytes = 16L * 1024 * 1024;
+
+    /** The most one browser recording may grow to, so a stuck recorder cannot fill the disk. */
+    private long browserRecordingMaxBytes = 4L * 1024 * 1024 * 1024;
+
     public String webhookKeyOrApiKey() {
         return webhookApiKey == null || webhookApiKey.isBlank() ? apiKey : webhookApiKey;
     }

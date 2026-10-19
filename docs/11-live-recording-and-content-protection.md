@@ -41,6 +41,30 @@ LiveKit waits for a worker to pick the job up over Redis, gets none, and the req
 `503 LIVEKIT_UNREACHABLE` - no half-started state is left on the class (verified in the E2E: starting a capture with
 no worker running leaves `recording: false` and `recordingUrl: null` on the session).
 
+## Recording from the host's browser (no Egress needed)
+
+The server-side capture above needs a heavy worker. The record button in the app (`pages/live-classes/recording-control.tsx`)
+therefore records **in the host's own browser** instead, which costs the server nothing but disk:
+
+```
+POST /api/liveclass/sessions/{id}/recording/browser/start        -> 202, class must be LIVE and not already recorded
+PUT  /api/liveclass/sessions/{id}/recording/browser/chunks/{seq} -> raw bytes of piece {seq}; returns {nextChunk, bytes}
+POST /api/liveclass/sessions/{id}/recording/browser/stop         -> closes the recording; it can be watched at once
+GET  /api/liveclass/sessions/{id}/recording[?download=true]      -> the file; download=true adds Content-Disposition: attachment
+```
+
+- The browser captures the class tab with `getDisplayMedia` (tab audio included) and mixes in the host's microphone,
+  records WebM (VP9/VP8 + Opus) and sends a piece about every 10 seconds, one at a time, retrying a failed piece.
+- The server appends pieces to `/recordings/<room>/<epoch>.webm`. Pieces must arrive in order: one already stored is
+  acknowledged again (a retry is safe), one that skips ahead is refused (`CHUNK_OUT_OF_ORDER`), so the file has no hole.
+  A piece is capped at 16 MB and a recording at 4 GB (`LiveKitProperties.browserRecording*`).
+- Closing the tab loses only the piece in progress; what was sent is kept. A class ending while recording closes the
+  recording with what it has (`LiveAttendanceServiceImpl.settle`). A host can press Stop from a new page to close one
+  whose page is gone.
+- The gateway has a separate route (`liveclass-recording`) for these paths: no circuit breaker (its few seconds would cut
+  uploads and downloads) and a 10-minute response timeout.
+- Only one capture (Egress or browser) at a time. Needs Chrome or Edge on a computer; phones cannot share a tab.
+
 ## Content protection
 
 Two deterrents, both in the frontend, both applied only to students watching (a host watching their own class has

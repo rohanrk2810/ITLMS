@@ -21,11 +21,15 @@ interface CodeEditorProps {
   /** Pixel height. The editor scrolls inside it. */
   height?: number
   ariaLabel?: string
+  /** Autocomplete and snippets. On for practice; an exam turns it off unless its author allows it. */
+  suggestions?: boolean
+  /** Dark editor theme; by default it follows the page. */
+  dark?: boolean
 }
 
 /** The one code editor used across the app: practice lessons, live-class questions and tests. */
-export default function CodeEditor({ language, value, onChange, onRun, readOnly, height = 320, ariaLabel }: CodeEditorProps) {
-  const dark = document.documentElement.classList.contains('dark')
+export default function CodeEditor({ language, value, onChange, onRun, readOnly, height = 320, ariaLabel, suggestions = true, dark: darkProp }: CodeEditorProps) {
+  const dark = darkProp ?? document.documentElement.classList.contains('dark')
 
   return (
     <div className="overflow-hidden rounded-md border" style={{ height }}>
@@ -36,6 +40,11 @@ export default function CodeEditor({ language, value, onChange, onRun, readOnly,
         onChange={(next) => onChange(next ?? '')}
         beforeMount={registerCompletions}
         onMount={(editor, instance) => {
+          if (!suggestions) {
+            // Ctrl+Space would still open the list by hand; swallow it.
+            editor.addCommand(instance.KeyMod.CtrlCmd | instance.KeyCode.Space, () => undefined)
+            editor.addCommand(instance.KeyMod.WinCtrl | instance.KeyCode.Space, () => undefined)
+          }
           if (onRun) {
             editor.addCommand(instance.KeyMod.CtrlCmd | instance.KeyCode.Enter, onRun)
           }
@@ -52,10 +61,13 @@ export default function CodeEditor({ language, value, onChange, onRun, readOnly,
           automaticLayout: true,
           scrollBeyondLastLine: false,
           wordWrap: 'off',
-          quickSuggestions: { other: true, comments: false, strings: false },
-          suggestOnTriggerCharacters: true,
-          snippetSuggestions: 'top',
-          acceptSuggestionOnEnter: 'on',
+          quickSuggestions: suggestions ? { other: true, comments: false, strings: false } : false,
+          suggestOnTriggerCharacters: suggestions,
+          snippetSuggestions: suggestions ? 'top' : 'none',
+          wordBasedSuggestions: suggestions ? 'currentDocument' : 'off',
+          parameterHints: { enabled: suggestions },
+          tabCompletion: suggestions ? 'on' : 'off',
+          acceptSuggestionOnEnter: suggestions ? 'on' : 'off',
           bracketPairColorization: { enabled: true },
           autoClosingBrackets: 'always',
           autoClosingQuotes: 'always',

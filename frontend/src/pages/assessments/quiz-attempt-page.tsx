@@ -97,6 +97,7 @@ export function QuizAttemptPage() {
   const [result, setResult] = useState<AttemptResultResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false)
   const [texts, setTexts] = useState<Texts>({})
   const [languages, setLanguages] = useState<Languages>({})
   const [tested, setTested] = useState<Tested>({})
@@ -624,10 +625,39 @@ export function QuizAttemptPage() {
         <p className="text-sm text-muted-foreground">
           {countAnswered(paper, answers, texts)} of {paper.questions.length} answered
         </p>
-        <Button onClick={() => void submitNow()} disabled={submitting}>
+        <Button onClick={() => setConfirmingSubmit(true)} disabled={submitting}>
           {submitting ? 'Submitting (running your tests)...' : 'Submit test'}
         </Button>
       </div>
+
+      {confirmingSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="alertdialog" aria-modal>
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Are you sure you want to submit?</CardTitle>
+              <CardDescription>
+                {countAnswered(paper, answers, texts) < paper.questions.length
+                  ? `You have answered ${countAnswered(paper, answers, texts)} of ${paper.questions.length} questions. The rest will be left blank. `
+                  : `You have answered all ${paper.questions.length} questions. `}
+                You cannot change your answers after submitting.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-end gap-2">
+              <Button variant="outline" autoFocus onClick={() => setConfirmingSubmit(false)}>
+                Go back
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirmingSubmit(false)
+                  void submitNow()
+                }}
+              >
+                Yes, submit
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

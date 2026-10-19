@@ -58,6 +58,7 @@ public class LiveClassController {
     private final RoomControlService controlService;
     private final LiveQuestionService questionService;
     private final com.itilms.liveclass.service.RecordingService recordingService;
+    private final com.itilms.liveclass.config.LiveKitProperties liveKitProperties;
 
     @Operation(summary = "Internal: how often one student joined their batches' live classes",
             description = "For reporting-service's student progress report. Not reachable through the gateway; "
@@ -209,13 +210,55 @@ public class LiveClassController {
                     + "and scrubs within what it has downloaded.")
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/sessions/{id}/recording")
-    public ResponseEntity<org.springframework.core.io.Resource> recording(@PathVariable Long id) throws java.io.IOException {
-        java.io.File file = recordingService.fileFor(id);
-        var resource = new org.springframework.core.io.FileSystemResource(file);
-        return ResponseEntity.ok()
-                .contentType(org.springframework.http.MediaType.valueOf("video/mp4"))
-                .contentLength(resource.contentLength())
-                .body(resource);
+    public ResponseEntity<org.springframework.core.io.Resource> recording(
+            @PathVariable Long id, @RequestParam(defaultValue = "false") boolean download) throws java.io.IOException {
+        var opened = recordingService.open(id);
+        var resource = new org.springframework.core.io.FileSystemResource(opened.file());
+        var response = ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.valueOf(opened.contentType()))
+                .contentLength(resource.contentLength());
+        if (download) {
+            response.header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(opened.downloadName()).build().toString());
+        }
+        return response.body(resource);
+    }
+
+    @Operation(summary = "Start recording from the host's browser",
+            description = "The class trainer or staff only; the class must be live. The browser then sends the "
+                    + "recording in numbered pieces and closes it with stop.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/sessions/{id}/recording/browser/start")
+    public ResponseEntity<Void> startBrowserRecording(@PathVariable Long id) {
+        recordingService.startBrowser(id);
+        return ResponseEntity.accepted().build();
+    }
+
+    @Operation(summary = "Send the next piece of a browser recording",
+            description = "Raw bytes in the body. Pieces must arrive in order; a piece that already arrived is "
+                    + "acknowledged again, so a retry is safe.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PutMapping("/sessions/{id}/recording/browser/chunks/{seq}")
+    public com.itilms.liveclass.service.RecordingService.BrowserRecordingState uploadBrowserChunk(
+            @PathVariable Long id, @PathVariable int seq, jakarta.servlet.http.HttpServletRequest request)
+            throws java.io.IOException {
+        int max = (int) liveKitProperties.getBrowserRecordingMaxChunkBytes();
+        byte[] data = request.getInputStream().readNBytes(max + 1);
+        if (data.length > max) {
+            throw new com.itilms.common.exception.BusinessRuleException("CHUNK_TOO_LARGE",
+                    "That piece is larger than " + max / (1024 * 1024) + " MB.");
+        }
+        return recordingService.appendChunk(id, seq, data);
+    }
+
+    @Operation(summary = "Finish a browser recording",
+            description = "What has arrived becomes the class's recording, ready to watch or download at once.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/sessions/{id}/recording/browser/stop")
+    public com.itilms.liveclass.service.RecordingService.BrowserRecordingState stopBrowserRecording(
+            @PathVariable Long id) {
+        return recordingService.stopBrowser(id);
     }
 
     @Operation(summary = "Ask the class a question",

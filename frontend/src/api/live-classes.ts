@@ -22,6 +22,8 @@ export interface LiveSessionResponse {
   recordingUrl: string | null
   /** A capture is running right now. */
   recording: boolean
+  /** Bytes of the recording stored so far (or in total, once finished). */
+  recordingBytes: number
   attendanceComputed: boolean
   /** True when the room will accept a join request right now. */
   joinable: boolean
@@ -152,6 +154,50 @@ export async function startRecording(liveSessionId: number): Promise<void> {
 
 export async function stopRecording(liveSessionId: number): Promise<void> {
   await apiClient.post(`/api/liveclass/sessions/${liveSessionId}/recording/stop`)
+}
+
+export interface BrowserRecordingState {
+  nextChunk: number
+  bytes: number
+}
+
+export async function startBrowserRecording(liveSessionId: number): Promise<void> {
+  await apiClient.post(`/api/liveclass/sessions/${liveSessionId}/recording/browser/start`)
+}
+
+/** One piece of the browser recording, as raw bytes. Sending a piece the server already has is harmless. */
+export async function uploadRecordingChunk(liveSessionId: number, seq: number, chunk: Blob): Promise<BrowserRecordingState> {
+  const { data } = await apiClient.put<BrowserRecordingState>(
+    `/api/liveclass/sessions/${liveSessionId}/recording/browser/chunks/${seq}`,
+    chunk,
+    { headers: { 'Content-Type': 'application/octet-stream' }, timeout: 120_000 },
+  )
+  return data
+}
+
+export async function stopBrowserRecording(liveSessionId: number): Promise<BrowserRecordingState> {
+  const { data } = await apiClient.post<BrowserRecordingState>(`/api/liveclass/sessions/${liveSessionId}/recording/browser/stop`)
+  return data
+}
+
+/** Saves the recording to the person's computer. The request carries the login, so it goes through a blob. */
+export async function downloadRecording(liveSessionId: number): Promise<void> {
+  const response = await apiClient.get(`/api/liveclass/sessions/${liveSessionId}/recording`, {
+    params: { download: true },
+    responseType: 'blob',
+    timeout: 0,
+  })
+  const header = String(response.headers['content-disposition'] ?? '')
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header)
+  const name = match ? decodeURIComponent(match[1]) : `class-${liveSessionId}.webm`
+  const url = URL.createObjectURL(response.data as Blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 /**

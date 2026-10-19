@@ -41,6 +41,9 @@ public record QuestionRequest(
         @Schema(description = "CODING only: let the student answer in a language of their choice")
         Boolean allowLanguageChoice,
 
+        @Schema(description = "CODING only: the editor offers code suggestions while the student answers (off by default)")
+        Boolean allowSuggestions,
+
         @Schema(description = "CODING only: what the editor starts with")
         @Size(max = 20000, message = "Starter code is limited to 20000 characters")
         String starterCode,
