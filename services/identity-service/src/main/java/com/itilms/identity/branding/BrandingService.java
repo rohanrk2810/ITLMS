@@ -1,6 +1,7 @@
 package com.itilms.identity.branding;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -30,6 +31,13 @@ public class BrandingService {
     @Transactional(readOnly = true)
     public BrandingResponse get() {
         return BrandingResponse.from(load());
+    }
+
+    @Transactional
+    public BrandingResponse setStudentMenu(List<String> hidden, Long adminId) {
+        InstituteSettings s = load();
+        s.setStudentHiddenMenu(String.join(",", hidden.stream().map(String::trim).distinct().toList()));
+        return save(s, adminId, "BRANDING_STUDENT_MENU_UPDATED");
     }
 
     @Transactional

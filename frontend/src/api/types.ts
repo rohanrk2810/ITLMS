@@ -45,6 +45,8 @@ export interface UserResponse {
   mustChangePassword: boolean
   lastLoginAt: string | null
   createdAt: string
+  /** Sidebar paths hidden for this user alone; null follows the institute's student menu. */
+  hiddenMenu: string[] | null
 }
 
 export interface AuthResponse {

@@ -171,6 +171,22 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public UserResponse updateMenu(Long id, com.itilms.identity.dto.request.UserMenuRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        if (user.getRole() != com.itilms.identity.entity.UserRole.STUDENT) {
+            throw new BusinessRuleException("Only a student's menu can be set this way.");
+        }
+        user.setHiddenMenu(request.hidden() == null ? null
+                : String.join(",", request.hidden().stream().map(String::trim).distinct().toList()));
+        userRepository.save(user);
+        events.audit(SERVICE_NAME, "USER_MENU_UPDATED", "User", id, null,
+                Map.of("hiddenMenu", String.valueOf(user.getHiddenMenu())));
+        return UserResponse.from(user);
+    }
+
+    @Override
+    @Transactional
     public UserResponse updateStatus(Long id, UpdateStatusRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));

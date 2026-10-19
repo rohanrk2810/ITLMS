@@ -88,6 +88,10 @@ public class User extends AuditableEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    /** A personal sidebar setting (comma-separated hidden app paths); null follows the institute's student menu. */
+    @Column(name = "hidden_menu")
+    private String hiddenMenu;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 

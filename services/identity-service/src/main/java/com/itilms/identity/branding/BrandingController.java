@@ -71,6 +71,13 @@ public class BrandingController {
     }
 
     @PreAuthorize(Roles.ADMIN_ONLY)
+    @PutMapping("/api/branding/student-menu")
+    public BrandingResponse studentMenu(@Valid @RequestBody StudentMenuRequest request,
+                                        @AuthenticationPrincipal AppPrincipal admin) {
+        return service.setStudentMenu(request.hidden(), admin.userId());
+    }
+
+    @PreAuthorize(Roles.ADMIN_ONLY)
     @PutMapping("/api/branding")
     public BrandingResponse update(@Valid @RequestBody UpdateBrandingRequest request,
                                    @AuthenticationPrincipal AppPrincipal admin) {

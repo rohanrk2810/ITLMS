@@ -1,6 +1,8 @@
 package com.itilms.identity.dto.response;
 
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 
 import com.itilms.identity.entity.User;
 
@@ -30,7 +32,9 @@ public record UserResponse(
         String profileCode,
         boolean mustChangePassword,
         Instant lastLoginAt,
-        Instant createdAt
+        Instant createdAt,
+        @Schema(description = "Sidebar paths hidden for this user alone; null means follow the institute's menu")
+        List<String> hiddenMenu
 ) {
 
     public static UserResponse from(User user) {
@@ -48,6 +52,8 @@ public record UserResponse(
                 user.getProfileCode(),
                 user.isMustChangePassword(),
                 user.getLastLoginAt(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                user.getHiddenMenu() == null ? null
+                        : Arrays.stream(user.getHiddenMenu().split(",")).filter(p -> !p.isBlank()).toList());
     }
 }
