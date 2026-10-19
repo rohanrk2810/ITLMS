@@ -34,7 +34,13 @@ public class RateLimitConfig {
                 return Mono.just((comma > 0 ? forwarded.substring(0, comma) : forwarded).trim());
             }
             var remote = exchange.getRequest().getRemoteAddress();
-            return Mono.just(remote == null ? "unknown" : remote.getAddress().getHostAddress());
+            if (remote == null) {
+                return Mono.just("unknown");
+            }
+            // Behind a reverse proxy the address Spring reports can be "unresolved" (a host name, no InetAddress),
+            // and getAddress() is then null. Reading the host string works for both kinds.
+            var resolved = remote.getAddress();
+            return Mono.just(resolved != null ? resolved.getHostAddress() : remote.getHostString());
         };
     }
 
