@@ -12,7 +12,9 @@ public enum UserStatus {
 
     ACTIVE,
     INACTIVE,
-    BLOCKED;
+    BLOCKED,
+    /** Soft-deleted: cannot sign in, personal details wiped. The row stays so other services' history still points at it. */
+    DELETED;
 
     public boolean canSignIn() {
         return this == ACTIVE;

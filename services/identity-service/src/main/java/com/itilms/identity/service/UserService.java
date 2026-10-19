@@ -26,6 +26,12 @@ public interface UserService {
 
     UserResponse updateStatus(Long id, UpdateStatusRequest request);
 
+    /**
+     * Soft-deletes an account: it can no longer sign in, its sessions end and its name, e-mail and phone are wiped
+     * (so they can be used again). History in other services stays, pointing at the same id.
+     */
+    void delete(Long id, String reason);
+
     /** Issues a temporary password and forces a change at next sign-in. */
     void resetPasswordAsAdmin(Long id);
 

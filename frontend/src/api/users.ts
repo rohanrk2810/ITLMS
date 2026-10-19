@@ -55,6 +55,15 @@ export async function updateUserStatus(
   return data
 }
 
+/**
+ * Soft-deletes a user: they can no longer sign in and their name, e-mail and phone are wiped (so the phone and e-mail
+ * can be used again). History in fees, attendance and certificates stays. A reason is required - this is audited.
+ */
+export async function deleteUser(id: number | string, reason: string): Promise<ApiMessage> {
+  const { data } = await apiClient.delete<ApiMessage>(`/api/users/${id}`, { params: { reason } })
+  return data
+}
+
 /** Issues a temporary password by email and revokes existing sessions. */
 export async function resetUserPassword(id: number | string): Promise<ApiMessage> {
   const { data } = await apiClient.post<ApiMessage>(`/api/users/${id}/reset-password`)

@@ -84,6 +84,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | POST | /api/users | ADMIN_ONLY | Create a user account (also used to create trainer/finance/placement accounts) |
 | PUT | /api/users/{id} | ADMIN_ONLY | Update details |
 | PATCH | /api/users/{id}/status | ADMIN_ONLY | Activate, deactivate or block |
+| DELETE | /api/users/{id}?reason= | ADMIN_ONLY | Soft delete: the account cannot sign in, sessions end, name/e-mail/phone are wiped (so they can be reused), history in other services stays. Not yourself or the last active admin |
 | POST | /api/users/{id}/reset-password | ADMIN_ONLY | Admin-initiated reset |
 | GET | /api/users/stats/counts | STAFF | Active user counts by role |
 | POST | /api/users/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many user ids at once |

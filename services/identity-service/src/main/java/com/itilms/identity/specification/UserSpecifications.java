@@ -38,6 +38,14 @@ public final class UserSpecifications {
         return (root, query, cb) -> cb.equal(root.get("status"), parsed);
     }
 
+    /** The user list leaves out deleted accounts unless someone asks for them by status. */
+    public static Specification<User> hideDeletedUnlessAsked(String status) {
+        if (status != null && !status.isBlank()) {
+            return null;
+        }
+        return (root, query, cb) -> cb.notEqual(root.get("status"), UserStatus.DELETED);
+    }
+
     /**
      * Matches a name fragment, an email or a phone number with one box.
      *

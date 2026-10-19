@@ -8,6 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -105,6 +106,18 @@ public class UserController {
     @PatchMapping("/{id}/status")
     public UserResponse updateStatus(@PathVariable Long id, @Valid @RequestBody UpdateStatusRequest request) {
         return userService.updateStatus(id, request);
+    }
+
+    @Operation(summary = "Delete a user (soft delete)",
+            description = "The account can no longer sign in, its sessions end, and its name, e-mail and phone are "
+                    + "wiped so they can be used by a new account. Fees, attendance and certificates in other "
+                    + "services stay and keep pointing at the same id. You cannot delete yourself or the last "
+                    + "active administrator.")
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @DeleteMapping("/{id}")
+    public ApiMessage delete(@PathVariable Long id, @RequestParam String reason) {
+        userService.delete(id, reason);
+        return ApiMessage.ok("The user has been deleted");
     }
 
     @Operation(summary = "Reset a user's password",

@@ -88,6 +88,27 @@ public class User extends AuditableEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    /**
+     * Wipes what identifies the person and marks the account deleted. The e-mail is replaced by one that is unique
+     * per id (the column is mandatory and unique) and can never be mailed; the phone is cleared so the number is free
+     * for a new account.
+     */
+    public void markDeleted(String unusablePasswordHash) {
+        this.firstName = "Deleted";
+        this.lastName = "user";
+        this.email = "deleted-" + id + "@deleted.invalid";
+        this.phone = null;
+        this.passwordHash = unusablePasswordHash;
+        this.status = UserStatus.DELETED;
+        this.mustChangePassword = false;
+        this.failedAttempts = 0;
+        this.lockedUntil = null;
+        this.deletedAt = Instant.now();
+    }
+
     public String fullName() {
         return firstName + " " + lastName;
     }
