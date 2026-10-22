@@ -12,6 +12,7 @@ dist
 dist-ssr
 # Copied from node_modules by scripts/copy-mediapipe.mjs before every build
 public/mediapipe
+public/models/face-api
 *.local
 
 # Editor directories and files

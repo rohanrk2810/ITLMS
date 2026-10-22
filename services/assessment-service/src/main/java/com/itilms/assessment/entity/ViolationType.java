@@ -20,6 +20,8 @@ public enum ViolationType {
      */
     FACE_NOT_DETECTED(false, true, "Warning: Please keep your face properly visible in the camera."),
     FACE_OUT_OF_FRAME(false, true, "Warning: Keep your face inside the oval."),
+    FACE_MISMATCH(false, true, "Warning: A different face was detected. Only the student who started this test may take it."),
+    DEVICE_DETECTED(false, true, "Warning: A phone or another device is not allowed in view during this test."),
     MULTIPLE_FACES(false, true, "Warning: Only you should be visible in the camera."),
     CAMERA_DISABLED(false, true, "Warning: Your camera must stay on for this test. Turn it back on."),
     CAMERA_PERMISSION_DENIED(false, true, "Warning: Camera permission was removed. Allow the camera again to continue."),

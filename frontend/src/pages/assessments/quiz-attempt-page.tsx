@@ -237,6 +237,8 @@ export function QuizAttemptPage() {
   // answers with the warning to show.
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
+  // The face recorded at the start (numbers, not a picture), kept in this browser for the sitting to compare against.
+  const [cameraReference, setCameraReference] = useState<Float32Array[] | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const watchingCamera = view === 'live' && paper?.requireCamera === true
   const cameraStatus = useCameraMonitor({
@@ -244,6 +246,7 @@ export function QuizAttemptPage() {
     stream: cameraStream,
     video: videoRef,
     onEvent: handleViolation,
+    reference: cameraReference,
   })
   const cameraBlocked =
     watchingCamera && (!cameraStream || cameraStatus === 'off' || cameraStatus === 'denied')
@@ -385,7 +388,7 @@ export function QuizAttemptPage() {
             </ul>
             {intro.instructions && <p className="text-muted-foreground">{intro.instructions}</p>}
             {intro.requireCamera && (
-              <CameraCheck stream={cameraStream} onStream={setCameraStream} onReady={setCameraReady} />
+              <CameraCheck stream={cameraStream} onStream={setCameraStream} onReady={setCameraReady} onReference={setCameraReference} />
             )}
             {intro.requireMicrophone && (
               <MicCheck

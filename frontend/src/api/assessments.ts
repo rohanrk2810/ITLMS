@@ -155,6 +155,8 @@ export type ViolationType =
   | 'SHORTCUT_BLOCKED'
   | 'FACE_NOT_DETECTED'
   | 'FACE_OUT_OF_FRAME'
+  | 'FACE_MISMATCH'
+  | 'DEVICE_DETECTED'
   | 'MULTIPLE_FACES'
   | 'CAMERA_DISABLED'
   | 'CAMERA_PERMISSION_DENIED'
@@ -165,6 +167,8 @@ export type ViolationType =
 export const VIOLATION_LABEL: Record<ViolationType, string> = {
   FACE_NOT_DETECTED: 'Face not visible',
   FACE_OUT_OF_FRAME: 'Face outside the oval',
+  FACE_MISMATCH: 'A different face',
+  DEVICE_DETECTED: 'Phone in view',
   MULTIPLE_FACES: 'More than one face',
   CAMERA_DISABLED: 'Camera turned off',
   CAMERA_PERMISSION_DENIED: 'Camera permission removed',
