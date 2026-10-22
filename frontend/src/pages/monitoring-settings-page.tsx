@@ -199,15 +199,16 @@ export function MonitoringSettingsPage() {
 
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={form.enabled} onCheckedChange={(v) => set('enabled', v === true)} />
-            Monitoring ON for this level
+            <span>
+              Monitoring ON for this level
+              <span className="block text-xs text-muted-foreground">
+                When on, students must allow the camera to join. There is no way to join without it.
+              </span>
+            </span>
           </label>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={form.faceVisibility} onCheckedChange={(v) => set('faceVisibility', v === true)} />
             Check that the face is visible
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={form.cameraRequired} onCheckedChange={(v) => set('cameraRequired', v === true)} />
-            Students must allow the camera to join
           </label>
           <label className="flex items-start gap-2 text-sm">
             <Checkbox checked={form.microphoneRequired} onCheckedChange={(v) => set('microphoneRequired', v === true)} />
@@ -304,7 +305,6 @@ export function MonitoringSettingsPage() {
                 <TableRow>
                   <TableHead>Level</TableHead>
                   <TableHead>Monitoring</TableHead>
-                  <TableHead>Camera required</TableHead>
                   <TableHead>Mic required</TableHead>
                   <TableHead>Warn after</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -317,7 +317,6 @@ export function MonitoringSettingsPage() {
                     <TableCell>
                       <Badge variant={s.enabled ? 'default' : 'secondary'}>{s.enabled ? 'ON' : 'OFF'}</Badge>
                     </TableCell>
-                    <TableCell>{s.cameraRequired ? 'Yes' : 'No'}</TableCell>
                     <TableCell>{s.microphoneRequired ? 'Yes' : 'No'}</TableCell>
                     <TableCell>{s.warningAfterSeconds}s</TableCell>
                     <TableCell className="text-right">

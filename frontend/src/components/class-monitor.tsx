@@ -21,7 +21,7 @@ import { useTabMonitor } from '@/lib/use-tab-monitor'
 
 /**
  * Wraps a student's live-class room. When an administrator has switched monitoring on for this class the student
- * is told so, asked for the camera, and only then let in; where it is off, this renders the room untouched and
+ * is told so, asked for the camera, and only then let in - there is no way to join without it; where it is off, this renders the room untouched and
  * never asks for the camera.
  */
 export function ClassMonitorGate({ classSessionId, children }: { classSessionId: number; children: ReactNode }) {
@@ -32,7 +32,6 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
   })
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [micStream, setMicStream] = useState<MediaStream | null>(null)
-  const [skipped, setSkipped] = useState(false)
   const [asking, setAsking] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
@@ -66,7 +65,7 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
   if (query.isLoading) return <Skeleton className="h-[70vh] max-w-4xl" />
   const settings = query.data
   // If the setting could not be read, behave as "off": a failed lookup must not lock a student out of class.
-  if (!settings || !settings.enabled || skipped) return <>{children}</>
+  if (!settings || !settings.enabled) return <>{children}</>
 
   if (!stream) {
     return (
@@ -100,7 +99,7 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
               off or blocked.
             </p>
           )}
-          {settings.cameraRequired && <p className="font-medium">You need to allow the camera to join this class.</p>}
+          <p className="font-medium">You need to allow the camera to join this class.</p>
           {problem && (
             <p role="alert" className="text-destructive">
               {problem}
@@ -111,11 +110,6 @@ export function ClassMonitorGate({ classSessionId, children }: { classSessionId:
               {asking ? <Loader2 className="animate-spin" /> : <Camera />}
               {settings.microphoneRequired ? 'Allow camera and microphone, and join' : 'Allow camera and join'}
             </Button>
-            {!settings.cameraRequired && (
-              <Button variant="outline" onClick={() => setSkipped(true)}>
-                Join without camera monitoring
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
