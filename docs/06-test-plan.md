@@ -34,6 +34,8 @@ Counts as of this writing (`mvn -B -ntp clean test`, full reactor, 2026-09-23 �
 | reporting | 17 | attendance percentage, tabular export (CSV/Excel/PDF), dashboard service, report export service |
 | **Total** | **314** | |
 
+**Added since the table above was written (so its counts are out of date):** `TranscriptServiceTest` (liveclass: who may write a transcript, only while live, retries stored once, limits, the clock held inside the class, the text file), `BatchPlacedTest` (batch: placed means ever enrolled), `UserEventConsumerTest` (admission: a new student is reported to administrators and coordinators), and `AttemptServiceImplTest` now includes the new camera events (`FACE_OUT_OF_FRAME`, `FACE_MISMATCH`, `DEVICE_DETECTED`), which warn, are recorded and never end an attempt. The face, phone and subtitle code that runs in the browser has no automated test; it was tried by hand, and the phone detector's threshold was checked against real photographs with the same model.
+
 `common-lib`, `config-server`, `discovery-server` and `api-gateway` have no test sources — there is no business logic in them to unit test (config-server and discovery-server are Spring Cloud boilerplate; api-gateway's behaviour is covered by the gateway route check and, end-to-end, by the smoke test).
 
 Two real defects were found and fixed by writing these tests (identity, batch, admission and course were the last four services to get a suite — see [documentation review](02-documentation-review.md) for the pattern of tracking defects found during review):

@@ -9,7 +9,7 @@ A camera-based check that a student's face stays visible during a live class. **
 - The course level is found through the batch (asked of batch-service once per batch). If that cannot be read, the course level is skipped and the others still apply.
 
 ## What the student sees
-- Where monitoring is on, the student first gets a plain notice (camera used only to check the face is visible; no pictures or video stored; trainer and admin can see short notes) and is asked for the camera. If "camera required" is set, they cannot join without allowing it; otherwise they may join without monitoring.
+- Where monitoring is on, the student first gets a plain notice (camera used only to check the face is visible; no pictures or video stored; trainer and admin can see short notes) and is asked for the camera. Where monitoring is on the camera is **always required**: there is no way to join without it. (The old per-setting *camera required* switch was removed from the admin page; the column still exists in the database and is ignored. The microphone is still its own switch.)
 - Where it is off, the room opens as before and **the camera is never requested for monitoring**.
 - A face missing for the configured time shows a small amber banner, not a modal, so the class is not interrupted. It clears when the face returns. A live preview in the corner shows what the camera sees.
 - The check runs in the browser (MediaPipe BlazeFace, the same detector as the test portal). If it cannot load, the camera stays on and only the face check is unavailable; a failed lookup of the setting never locks a student out.

@@ -13,6 +13,12 @@ Set by an admin, coordinator or trainer in **Course editor** - when adding a VID
 
 A switch that cannot act yet is shown disabled, and turning a parent switch off turns its children off.
 
+## A monitored video completes by being watched, not by a button
+For a lesson with *Watch through the camera* on:
+- **No "Mark as complete" button.** The student sees *Watch the video through to complete this lesson*. The lesson completes by itself once **90%** of the video has really been played (`COMPLETE_AT_PERCENT` in the player), or when a video file or YouTube video ends having reached that.
+- **The server checks it too.** `ProgressServiceImpl` ignores a completion request for a monitored video unless its recorded watch figure is at least 90%, so a hand-made request cannot complete it. Where the length is unknown (no duration on a Google Drive or Vimeo link) nothing can be measured, so that case keeps the button.
+- **The face must be inside an oval**, the same one as in tests: a face outside it counts as missing, and with *Pause when the face is missing* on the video pauses; for Drive and Vimeo links the time does not count and a banner asks the student to keep their face inside the oval.
+
 ## What is counted
 - **Watched %** = seconds the video was actually *playing* / its length. Skipping ahead adds nothing, and paused time adds nothing. (The older `watched_seconds` - furthest position - is kept for "resume where you left off" but is not the percentage.)
 - **Face away** = seconds with no face while the video was playing. **Auto-pauses** = times it paused for that.

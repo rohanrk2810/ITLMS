@@ -185,6 +185,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 |---|---|---|---|
 | GET | /api/batches | any signed-in user | List batches |
 | GET | /api/batches/mine | STUDENT, TRAINER | My own batches |
+| GET | /api/batches/mine/placed | STUDENT | `{placed}`: has this student ever been enrolled in a batch (any status). False for a new student; the portal then shows only the course list ([docs/24](24-new-students-and-fees.md)) |
 | GET | /api/batches/{id} | any signed-in user | Get a batch |
 | POST | /api/batches | STAFF | Create — checks the course exists via Feign |
 | PUT | /api/batches/{id} | STAFF | Update |
@@ -247,7 +248,9 @@ A student asks to join a course; an administrator or coordinator decides. Approv
 | GET | /api/liveclass/me/attendance | STUDENT | My own time-in-room history |
 | GET | /api/liveclass/sessions/{id} | ACADEMIC | A live class with its participant list |
 | GET | /api/liveclass/batches/{batchId} | ACADEMIC | A batch's live classes |
-| POST | /api/liveclass/sessions/{id}/end | ACADEMIC | End the class early |
+| POST | /api/liveclass/sessions/{id}/end | ACADEMIC | End the class early: settles attendance, closes the room, everyone is disconnected |
+| POST | /api/liveclass/sessions/{id}/transcript | ACADEMIC | Save finished subtitle phrases (`phrases[]`: `clientId`, `text`, `language`, `spokenAt`); the class's host only, while it is `LIVE`; at most 40 per request; a repeated `clientId` is skipped ([docs/23](23-live-class-subtitles-and-ending.md)) |
+| GET | /api/liveclass/sessions/{id}/transcript | any signed-in user | The transcript as a text file; the class's trainer, staff, or a student enrolled in the batch; 404 when nothing was captured |
 | DELETE | /api/liveclass/sessions/{id}/participants/{userId} | ACADEMIC | Remove a participant |
 | GET | /api/liveclass/sessions/{id}/controls | ACADEMIC, host of the class | Room policy and what each participant may switch on |
 | PUT | /api/liveclass/sessions/{id}/policy | ACADEMIC, host | What students may switch on (mic, camera, screen share); applied at once to those in the room. Defaults: mic and camera on, screen share off |
@@ -323,7 +326,7 @@ actually costs, and what it fails as when no Egress worker is running.
 | GET | /api/quiz-attempts/{id} | STUDENT | The paper for a running attempt — **no `correct` field anywhere in the payload** |
 | PUT | /api/quiz-attempts/{id}/answers | STUDENT | Autosave answers so far — chosen options, or `answerText` for a short answer or code |
 | POST | /api/quiz-attempts/{id}/questions/{questionId}/run-tests | STUDENT | Run a coding question's test cases against the code and keep it as the answer. Hidden cases return pass or fail only. 429 when running too often; the code is kept either way |
-| POST | /api/quiz-attempts/{id}/violations | STUDENT | Secure and camera tests: the browser reports what it noticed. Camera events (`FACE_NOT_DETECTED`, `MULTIPLE_FACES`, `CAMERA_DISABLED`, `CAMERA_PERMISSION_DENIED`) apply to tests with `requireCamera`: each is recorded and answered with a warning message, none counts and none ends the attempt. Window events, on secure tests: the browser reports leaving the window, copying, etc. The server decides: `TAB_SWITCH` / `WINDOW_BLUR` count (a second report within 3 s of the last is merged), everything else is only recorded. A counted violation below the test's `maxViolations` warns; the one that reaches it ends the attempt (`TERMINATED`, failed). On a test that is not secure, or an attempt already over, accepted and ignored |
+| POST | /api/quiz-attempts/{id}/violations | STUDENT | Secure and camera tests: the browser reports what it noticed. Camera events (`FACE_NOT_DETECTED`, `FACE_OUT_OF_FRAME`, `MULTIPLE_FACES`, `FACE_MISMATCH`, `DEVICE_DETECTED`, `CAMERA_DISABLED`, `CAMERA_PERMISSION_DENIED`) apply to tests with `requireCamera`: each is recorded and answered with a warning message, none counts and none ends the attempt. Window events, on secure tests: the browser reports leaving the window, copying, etc. The server decides: `TAB_SWITCH` / `WINDOW_BLUR` count (a second report within 3 s of the last is merged), everything else is only recorded. A counted violation below the test's `maxViolations` warns; the one that reaches it ends the attempt (`TERMINATED`, failed). On a test that is not secure, or an attempt already over, accepted and ignored |
 | GET | /api/quiz-attempts/{id}/violations | ACADEMIC | Everything the browser reported for an attempt, oldest first, with server time, browser time and whether it counted (trainers of the test, staff) |
 | POST | /api/quiz-attempts/{id}/submit | STUDENT | Submit — scored server-side; re-runs the tests for code changed since its last run; resubmitting a finished attempt is a harmless repeat, same result |
 | GET | /api/quiz-attempts/{id}/result | any signed-in user | An attempt's result |
