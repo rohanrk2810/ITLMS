@@ -27,10 +27,16 @@ const MUTE_GRACE_MS = 3000
 /** A face that stays outside the oval is warned about again this often. */
 const OUTSIDE_REPEAT_MS = 10_000
 /** Who is there, and what is in view, is looked at less often than whether a face is there: it costs more. */
-const DEEP_CHECK_EVERY_MS = 3000
+const DEEP_CHECK_EVERY_MS = 2000
 /** The same finding this many deep checks in a row is reported; a single odd frame is not. */
 const DEEP_CHECKS_BEFORE_REPORT = 2
 const DEEP_REPEAT_REPORT_MS = 20_000
+/** What is in view (a phone) is looked at every second and reported the first time it is seen. */
+const PHONE_CHECK_EVERY_MS = 1000
+/** A phone that stays in view is reported again this often, so the trainer can see how long it lasted. */
+const PHONE_REPEAT_REPORT_MS = 10_000
+/** Looks without a phone before the phone counts as gone and the status clears. */
+const PHONE_GONE_AFTER = 3
 
 interface CameraMonitorOptions {
   enabled: boolean
@@ -77,12 +83,13 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
     let deepFlag: CameraStatus | null = null
     let latestFaces = 0
     let differentRun = 0
-    let phoneRun = 0
+    let phoneGone = 0
     let peopleRun = 0
     let reportedDifferent = 0
     let reportedPhone = 0
     let reportedPeople = 0
     let deepTimer: ReturnType<typeof setInterval> | undefined
+    let phoneTimer: ReturnType<typeof setInterval> | undefined
 
     function cameraOff(detail: string) {
       if (reportedOff) return
@@ -190,14 +197,15 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
         .then((loaded) => {
           if (!cancelled) identity = loaded
         })
-        .catch(() => undefined)
+        .catch((error: unknown) => console.warn('[camera-monitor] the same-face check could not start', error))
     }
     void loadObjectDetector()
       .then((loaded) => {
         if (!cancelled) objects = loaded
       })
-      .catch(() => undefined)
+      .catch((error: unknown) => console.warn('[camera-monitor] the phone check could not start', error))
 
+    // Who is there, every couple of seconds: it costs the most.
     let deepBusy = false
     deepTimer = setInterval(() => {
       const element = video.current
@@ -208,7 +216,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
           const now = Date.now()
           const known = referenceFaces.current
 
-          // Who: only when exactly one face is in view, so a second face is reported as that and not as "different".
+          // Only when exactly one face is in view, so a second face is reported as that and not as "different".
           if (identity && known && known.length > 0 && latestFaces === 1) {
             const face = await describeFace(identity, element)
             if (face) {
@@ -230,29 +238,6 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
               }
             }
           }
-
-          // What: a phone, or another person's body in view.
-          if (objects) {
-            const scene = lookAround(objects, element)
-            phoneRun = scene.phone ? phoneRun + 1 : 0
-            peopleRun = scene.people >= 2 ? peopleRun + 1 : 0
-            if (phoneRun >= DEEP_CHECKS_BEFORE_REPORT) {
-              if (deepFlag !== 'different-face') deepFlag = 'device'
-              setStatus((current) => (current === 'ok' || current === 'device' ? 'device' : current))
-              if (now - reportedPhone > DEEP_REPEAT_REPORT_MS) {
-                reportedPhone = now
-                report.current('DEVICE_DETECTED', 'A mobile phone is in view')
-              }
-            } else if (deepFlag === 'device') {
-              deepFlag = null
-            }
-            if (peopleRun >= DEEP_CHECKS_BEFORE_REPORT && now - reportedPeople > DEEP_REPEAT_REPORT_MS) {
-              reportedPeople = now
-              report.current('MULTIPLE_FACES', 'Another person is in view')
-            }
-            if (scene.people < 2) reportedPeople = 0
-            if (!scene.phone) reportedPhone = 0
-          }
         } catch {
           // A failed look is skipped; the next one tries again.
         } finally {
@@ -261,10 +246,46 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
       })()
     }, DEEP_CHECK_EVERY_MS)
 
+    // What is in view, every second: a phone is reported the moment it is seen, not after it has been there a while.
+    phoneTimer = setInterval(() => {
+      const element = video.current
+      if (!objects || !element || !track || track.readyState === 'ended' || !track.enabled) return
+      try {
+        const scene = lookAround(objects, element)
+        const now = Date.now()
+        if (scene.phone) {
+          phoneGone = 0
+          if (deepFlag !== 'different-face') deepFlag = 'device'
+          setStatus((current) => (current === 'ok' || current === 'device' ? 'device' : current))
+          if (now - reportedPhone > PHONE_REPEAT_REPORT_MS) {
+            reportedPhone = now
+            report.current('DEVICE_DETECTED', 'A mobile phone is in view')
+          }
+        } else {
+          // A phone has to be out of sight for a few looks before it counts as gone, so the status does not flicker.
+          phoneGone += 1
+          if (phoneGone >= PHONE_GONE_AFTER) {
+            reportedPhone = 0
+            if (deepFlag === 'device') deepFlag = null
+          }
+        }
+        // Another person's body is a weaker sign than a phone (a poster looks like one), so it takes two looks.
+        peopleRun = scene.people >= 2 ? peopleRun + 1 : 0
+        if (peopleRun >= 2 && now - reportedPeople > DEEP_REPEAT_REPORT_MS) {
+          reportedPeople = now
+          report.current('MULTIPLE_FACES', 'Another person is in view')
+        }
+        if (scene.people < 2) reportedPeople = 0
+      } catch {
+        // A failed look is skipped; the next one tries again.
+      }
+    }, PHONE_CHECK_EVERY_MS)
+
     return () => {
       cancelled = true
       clearInterval(timer)
       clearInterval(deepTimer)
+      clearInterval(phoneTimer)
       clearTimeout(muteTimer)
       track?.removeEventListener('ended', onEnded)
       track?.removeEventListener('mute', onMute)
