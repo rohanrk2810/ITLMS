@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatCourseFee } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const TYPE_ICON: Record<LessonResponse['type'], typeof PlayCircle> = {
@@ -48,6 +49,12 @@ export function CourseDetailPage() {
           <Badge variant="outline">{course.level}</Badge>
         </div>
         {course.summary && <p className="mt-1 text-muted-foreground">{course.summary}</p>}
+        {!enrolled && (
+          <p className="mt-2 text-sm">
+            <span className="text-muted-foreground">Course fee: </span>
+            <span className="font-semibold">{formatCourseFee(course.fee)}</span>
+          </p>
+        )}
       </div>
 
       {enrolled && progress && (
@@ -73,7 +80,7 @@ export function CourseDetailPage() {
               </CardDescription>
             </CardHeader>
           </Card>
-          <RequestToJoinCard courseId={course.id} courseTitle={course.title} />
+          <RequestToJoinCard courseId={course.id} courseTitle={course.title} fee={course.fee} />
         </>
       )}
 

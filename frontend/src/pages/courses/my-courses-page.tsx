@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatMoney, hasCourseFee } from '@/lib/format'
 
 export function MyCoursesPage() {
   const progressQuery = useQuery({ queryKey: ['courses', 'my-progress'], queryFn: myCourseProgress })
@@ -109,6 +110,7 @@ function BrowseCourses({ enrolledIds }: { enrolledIds: number[] }) {
                 <Badge variant="outline">{course.level}</Badge>
                 {course.durationHours != null && <span>{course.durationHours} hours</span>}
                 {course.technologyStack && <span className="line-clamp-1">{course.technologyStack}</span>}
+                <span className="ml-auto font-medium text-foreground">{hasCourseFee(course.fee) ? formatMoney(course.fee) : 'Fee to be confirmed'}</span>
               </CardContent>
             </Card>
           </Link>
