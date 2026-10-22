@@ -212,6 +212,25 @@ export function CourseEditorPage() {
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="fee">Course fee (INR)</Label>
+              <Input
+                id="fee"
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                placeholder="e.g. 30000"
+                value={form.fee ?? ''}
+                disabled={!isStaff}
+                onChange={(event) =>
+                  setForm({ ...form, fee: event.target.value === '' ? undefined : Math.max(0, Number(event.target.value)) })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Students see this before they ask to join. Leave it empty to say the fee will be confirmed later.
+              </p>
+            </div>
             {isStaff && (
               <Button type="submit" size="sm" className="self-start" disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? 'Saving...' : 'Save details'}

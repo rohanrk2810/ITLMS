@@ -9,7 +9,7 @@ import { RequestStatusBadge } from '@/components/request-status-badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { formatDate } from '@/lib/format'
+import { formatCourseFee, formatDate, hasCourseFee } from '@/lib/format'
 
 const OPEN_BATCH = new Set(['PLANNED', 'ONGOING'])
 
@@ -18,7 +18,7 @@ const OPEN_BATCH = new Set(['PLANNED', 'ONGOING'])
  * the request goes to the administrators and coordinators, who approve it into a batch.
  * If they already asked, this shows where that request stands instead of a second form.
  */
-export function RequestToJoinCard({ courseId, courseTitle }: { courseId: number; courseTitle: string }) {
+export function RequestToJoinCard({ courseId, courseTitle, fee }: { courseId: number; courseTitle: string; fee?: number | null }) {
   const queryClient = useQueryClient()
   const [batchId, setBatchId] = useState('')
   const [message, setMessage] = useState('')
@@ -78,6 +78,16 @@ export function RequestToJoinCard({ courseId, courseTitle }: { courseId: number;
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-sm" role="note">
+          <p>
+            Course fee: <span className="font-semibold">{formatCourseFee(fee)}</span>
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {hasCourseFee(fee)
+              ? 'This is the fee for the whole course. Once you are placed in a batch the institute sets up your fee plan, and your instalments and due dates appear under Finance.'
+              : 'The institute will tell you the fee once you are placed in a batch, and your fee plan then appears under Finance.'}
+          </p>
+        </div>
         {latest && (
           <p className="mb-3 rounded-md bg-muted px-3 py-2 text-sm">
             Your last request was <RequestStatusBadge status={latest.status} />
