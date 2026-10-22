@@ -1,10 +1,10 @@
 import { type RefObject, useEffect, useRef, useState } from 'react'
 
 import type { ViolationType } from '@/api/assessments'
-import { countFaces, loadFaceDetector } from '@/lib/face-detector'
+import { loadFaceDetector, readFaces } from '@/lib/face-detector'
 
 /** What the student's camera looks like right now. */
-export type CameraStatus = 'starting' | 'ok' | 'no-face' | 'multiple-faces' | 'off' | 'denied' | 'no-detector'
+export type CameraStatus = 'starting' | 'ok' | 'no-face' | 'out-of-oval' | 'multiple-faces' | 'off' | 'denied' | 'no-detector'
 
 const CHECK_EVERY_MS = 1000
 /** A face that is missing (or extra) for this many checks in a row is reported; one blink of the detector is not. */
@@ -12,6 +12,8 @@ const CHECKS_BEFORE_REPORT = 3
 /** A problem that goes on is reported again this often, so the trainer can see how long it lasted. */
 const REPEAT_REPORT_MS = 30_000
 const MUTE_GRACE_MS = 3000
+/** A face that stays outside the oval is warned about again this often. */
+const OUTSIDE_REPEAT_MS = 10_000
 
 interface CameraMonitorOptions {
   enabled: boolean
@@ -46,6 +48,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMoni
     let crowded = 0
     let reportedNoFace = 0
     let reportedCrowd = 0
+    let reportedOutside = 0
     let reportedOff = false
 
     function cameraOff(detail: string) {
@@ -95,10 +98,19 @@ export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMoni
             cameraOff('The camera is off')
             return
           }
-          const faces = countFaces(detector, element)
+          const { count: faces, inOval } = readFaces(detector, element)
           const now = Date.now()
 
-          if (faces === 0) {
+          if (faces === 1 && !inOval) {
+            // One face, but outside the oval: warned at the first check, not after a wait.
+            missing = 0
+            crowded = 0
+            setStatus('out-of-oval')
+            if (now - reportedOutside > OUTSIDE_REPEAT_MS) {
+              reportedOutside = now
+              report.current('FACE_OUT_OF_FRAME', 'Face outside the oval')
+            }
+          } else if (faces === 0) {
             missing += 1
             crowded = 0
             if (missing >= CHECKS_BEFORE_REPORT) {
@@ -123,6 +135,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMoni
             crowded = 0
             reportedNoFace = 0
             reportedCrowd = 0
+            reportedOutside = 0
             reportedOff = false
             setStatus('ok')
           }

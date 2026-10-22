@@ -485,7 +485,7 @@ export function QuizAttemptPage() {
       )}
 
       {paper.requireCamera && cameraStream && (
-        <CameraPreview stream={cameraStream} video={videoRef} status={cameraStatus} />
+        <CameraPreview stream={cameraStream} video={videoRef} status={cameraStatus} oval />
       )}
 
       {paper.requireMicrophone && micStream && <MicIndicator status={micStatus} besideCamera={paper.requireCamera} />}
