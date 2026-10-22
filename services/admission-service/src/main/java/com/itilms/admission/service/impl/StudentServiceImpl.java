@@ -125,6 +125,11 @@ public class StudentServiceImpl implements StudentService {
                 com.itilms.common.security.SecurityUtils.currentUserId(),
                 terms.totalFee(), terms.discount(), terms.installments()));
 
+        // A student admitted with no batch has not been placed yet: tell the people who place them.
+        if (terms.batchId() == null) {
+            announceNewStudent(student.getId(), student.getFullName(), student.getStudentCode());
+        }
+
         events.audit(SERVICE_NAME, "STUDENT_ADMITTED", "Student", student.getId(), null,
                 Map.of("studentCode", student.getStudentCode(),
                         "email", email,
@@ -282,5 +287,17 @@ public class StudentServiceImpl implements StudentService {
 
     private String trim(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /**
+     * Tells administrators and coordinators that a new student is waiting to be placed in a course.
+     * The link opens the student, where the batch and the fee plan are set up.
+     */
+    private void announceNewStudent(Long studentId, String name, String code) {
+        String message = "%s (%s) is waiting to be placed in a course. Approve their course request, or enrol them in a batch, "
+                .formatted(name, code) + "then set up their fee plan.";
+        for (String role : new String[]{"ADMIN", "COORDINATOR"}) {
+            events.notifyRole(role, "NEW_STUDENT", "New student: " + name, message, "/admin/students/" + studentId);
+        }
     }
 }

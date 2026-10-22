@@ -11,6 +11,7 @@ import com.itilms.admission.repository.StudentRepository;
 import com.itilms.admission.repository.TrainerRepository;
 import com.itilms.common.event.DomainEvent;
 import com.itilms.common.event.KafkaTopics;
+import com.itilms.common.event.NotificationRequestedEvent;
 import com.itilms.common.event.ProfileLinkedEvent;
 import com.itilms.common.event.UserCreatedEvent;
 import com.itilms.common.util.Codes;
@@ -87,6 +88,15 @@ public class UserEventConsumer {
         kafkaTemplate.send(KafkaTopics.PROFILE_LINKED, DomainEvent.newId(),
                 ProfileLinkedEvent.of(event.userId(), "STUDENT",
                         student.getId(), student.getStudentCode()));
+
+        // The new student sees only the course list until a course request is approved; tell the people who decide.
+        String message = "%s (%s) has registered and is waiting to be placed in a course. Approve their course request, "
+                .formatted(student.getFullName(), student.getStudentCode()) + "then set up their fee plan.";
+        for (String role : new String[]{"ADMIN", "COORDINATOR"}) {
+            kafkaTemplate.send(KafkaTopics.NOTIFICATION_REQUESTED, DomainEvent.newId(),
+                    NotificationRequestedEvent.toRole(role, "NEW_STUDENT", "New student: " + student.getFullName(),
+                            message, "/admin/students/" + student.getId()));
+        }
     }
 
     /** Keeps the denormalised name, email and phone in step with the account. */
