@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { CalendarClock, History, PlayCircle, Video, Users } from 'lucide-react'
+import { CalendarClock, FileText, History, PlayCircle, Video, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import './live-room.css'
 
-import { type LiveSessionResponse, pastLiveClasses, upcomingLiveClasses } from '@/api/live-classes'
+import { downloadTranscript, type LiveSessionResponse, pastLiveClasses, upcomingLiveClasses } from '@/api/live-classes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -164,6 +165,17 @@ export function LiveClassesPage() {
                       )}
                     </p>
                   </div>
+                  {session.transcriptLines > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => void downloadTranscript(session.id).catch(() => toast.error('Could not download the transcript.'))}
+                    >
+                      <FileText />
+                      Transcript
+                    </Button>
+                  )}
                   <Button asChild variant="outline" className="rounded-full">
                     <Link to={`/app/live-classes/${session.classSessionId}/review`}>
                       <History />

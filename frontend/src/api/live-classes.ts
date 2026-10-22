@@ -25,6 +25,8 @@ export interface LiveSessionResponse {
   /** Bytes of the recording stored so far (or in total, once finished). */
   recordingBytes: number
   attendanceComputed: boolean
+  /** How many phrases of the class's written transcript exist; 0 when none was captured. */
+  transcriptLines: number
   /** True when the room will accept a join request right now. */
   joinable: boolean
 }
@@ -181,6 +183,42 @@ export async function stopBrowserRecording(liveSessionId: number): Promise<Brows
 }
 
 /** Saves the recording to the person's computer. The request carries the login, so it goes through a blob. */
+/** Closes the room for everyone and records attendance now. Only the class's trainer or staff. */
+export async function endLiveClass(liveSessionId: number): Promise<LiveSessionResponse> {
+  const { data } = await apiClient.post<LiveSessionResponse>(`/api/liveclass/sessions/${liveSessionId}/end`)
+  return data
+}
+
+/** One finished phrase of what the trainer said. `spokenAt` is epoch milliseconds on this browser's clock. */
+export interface TranscriptPhrase {
+  clientId: string
+  text: string
+  language: string
+  spokenAt: number
+}
+
+/** Saves finished phrases while the class is live. A phrase sent twice is stored once, so a retry is safe. */
+export async function saveTranscript(liveSessionId: number, phrases: TranscriptPhrase[]): Promise<number> {
+  const { data } = await apiClient.post<{ saved: number }>(`/api/liveclass/sessions/${liveSessionId}/transcript`, { phrases })
+  return data.saved
+}
+
+/** Downloads what the trainer said, as a text file. 404 when nothing was captured. */
+export async function downloadTranscript(liveSessionId: number): Promise<void> {
+  const response = await apiClient.get(`/api/liveclass/sessions/${liveSessionId}/transcript`, { responseType: 'blob' })
+  const header = String(response.headers['content-disposition'] ?? '')
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header)
+  const name = match ? decodeURIComponent(match[1]) : `class-${liveSessionId}-transcript.txt`
+  const url = URL.createObjectURL(response.data as Blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 export async function downloadRecording(liveSessionId: number): Promise<void> {
   const response = await apiClient.get(`/api/liveclass/sessions/${liveSessionId}/recording`, {
     params: { download: true },
