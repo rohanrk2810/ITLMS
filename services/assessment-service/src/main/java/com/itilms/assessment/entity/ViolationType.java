@@ -19,6 +19,7 @@ public enum ViolationType {
      * because a face detector has false alarms and must not fail anyone on its word alone.
      */
     FACE_NOT_DETECTED(false, true, "Warning: Please keep your face properly visible in the camera."),
+    FACE_OUT_OF_FRAME(false, true, "Warning: Keep your face inside the oval."),
     MULTIPLE_FACES(false, true, "Warning: Only you should be visible in the camera."),
     CAMERA_DISABLED(false, true, "Warning: Your camera must stay on for this test. Turn it back on."),
     CAMERA_PERMISSION_DENIED(false, true, "Warning: Camera permission was removed. Allow the camera again to continue."),

@@ -2,7 +2,7 @@ import { type RefObject, useEffect, useRef, useState } from 'react'
 import { Camera, CameraOff, Loader2, ScanFace } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { CAMERA_PROBLEM_TEXT, CameraError, countFaces, loadFaceDetector, openCamera } from '@/lib/face-detector'
+import { CAMERA_PROBLEM_TEXT, CameraError, loadFaceDetector, openCamera, OVAL, readFaces } from '@/lib/face-detector'
 import type { CameraStatus } from '@/lib/use-camera-monitor'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,23 @@ function useStreamOnVideo(stream: MediaStream | null, video: RefObject<HTMLVideo
     element.srcObject = stream
     if (stream) void element.play().catch(() => undefined)
   }, [stream, video])
+}
+
+/** The oval the face must stay inside, drawn over a 4:3 picture. Everything outside it is dimmed. */
+function OvalGuide({ good }: { good: boolean | null }) {
+  const colour = good === null ? '#ffffff' : good ? '#10b981' : '#ef4444'
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 size-full" aria-hidden>
+      <defs>
+        <mask id="oval-hole">
+          <rect width="100" height="100" fill="white" />
+          <ellipse cx="50" cy="50" rx={OVAL.rx * 100} ry={OVAL.ry * 100} fill="black" />
+        </mask>
+      </defs>
+      <rect width="100" height="100" fill="black" opacity="0.45" mask="url(#oval-hole)" />
+      <ellipse cx="50" cy="50" rx={OVAL.rx * 100} ry={OVAL.ry * 100} fill="none" stroke={colour} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
 }
 
 interface CameraCheckProps {
@@ -32,6 +49,7 @@ export function CameraCheck({ stream, onStream, onReady }: CameraCheckProps) {
   const [problem, setProblem] = useState<string | null>(null)
   const [asking, setAsking] = useState(false)
   const [faces, setFaces] = useState<number | 'unavailable' | null>(null)
+  const [inOval, setInOval] = useState(false)
   useStreamOnVideo(stream, video)
 
   useEffect(() => {
@@ -46,9 +64,10 @@ export function CameraCheck({ stream, onStream, onReady }: CameraCheckProps) {
         if (cancelled) return
         timer = setInterval(() => {
           if (!video.current) return
-          const count = countFaces(detector, video.current)
-          setFaces(count)
-          onReady(count === 1)
+          const reading = readFaces(detector, video.current)
+          setFaces(reading.count)
+          setInOval(reading.inOval)
+          onReady(reading.count === 1 && reading.inOval)
         }, 700)
       })
       .catch(() => {
@@ -93,13 +112,17 @@ export function CameraCheck({ stream, onStream, onReady }: CameraCheckProps) {
         </>
       ) : (
         <div className="flex flex-wrap items-start gap-4">
-          <video ref={video} muted playsInline className="h-36 w-48 -scale-x-100 rounded-md border bg-black object-cover" />
+          <div className="relative aspect-[4/3] w-56 overflow-hidden rounded-md border bg-black">
+            <video ref={video} muted playsInline className="size-full -scale-x-100 object-cover" />
+            {faces !== 'unavailable' && <OvalGuide good={faces === null ? null : faces === 1 && inOval} />}
+          </div>
           <p className="max-w-xs text-sm" role="status">
             {faces === 'unavailable' && 'Your camera is on. The face check is not available in this browser, so you can start.'}
             {faces === null && 'Looking for your face...'}
             {faces === 0 && 'I cannot see your face. Face the camera, in good light, and sit a little closer.'}
             {typeof faces === 'number' && faces > 1 && 'More than one face is visible. Only you should be in view.'}
-            {faces === 1 && 'Your face is visible. You can start.'}
+            {faces === 1 && !inOval && 'Move so your face is inside the oval.'}
+            {faces === 1 && inOval && 'Your face is inside the oval. You can start. Keep it there during the test.'}
           </p>
         </div>
       )}
@@ -116,6 +139,7 @@ const STATUS_TEXT: Record<CameraStatus, string> = {
   starting: 'Starting camera...',
   ok: 'Camera OK',
   'no-face': 'Face not visible',
+  'out-of-oval': 'Keep your face inside the oval',
   'multiple-faces': 'More than one face',
   off: 'Camera off',
   denied: 'Camera blocked',
@@ -126,22 +150,29 @@ interface CameraPreviewProps {
   stream: MediaStream | null
   video: RefObject<HTMLVideoElement | null>
   status: CameraStatus
+  /** Draw the oval the face must stay inside (camera tests). */
+  oval?: boolean
 }
 
 /** A small live picture of the student in the corner of the test, so they can see what the camera sees. */
-export function CameraPreview({ stream, video, status }: CameraPreviewProps) {
+export function CameraPreview({ stream, video, status, oval = false }: CameraPreviewProps) {
   useStreamOnVideo(stream, video)
-  const bad = status === 'no-face' || status === 'multiple-faces' || status === 'off' || status === 'denied'
+  const bad =
+    status === 'no-face' || status === 'out-of-oval' || status === 'multiple-faces' || status === 'off' || status === 'denied'
 
   return (
     <div
       className={cn(
-        'fixed right-3 bottom-3 z-30 flex w-40 flex-col overflow-hidden rounded-md border-2 bg-black shadow-lg',
+        'fixed right-3 bottom-3 z-30 flex flex-col overflow-hidden rounded-md border-2 bg-black shadow-lg',
+        oval ? 'w-52' : 'w-40',
         bad ? 'border-destructive' : 'border-emerald-500',
       )}
       aria-label="Your camera"
     >
-      <video ref={video} muted playsInline className="h-28 w-full -scale-x-100 object-cover" />
+      <div className={cn('relative w-full', oval ? 'aspect-[4/3]' : 'h-28')}>
+        <video ref={video} muted playsInline className="size-full -scale-x-100 object-cover" />
+        {oval && <OvalGuide good={status === 'ok' ? true : bad ? false : null} />}
+      </div>
       <div className={cn('flex items-center gap-1 px-2 py-1 text-xs', bad ? 'bg-destructive text-white' : 'bg-card text-foreground')}>
         {bad ? <CameraOff className="size-3" /> : <ScanFace className="size-3" />}
         {STATUS_TEXT[status]}

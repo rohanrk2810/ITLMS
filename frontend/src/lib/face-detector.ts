@@ -39,6 +39,43 @@ export function countFaces(detector: FaceDetector, video: HTMLVideoElement): num
   return detections.filter((d) => (d.boundingBox?.width ?? 0) >= video.videoWidth * MIN_FACE_WIDTH_RATIO).length
 }
 
+/** The oval drawn over the student's picture, as fractions of the picture. Shared by the check and the overlay. */
+export const OVAL = { rx: 0.3, ry: 0.42 }
+/** How far past the oval a corner of the face box may reach before the face counts as outside. */
+const OVAL_TOLERANCE = 1.2
+
+function insideOval(x: number, y: number, video: HTMLVideoElement, scale: number): boolean {
+  const dx = (x / video.videoWidth - 0.5) / (OVAL.rx * scale)
+  const dy = (y / video.videoHeight - 0.5) / (OVAL.ry * scale)
+  return dx * dx + dy * dy <= 1
+}
+
+export interface FaceReading {
+  /** Properly visible faces. */
+  count: number
+  /** With exactly one face: whether it sits inside the oval. */
+  inOval: boolean
+}
+
+/** Like countFaces, and also whether the single face is inside the oval (its centre inside, its corners near). */
+export function readFaces(detector: FaceDetector, video: HTMLVideoElement): FaceReading {
+  if (video.readyState < 2 || video.videoWidth === 0) return { count: 0, inOval: false }
+  const { detections } = detector.detectForVideo(video, performance.now())
+  const faces = detections.filter((d) => (d.boundingBox?.width ?? 0) >= video.videoWidth * MIN_FACE_WIDTH_RATIO)
+  const box = faces.length === 1 ? faces[0].boundingBox : undefined
+  if (!box) return { count: faces.length, inOval: false }
+  const { originX: x, originY: y, width: w, height: h } = box
+  const inOval =
+    insideOval(x + w / 2, y + h / 2, video, 1) &&
+    [
+      [x, y],
+      [x + w, y],
+      [x, y + h],
+      [x + w, y + h],
+    ].every(([cx, cy]) => insideOval(cx, cy, video, OVAL_TOLERANCE))
+  return { count: faces.length, inOval }
+}
+
 export type CameraProblem = 'denied' | 'not-found' | 'in-use' | 'unsupported' | 'other'
 
 /** Asks for the camera. Must be called from a click, so the browser may show its permission prompt. */
