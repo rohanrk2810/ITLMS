@@ -17,6 +17,7 @@ import { isJitsiUrl, jitsiEmbedUrl } from '@/lib/jitsi'
 import { useAuthStore } from '@/stores/auth-store'
 import { HostSidePanel } from './host-side-panel'
 import { LiveQuestionPanel } from './live-question-panel'
+import { StudentConference } from './student-conference'
 
 export function LiveClassRoomPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -84,7 +85,11 @@ export function LiveClassRoomPage() {
             onDisconnected={() => void navigate('/app/live-classes')}
           >
             <div className="flex h-full flex-col">
-              <RoomBar title={credentials.topic ?? credentials.courseTitle} startsAt={credentials.scheduledStartAt} />
+              <RoomBar
+                title={credentials.topic ?? credentials.courseTitle}
+                startsAt={credentials.scheduledStartAt}
+                showPeople={credentials.roomAdmin}
+              />
               {/* The recording captures exactly this box: the class itself, without the side panel or the bar. */}
               <div id="class-stage" className="min-h-0 flex-1">
                 <ContentProtection
@@ -92,7 +97,7 @@ export function LiveClassRoomPage() {
                   watermarkLabel={user ? `${user.fullName} · ${user.email}` : ''}
                   className="h-full"
                 >
-                  <VideoConference />
+                  {credentials.roomAdmin ? <VideoConference /> : <StudentConference />}
                 </ContentProtection>
               </div>
             </div>
@@ -115,7 +120,7 @@ export function LiveClassRoomPage() {
 }
 
 /** Top bar of the room: a pulsing LIVE badge, the class name, how long it has been running and who is in it. */
-function RoomBar({ title, startsAt }: { title: string; startsAt: string }) {
+function RoomBar({ title, startsAt, showPeople }: { title: string; startsAt: string; showPeople: boolean }) {
   const people = useParticipants().length
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -140,10 +145,12 @@ function RoomBar({ title, startsAt }: { title: string; startsAt: string }) {
           <Clock className="size-3.5" />
           {clock}
         </span>
-        <span className="class-room-chip">
-          <Users className="size-3.5" />
-          {people}
-        </span>
+        {showPeople && (
+          <span className="class-room-chip">
+            <Users className="size-3.5" />
+            {people}
+          </span>
+        )}
       </span>
     </div>
   )
