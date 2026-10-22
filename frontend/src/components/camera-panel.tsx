@@ -4,6 +4,7 @@ import { Camera, CameraOff, Loader2, ScanFace } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CAMERA_PROBLEM_TEXT, CameraError, loadFaceDetector, openCamera, OVAL, readFaces } from '@/lib/face-detector'
 import { describeFace, loadFaceIdentity, REFERENCE_SAMPLES, samplesAgree } from '@/lib/face-identity'
+import { loadObjectDetector } from '@/lib/object-detector'
 import type { CameraStatus } from '@/lib/use-camera-monitor'
 import { cn } from '@/lib/utils'
 
@@ -62,7 +63,23 @@ export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCh
   const [retake, setRetake] = useState(false)
   const faceOk = faces === 1 && inOval
   const samples = useRef<Float32Array[]>([])
+  // Whether the phone / second-person check can run in this browser. It loads now so a problem shows before the test.
+  const [phoneCheck, setPhoneCheck] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   useStreamOnVideo(stream, video)
+
+  useEffect(() => {
+    if (!stream) return
+    let cancelled = false
+    loadObjectDetector()
+      .then(() => !cancelled && setPhoneCheck('ready'))
+      .catch((error: unknown) => {
+        console.warn('[camera-check] the phone check could not start', error)
+        if (!cancelled) setPhoneCheck('unavailable')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [stream])
 
   useEffect(() => {
     if (!stream) {
@@ -209,6 +226,13 @@ export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCh
               'Your face is inside the oval. You can start. Keep it there during the test.'}
           </p>
         </div>
+      )}
+      {stream && faces !== 'unavailable' && (
+        <p className="text-xs text-muted-foreground">
+          {phoneCheck === 'loading' && 'Getting the phone check ready...'}
+          {phoneCheck === 'ready' && 'Phone and second-person check: ready. Keep phones out of the picture.'}
+          {phoneCheck === 'unavailable' && 'The phone check could not start in this browser. The face checks still run.'}
+        </p>
       )}
       {problem && (
         <p role="alert" className="text-sm text-destructive">

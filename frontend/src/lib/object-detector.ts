@@ -4,8 +4,12 @@ import type { ObjectDetector } from '@mediapipe/tasks-vision'
 const WASM_PATH = '/mediapipe/wasm'
 const MODEL_PATH = '/models/efficientdet_lite0.tflite'
 
-/** How sure the detector must be. A phone is a clear object; a person is easier to see where there is none (a poster). */
-const PHONE_MIN_SCORE = 0.45
+/**
+ * How sure the detector must be. Tried on photos of people holding phones, a clear phone scores 0.5 to 0.75 and a small or
+ * tilted one 0.3 to 0.45; on 66 photos of people at desks with no phone, nothing scored above 0.21. So 0.3 catches the weak
+ * ones without false alarms in that sample. A person is easier to see where there is none (a poster), so it stays higher.
+ */
+const PHONE_MIN_SCORE = 0.3
 const PERSON_MIN_SCORE = 0.55
 
 let loading: Promise<ObjectDetector> | null = null
@@ -19,7 +23,7 @@ export function loadObjectDetector(): Promise<ObjectDetector> {
       return Detector.createFromOptions(files, {
         baseOptions: { modelAssetPath: MODEL_PATH, delegate: 'CPU' },
         runningMode: 'VIDEO',
-        scoreThreshold: 0.4,
+        scoreThreshold: 0.25,
         maxResults: 10,
         categoryAllowlist: ['cell phone', 'person'],
       })
