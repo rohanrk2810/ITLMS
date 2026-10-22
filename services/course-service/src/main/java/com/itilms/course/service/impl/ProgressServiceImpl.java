@@ -43,6 +43,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ProgressServiceImpl implements ProgressService {
 
+    /** Share of a camera-watched video that must really have been played before its lesson can complete. */
+    private static final int MIN_WATCHED_PERCENT = 90;
+
     private final CourseRepository courseRepository;
     private final LessonRepository lessonRepository;
     private final CourseEnrollmentRepository enrollmentRepository;
@@ -96,7 +99,16 @@ public class ProgressServiceImpl implements ProgressService {
         progress.recordPlayback(request.playedSeconds(), request.durationSeconds(), request.faceAwaySeconds(),
                 request.facePauses());
         if (Boolean.TRUE.equals(request.completed())) {
-            progress.markComplete();
+            // A video the instructor chose to watch through the camera cannot be completed by a request alone:
+            // enough of it must really have been played. Where its length is unknown nothing can be measured.
+            boolean watchedEnough = progress.getDurationSeconds() == null || progress.getDurationSeconds() <= 0
+                    || progress.watchedPercent() >= MIN_WATCHED_PERCENT;
+            boolean mustWatch = lessonRepository.findById(lessonId).filter(Lesson::isVideoMonitoring).isPresent();
+            if (mustWatch && !watchedEnough) {
+                log.info("Ignored completion of monitored lesson {}: only {}% watched", lessonId, progress.watchedPercent());
+            } else {
+                progress.markComplete();
+            }
         } else if (Boolean.FALSE.equals(request.completed())) {
             progress.markIncomplete();
         }

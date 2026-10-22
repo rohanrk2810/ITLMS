@@ -4,11 +4,13 @@ import { Camera, Loader2, PauseCircle, ShieldCheck } from 'lucide-react'
 import { CameraPreview } from '@/components/camera-panel'
 import { type EmbeddedControl, type EmbeddedPlayback, EmbeddedVideo } from '@/components/embedded-video'
 import { Button } from '@/components/ui/button'
-import { CAMERA_PROBLEM_TEXT, CameraError, countFaces, loadFaceDetector, openCamera, stopStream } from '@/lib/face-detector'
+import { CAMERA_PROBLEM_TEXT, CameraError, loadFaceDetector, openCamera, readFaces, stopStream } from '@/lib/face-detector'
 import type { CameraStatus } from '@/lib/use-camera-monitor'
 
 /** How often watch time is saved while a video plays, so a closed tab loses at most this much. */
 const SAVE_EVERY_MS = 15_000
+/** A monitored video counts as watched, and completes the lesson, at this share really played (the server checks it too). */
+const COMPLETE_AT_PERCENT = 90
 
 export interface PlaybackReport {
   watchedSeconds: number
@@ -38,7 +40,8 @@ interface LessonVideoProps {
   autoResume: boolean
   graceSeconds: number
   onReport: (report: PlaybackReport) => void
-  onEnded: () => void
+  /** The video ended or enough of it was watched; carries the final watch figures. */
+  onEnded: (report: PlaybackReport) => void
 }
 
 /** What the monitor needs from whichever player is on screen. */
@@ -83,11 +86,12 @@ export function LessonVideo(props: LessonVideoProps) {
           This video is watched through your camera
         </p>
         <ul className="list-disc pl-5 text-muted-foreground">
-          <li>Your camera only checks that your face is in view while the video plays.</li>
+          <li>Your camera only checks that your face is inside the oval while the video plays.</li>
+          <li>You must watch the video through to complete this lesson; it cannot be marked complete by hand.</li>
           <li>No picture or video is stored or sent. Only counts, such as seconds away, are kept.</li>
           {props.pauseOnNoFace && (
             <li>
-              The video pauses if your face is missing for {props.graceSeconds} seconds
+              The video pauses if your face is outside the oval or missing for {props.graceSeconds} seconds
               {props.autoResume ? ' and carries on when you are back.' : '; press Resume when you are back.'}
             </li>
           )}
@@ -148,17 +152,29 @@ function Player({
     ended.current = onEnded
   }, [onReport, onEnded])
 
-  const send = useCallback(() => {
+  const snapshot = useCallback((): PlaybackReport | null => {
     const c = controller.current
-    if (!c) return
-    report.current({
+    if (!c) return null
+    return {
       watchedSeconds: Math.floor(c.time()),
       playedSeconds: Math.floor(played.current),
       durationSeconds: Math.ceil(duration.current),
       faceAwaySeconds: Math.floor(faceAway.current),
       facePauses: pauses.current,
-    })
+    }
   }, [])
+
+  const send = useCallback(() => {
+    const now = snapshot()
+    if (now) report.current(now)
+  }, [snapshot])
+
+  /** The video ended (or enough of it was watched): complete the lesson, with the watch figures in the same request. */
+  const finish = useCallback(() => {
+    const now = snapshot()
+    if (now) ended.current(now)
+  }, [snapshot])
+  const finished = useRef(false)
 
   const setLength = useCallback(
     (seconds: number) => {
@@ -228,12 +244,9 @@ function Player({
       youtubeState.current = info.state
       if (info.state === 1) refuseIfBlocked()
       else if (info.state === 2) send()
-      else if (info.state === 0) {
-        send()
-        ended.current()
-      }
+      else if (info.state === 0) finish()
     },
-    [setLength, refuseIfBlocked, send],
+    [setLength, refuseIfBlocked, send, finish],
   )
 
   // Count what is really watched: one second for each second the video is actually playing.
@@ -245,6 +258,11 @@ function Player({
       played.current = duration.current > 0 ? Math.min(duration.current, played.current + 1) : played.current + 1
       setPercent(duration.current > 0 ? Math.min(100, Math.floor((played.current * 100) / duration.current)) : 0)
       if (duration.current <= 0) setMinutes(Math.floor(played.current / 60))
+      // A monitored video completes by itself once enough of it has really been watched; there is no button.
+      if (monitored && !finished.current && duration.current > 0 && played.current >= (duration.current * COMPLETE_AT_PERCENT) / 100) {
+        finished.current = true
+        finish()
+      }
     }, 1000)
     const save = setInterval(send, SAVE_EVERY_MS)
     return () => {
@@ -252,7 +270,7 @@ function Player({
       clearInterval(save)
       send()
     }
-  }, [send, isEmbed, monitored])
+  }, [send, finish, isEmbed, monitored])
 
   // The camera check.
   useEffect(() => {
@@ -274,10 +292,12 @@ function Player({
             setFaceVisible(false)
             return
           }
-          const visible = countFaces(detector, preview) > 0
+          // A face counts only inside the oval; a face outside it is treated like a missing one.
+          const { count, inOval } = readFaces(detector, preview)
+          const visible = count > 1 || (count === 1 && inOval)
           faceNow.current = visible
           setFaceVisible(visible)
-          setStatus(visible ? 'ok' : 'no-face')
+          setStatus(visible ? 'ok' : count === 1 ? 'out-of-oval' : 'no-face')
 
           if (visible) {
             missingFor.current = 0
@@ -334,10 +354,7 @@ function Player({
           onLoadedMetadata={(event) => setLength(event.currentTarget.duration)}
           onPlay={refuseIfBlocked}
           onPause={send}
-          onEnded={() => {
-            send()
-            onEnded()
-          }}
+          onEnded={finish}
         />
       ) : source.kind === 'youtube' ? (
         <EmbeddedVideo
@@ -354,13 +371,13 @@ function Player({
           role="status"
           className="pointer-events-none absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-md border border-amber-500 bg-amber-100 px-4 py-2 text-sm font-medium text-amber-900 shadow-lg"
         >
-          Please keep your face in view.
+          Please keep your face inside the oval.
         </div>
       )}
       {pausedForFace && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 p-4 text-center text-white">
           <PauseCircle className="size-10" />
-          <p className="font-medium">Paused: please keep your face in view.</p>
+          <p className="font-medium">Paused: please keep your face inside the oval.</p>
           {!autoResume && (
             <Button onClick={resume} disabled={!faceVisible}>
               {faceVisible ? 'Resume' : 'Waiting for your face...'}
@@ -368,7 +385,7 @@ function Player({
           )}
         </div>
       )}
-      {monitored && stream && <CameraPreview stream={stream} video={camera} status={status} />}
+      {monitored && stream && <CameraPreview stream={stream} video={camera} status={status} oval />}
       <p className="border-t px-3 py-2 text-xs text-muted-foreground">
         {isEmbed && embedSeconds <= 0
           ? `Time in front of the camera: ${minutes} min`

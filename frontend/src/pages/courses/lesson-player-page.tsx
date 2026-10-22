@@ -77,6 +77,10 @@ export function LessonPlayerPage() {
       : embedUrl && cameraWatched && lesson
         ? { kind: 'embed', src: embedUrl, title: lesson.title, durationSeconds: (lesson.durationMinutes ?? 0) * 60 }
         : null
+  // A video watched through the camera completes by itself once it has really been watched, so there is no button.
+  // The exception is a frame whose length is unknown: nothing can measure it, so the button stays.
+  const mustWatch =
+    !!videoSource && cameraWatched && !(videoSource.kind === 'embed' && videoSource.durationSeconds <= 0)
   const prev = index > 0 ? lessons[index - 1] : undefined
   const next = index >= 0 && index < lessons.length - 1 ? lessons[index + 1] : undefined
 
@@ -140,6 +144,8 @@ export function LessonPlayerPage() {
             <CheckCircle2 className="size-4" />
             Completed
           </span>
+        ) : mustWatch ? (
+          <span className="text-right text-sm text-muted-foreground">Watch the video through to complete this lesson</span>
         ) : (
           <Button size="sm" onClick={handleMarkComplete}>
             Mark as complete
@@ -158,7 +164,7 @@ export function LessonPlayerPage() {
             autoResume={lesson.autoResume}
             graceSeconds={lesson.faceGraceSeconds}
             onReport={(report) => void saveProgress(report.watchedSeconds, undefined, report)}
-            onEnded={() => void saveProgress(undefined, true)}
+            onEnded={(report) => void saveProgress(report.watchedSeconds, true, report)}
           />
         )}
         {lesson.type === 'VIDEO' && lesson.contentUrl && !videoSource && toEmbedUrl(lesson.contentUrl) && (

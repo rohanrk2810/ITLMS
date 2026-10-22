@@ -27,7 +27,7 @@ export function VideoMonitoringOptions({
     <div className="flex flex-col gap-1 rounded-md border p-2 text-sm">
       <Row
         title="Watch through the camera"
-        hint="The student's camera checks that a face is in view while this video plays. Off by default."
+        hint="The student's face must stay inside an oval while this video plays. The student has to watch it through to complete the lesson; there is no Mark as complete button. Off by default."
         checked={on}
         disabled={disabled}
         onChange={(checked) =>
