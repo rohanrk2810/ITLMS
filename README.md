@@ -23,10 +23,11 @@ Built from `IT_Institute_LMS_Complete_Project_Documentation.pdf`, with two delib
 | **Files** | Uploads with type/size rules per category, access control, controlled download |
 | **Reporting** | Institute dashboard, exports (CSV/Excel/PDF), and a cross-service audit log |
 | **Practice code editor** | Run code inside lessons in a sandbox (Judge0 or Piston), with code analysis ([docs/08](docs/08-code-execution.md), [docs/16](docs/16-code-analysis.md)) |
-| **Test portal** | Timed tests with secure test mode ([docs/09](docs/09-test-portal.md)) and student progress reports ([docs/10](docs/10-student-progress-report.md)) |
-| **Live-class extras** | Recording and content protection, live monitoring, optional microphone ([docs/11](docs/11-live-recording-and-content-protection.md), [docs/15](docs/15-live-class-monitoring.md), [docs/18](docs/18-microphone-option.md)) |
+| **Test portal** | Timed tests with secure test mode, and a camera check with a face oval, same-face and phone detection ([docs/09](docs/09-test-portal.md)), and student progress reports ([docs/10](docs/10-student-progress-report.md)) |
+| **Live-class extras** | Recording and content protection, live monitoring (camera compulsory where it is on), optional microphone ([docs/11](docs/11-live-recording-and-content-protection.md), [docs/15](docs/15-live-class-monitoring.md), [docs/18](docs/18-microphone-option.md)); subtitles and a text transcript of what the trainer said, an End class button, and students who cannot see each other ([docs/23](docs/23-live-class-subtitles-and-ending.md)) |
+| **New students and fees** | Staff are told of a new student; a student sees only the course list until placed; course fee set by staff and shown before a request; the self-registration switch ([docs/24](docs/24-new-students-and-fees.md)) |
 | **Class delivery options** | Per session: built-in live room, embedded Jitsi, or a Google Meet / Zoom link ([docs/20](docs/20-class-delivery-options.md)) |
-| **Video lesson monitoring** | Opt-in per lesson: camera check, auto-pause when the face is missing, and who-watched-how-much ([docs/21](docs/21-video-lesson-monitoring.md)) |
+| **Video lesson monitoring** | Opt-in per lesson: camera check with a face oval, auto-pause when the face is missing, completion only by watching 90% (no Mark as complete button), and who-watched-how-much ([docs/21](docs/21-video-lesson-monitoring.md)) |
 | **Human check (captcha)** | Optional Cloudflare Turnstile on sign-in, registration and forgot-password, verified on the server ([docs/22](docs/22-human-check-captcha.md)) |
 | **Accounts and branding** | Single active login per user, admin-set branding and sign-in background, language choice ([docs/12](docs/12-single-active-login.md), [docs/13](docs/13-branding.md), [docs/17](docs/17-language-choice.md)) |
 

@@ -246,6 +246,7 @@ New work not in the source PDF (§22 lists live classes as future work only). Se
 | status | VARCHAR(20) | CHECK: SCHEDULED, LIVE, ENDED, CANCELLED |
 | started_at, ended_at, max_participants, peak_participants | | |
 | recording_enabled, recording_url | | |
+| transcript_lines | INT | how many subtitle phrases have been saved for the class (V9); the Transcript button shows when it is above 0 |
 | attendance_computed, attendance_computed_at | BOOLEAN, TIMESTAMPTZ | stops a late webhook or sweep re-run from double-publishing attendance; CHECK ties the two together |
 | created_at, updated_at, created_by, updated_by | | |
 
@@ -269,6 +270,18 @@ New work not in the source PDF (§22 lists live classes as future work only). Se
 | identity, user_id, event_type, participant_sid, occurred_at | | raw webhook log — lets attendance be recomputed if thresholds change or a figure is disputed |
 | livekit_event_id | VARCHAR(80) | UNIQUE — LiveKit retries until it gets a 200; this is what makes a replay harmless |
 | created_at | | |
+
+### `live_transcript_lines`
+| Column | Type | Notes |
+|---|---|---|
+| id | BIGSERIAL | **PK** |
+| live_session_id | BIGINT | **FK →** live_sessions.id, `ON DELETE CASCADE` |
+| seq | INT | running number from 1; UNIQUE (live_session_id, seq) |
+| at_seconds | INT | seconds from the start of the class to the end of the phrase |
+| language | VARCHAR(10) | e.g. `mr-IN` |
+| text | VARCHAR(1000) | what the trainer said, from speech recognition. Words only, never audio |
+| client_id | VARCHAR(40) | made by the trainer's browser; UNIQUE (live_session_id, client_id), so a retry is stored once |
+| created_at | TIMESTAMPTZ | |
 
 ---
 
