@@ -357,6 +357,8 @@ services:
       <<: *service-env
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@itinstitute.local}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in deploy/docker/.env}
+      # Public sign-up on the register page. Closed by default: students are normally admitted by staff.
+      SELF_REGISTRATION_ENABLED: ${SELF_REGISTRATION_ENABLED:-false}
       # "Verify you are human" (Cloudflare Turnstile). Off by default; see .env.example.
       CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
       CAPTCHA_SITE_KEY: ${CAPTCHA_SITE_KEY:-}

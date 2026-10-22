@@ -72,6 +72,28 @@ class UserEventConsumerTest {
     }
 
     @Test
+    void aNewStudentIsReportedToAdministratorsAndCoordinatorsWithALinkToThem() {
+        when(studentRepository.existsByUserId(42L)).thenReturn(false);
+        when(studentRepository.nextCodeSequence(anyInt())).thenReturn(3L);
+        when(studentRepository.save(any(Student.class))).thenAnswer(i -> {
+            Student s = i.getArgument(0);
+            s.setId(77L);
+            return s;
+        });
+
+        consumer.onUserCreated(event("STUDENT", true));
+
+        ArgumentCaptor<Object> sent = ArgumentCaptor.forClass(Object.class);
+        verify(kafkaTemplate, org.mockito.Mockito.times(2)).send(eq(KafkaTopics.NOTIFICATION_REQUESTED), anyString(), sent.capture());
+        var notices = sent.getAllValues().stream().map(o -> (com.itilms.common.event.NotificationRequestedEvent) o).toList();
+        assertThat(notices).extracting(n -> n.role()).containsExactlyInAnyOrder("ADMIN", "COORDINATOR");
+        assertThat(notices).allSatisfy(n -> {
+            assertThat(n.title()).isEqualTo("New student: Ravi Kumar");
+            assertThat(n.actionUrl()).isEqualTo("/admin/students/77");
+        });
+    }
+
+    @Test
     void aRedeliveredEventDoesNotCreateASecondProfile() {
         when(studentRepository.existsByUserId(42L)).thenReturn(true);
 

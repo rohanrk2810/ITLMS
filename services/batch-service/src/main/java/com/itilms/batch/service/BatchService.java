@@ -47,6 +47,12 @@ public interface BatchService {
     /** Batches the signed-in student is currently in. */
     List<BatchSummaryResponse> myBatches(Long studentId);
 
+    /**
+     * Whether the student has ever been placed in a batch. A new student who has only asked for a course is not placed
+     * yet; one whose batch has ended still is, which is why this is not "has an active batch".
+     */
+    boolean isPlaced(Long studentId);
+
     /** Batches a trainer teaches, primary or co-trainer. */
     List<BatchSummaryResponse> trainerBatches(Long trainerId);
 

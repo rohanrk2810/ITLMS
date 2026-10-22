@@ -5,6 +5,7 @@ import { fetchCurrentUser } from '@/api/auth'
 
 import { NAV_ITEMS } from '@/components/nav-items'
 import { useBranding } from '@/lib/use-branding'
+import { useUnplacedStudent } from '@/lib/use-placement'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -21,10 +22,14 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     refetchOnWindowFocus: true,
   })
   const hiddenForStudents = me.data?.hiddenMenu ?? instituteHidden
+  // A new student who has not been placed in a batch yet sees only the courses, to ask for one. Once an administrator
+  // approves a request the whole menu appears, minus whatever the administrator hid.
+  const unplaced = useUnplacedStudent()
   // The administrator chooses which pages a student's menu shows; the dashboard is always there.
   const items = NAV_ITEMS.filter(
     (item) =>
       (!role || item.roles.includes(role)) &&
+      (!unplaced || item.to === '/app' || item.to === '/app/courses') &&
       !(role === 'STUDENT' && item.to !== '/app' && hiddenForStudents.includes(item.to)),
   )
 

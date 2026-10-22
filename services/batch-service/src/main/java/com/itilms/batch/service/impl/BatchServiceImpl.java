@@ -125,6 +125,12 @@ public class BatchServiceImpl implements BatchService {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean isPlaced(Long studentId) {
+        return studentId != null && enrollmentRepository.existsByStudentId(studentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<BatchSummaryResponse> trainerBatches(Long trainerId) {
         return summaries(batchIdsForTrainer(trainerId));
     }

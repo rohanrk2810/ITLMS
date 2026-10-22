@@ -23,6 +23,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long>,
 
     List<Enrollment> findByStudentId(Long studentId);
 
+    /** Whether the student has ever been placed in a batch, whatever became of that place. */
+    boolean existsByStudentId(Long studentId);
+
     Optional<Enrollment> findByStudentIdAndBatchIdAndStatus(Long studentId, Long batchId,
                                                             EnrollmentStatus status);
 

@@ -7,6 +7,7 @@ import { InstituteCharts, StudentCharts } from '@/components/dashboard-charts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney } from '@/lib/format'
+import { useUnplacedStudent } from '@/lib/use-placement'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const ROLE_BLURB: Record<string, string> = {
@@ -21,6 +22,7 @@ const ROLE_BLURB: Record<string, string> = {
 export function DashboardPage() {
   const user = useAuthStore((state) => state.user)
   const showInstituteSummary = hasRole(user?.role, ['ADMIN', 'COORDINATOR'])
+  const unplaced = useUnplacedStudent()
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,10 +31,31 @@ export function DashboardPage() {
         <p className="text-muted-foreground">{user && ROLE_BLURB[user.role]}</p>
       </div>
 
-      {showInstituteSummary ? <InstituteSummary /> : <RoleQuickLinks role={user?.role} />}
-      {user?.role === 'STUDENT' && <StudentCharts />}
+      {unplaced && <WelcomeNewStudent />}
+      {!unplaced && (showInstituteSummary ? <InstituteSummary /> : <RoleQuickLinks role={user?.role} />)}
+      {user?.role === 'STUDENT' && !unplaced && <StudentCharts />}
       {!showInstituteSummary && <AnnouncementsPanel />}
     </div>
+  )
+}
+
+/** A new student has nothing to show yet: say what to do, and what happens next. */
+function WelcomeNewStudent() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Choose your course</CardTitle>
+        <CardDescription>
+          Open Courses, read the outline of the course you want and send a request. The institute reviews it and places you
+          in a batch. When that is done the rest of the portal opens: classes, tests, fees and certificates.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Link to="/app/courses" className="text-sm font-medium text-primary hover:underline">
+          Browse courses
+        </Link>
+      </CardContent>
+    </Card>
   )
 }
 

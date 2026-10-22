@@ -78,6 +78,18 @@ public class BatchController {
                 : batchService.trainerBatches(principal.profileId());
     }
 
+    @Operation(summary = "Has this student been placed in a batch yet?",
+            description = "False for a new student whose course request has not been approved. The portal shows such a student "
+                    + "only the course list until the answer is true. A student whose batch has since ended is still placed.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/mine/placed")
+    public PlacedResponse placed(@AuthenticationPrincipal AppPrincipal principal) {
+        return new PlacedResponse(batchService.isPlaced(principal.profileId()));
+    }
+
+    public record PlacedResponse(boolean placed) {
+    }
+
     @Operation(summary = "Get a batch")
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")

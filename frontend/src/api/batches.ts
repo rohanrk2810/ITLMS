@@ -137,6 +137,15 @@ export async function createBatch(input: CreateBatchInput): Promise<BatchRespons
   return data
 }
 
+/**
+ * Whether the signed-in student has ever been placed in a batch. False for a new student whose course request has not
+ * been approved; the portal then shows only the course list. Still true after a batch has ended.
+ */
+export async function fetchPlacement(): Promise<{ placed: boolean }> {
+  const { data } = await apiClient.get<{ placed: boolean }>('/api/batches/mine/placed')
+  return data
+}
+
 export async function getBatch(id: number | string): Promise<BatchResponse> {
   const { data } = await apiClient.get<BatchResponse>(`/api/batches/${id}`)
   return data
