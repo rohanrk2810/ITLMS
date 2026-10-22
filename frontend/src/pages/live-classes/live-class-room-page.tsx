@@ -15,6 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { isJitsiUrl, jitsiEmbedUrl } from '@/lib/jitsi'
 import { useAuthStore } from '@/stores/auth-store'
+import { CaptionsControl, CaptionsOverlay, SubtitlesToggle } from './captions'
+import { EndClassButton } from './end-class-button'
 import { HostSidePanel } from './host-side-panel'
 import { LiveQuestionPanel } from './live-question-panel'
 import { StudentConference } from './student-conference'
@@ -89,6 +91,8 @@ export function LiveClassRoomPage() {
                 title={credentials.topic ?? credentials.courseTitle}
                 startsAt={credentials.scheduledStartAt}
                 showPeople={credentials.roomAdmin}
+                liveSessionId={credentials.liveSessionId}
+                isTrainer={credentials.role === 'TRAINER'}
               />
               {/* The recording captures exactly this box: the class itself, without the side panel or the bar. */}
               <div id="class-stage" className="min-h-0 flex-1">
@@ -98,6 +102,7 @@ export function LiveClassRoomPage() {
                   className="h-full"
                 >
                   {credentials.roomAdmin ? <VideoConference /> : <StudentConference />}
+                  <CaptionsOverlay />
                 </ContentProtection>
               </div>
             </div>
@@ -120,7 +125,19 @@ export function LiveClassRoomPage() {
 }
 
 /** Top bar of the room: a pulsing LIVE badge, the class name, how long it has been running and who is in it. */
-function RoomBar({ title, startsAt, showPeople }: { title: string; startsAt: string; showPeople: boolean }) {
+function RoomBar({
+  title,
+  startsAt,
+  showPeople,
+  liveSessionId,
+  isTrainer,
+}: {
+  title: string
+  startsAt: string
+  showPeople: boolean
+  liveSessionId: number
+  isTrainer: boolean
+}) {
   const people = useParticipants().length
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -141,6 +158,8 @@ function RoomBar({ title, startsAt, showPeople }: { title: string; startsAt: str
       <span className="live-pill">LIVE</span>
       <span className="truncate text-sm font-semibold">{title}</span>
       <span className="ml-auto flex items-center gap-2">
+        {isTrainer ? <CaptionsControl liveSessionId={liveSessionId} /> : <SubtitlesToggle />}
+        {showPeople && <EndClassButton liveSessionId={liveSessionId} />}
         <span className="class-room-chip">
           <Clock className="size-3.5" />
           {clock}

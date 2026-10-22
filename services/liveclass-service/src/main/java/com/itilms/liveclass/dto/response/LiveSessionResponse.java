@@ -39,6 +39,9 @@ public record LiveSessionResponse(
 
         boolean attendanceComputed,
 
+        @Schema(description = "How many phrases of the class's transcript exist; 0 when there is none")
+        int transcriptLines,
+
         @Schema(description = "True when the room will accept a join request at this moment")
         boolean joinable,
 
@@ -73,6 +76,6 @@ public record LiveSessionResponse(
                 s.getStatus().name(), s.getStartedAt(), s.getEndedAt(),
                 s.getPeakParticipants(), s.isRecordingEnabled(), s.getRecordingUrl(), s.isBeingRecorded(),
                 s.getRecordingUrl() == null ? 0L : recordingSize(s),
-                s.isAttendanceComputed(), joinable, participants);
+                s.isAttendanceComputed(), s.getTranscriptLines(), joinable, participants);
     }
 }

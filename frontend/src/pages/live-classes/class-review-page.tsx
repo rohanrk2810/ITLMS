@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, Loader2, Video } from 'lucide-react'
+import { ChevronLeft, FileText, Loader2, Video } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -9,6 +9,7 @@ import {
   type LiveSessionResponse,
   answerQuestion,
   classQuestions,
+  downloadTranscript,
   fetchRecording,
   getLiveSessionStatus,
 } from '@/api/live-classes'
@@ -128,6 +129,18 @@ export function ClassReviewPage() {
             weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
           })}
         </p>
+        {session.transcriptLines > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => void downloadTranscript(session.id).catch(() => toast.error('Could not download the transcript.'))}
+          >
+            <FileText />
+            Download transcript (.txt)
+          </Button>
+        )}
       </div>
 
       {session.recordingUrl ? (
