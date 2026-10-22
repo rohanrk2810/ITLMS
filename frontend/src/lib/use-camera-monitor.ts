@@ -2,9 +2,21 @@ import { type RefObject, useEffect, useRef, useState } from 'react'
 
 import type { ViolationType } from '@/api/assessments'
 import { loadFaceDetector, readFaces } from '@/lib/face-detector'
+import { describeFace, distanceFromReference, loadFaceIdentity, SAME_FACE_MAX_DISTANCE } from '@/lib/face-identity'
+import { loadObjectDetector, lookAround } from '@/lib/object-detector'
 
 /** What the student's camera looks like right now. */
-export type CameraStatus = 'starting' | 'ok' | 'no-face' | 'out-of-oval' | 'multiple-faces' | 'off' | 'denied' | 'no-detector'
+export type CameraStatus =
+  | 'starting'
+  | 'ok'
+  | 'no-face'
+  | 'out-of-oval'
+  | 'multiple-faces'
+  | 'different-face'
+  | 'device'
+  | 'off'
+  | 'denied'
+  | 'no-detector'
 
 const CHECK_EVERY_MS = 1000
 /** A face that is missing (or extra) for this many checks in a row is reported; one blink of the detector is not. */
@@ -14,6 +26,11 @@ const REPEAT_REPORT_MS = 30_000
 const MUTE_GRACE_MS = 3000
 /** A face that stays outside the oval is warned about again this often. */
 const OUTSIDE_REPEAT_MS = 10_000
+/** Who is there, and what is in view, is looked at less often than whether a face is there: it costs more. */
+const DEEP_CHECK_EVERY_MS = 3000
+/** The same finding this many deep checks in a row is reported; a single odd frame is not. */
+const DEEP_CHECKS_BEFORE_REPORT = 2
+const DEEP_REPEAT_REPORT_MS = 20_000
 
 interface CameraMonitorOptions {
   enabled: boolean
@@ -21,19 +38,25 @@ interface CameraMonitorOptions {
   video: RefObject<HTMLVideoElement | null>
   /** Told about each problem. The server records it and answers with the warning to show. */
   onEvent: (type: ViolationType, detail?: string) => void
+  /** The face(s) recorded at the start of the test. With them the monitor warns when a different face takes over. */
+  reference?: Float32Array[] | null
 }
 
 /**
- * Watches a live camera for the things a proctor would notice: no face in view, a second face, the camera
- * switched off, its permission taken away. It runs in this browser and can be fooled, so it only records and
+ * Watches a live camera for the things a proctor would notice: no face in view, a second face or person, a
+ * different face from the one the test started with, a phone, the camera switched off, its permission taken away. It runs in this browser and can be fooled, so it only records and
  * warns - it never fails a student by itself. Returns the current status for the page to show.
  */
-export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMonitorOptions): CameraStatus {
+export function useCameraMonitor({ enabled, stream, video, onEvent, reference }: CameraMonitorOptions): CameraStatus {
   const [status, setStatus] = useState<CameraStatus>('starting')
   const report = useRef(onEvent)
   useEffect(() => {
     report.current = onEvent
   }, [onEvent])
+  const referenceFaces = useRef(reference)
+  useEffect(() => {
+    referenceFaces.current = reference
+  }, [reference])
 
   useEffect(() => {
     if (!enabled || !stream) return
@@ -50,6 +73,16 @@ export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMoni
     let reportedCrowd = 0
     let reportedOutside = 0
     let reportedOff = false
+    // What the slower check found: shown when the face itself is fine, and counted across checks.
+    let deepFlag: CameraStatus | null = null
+    let latestFaces = 0
+    let differentRun = 0
+    let phoneRun = 0
+    let peopleRun = 0
+    let reportedDifferent = 0
+    let reportedPhone = 0
+    let reportedPeople = 0
+    let deepTimer: ReturnType<typeof setInterval> | undefined
 
     function cameraOff(detail: string) {
       if (reportedOff) return
@@ -99,6 +132,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMoni
             return
           }
           const { count: faces, inOval } = readFaces(detector, element)
+          latestFaces = faces
           const now = Date.now()
 
           if (faces === 1 && !inOval) {
@@ -137,7 +171,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMoni
             reportedCrowd = 0
             reportedOutside = 0
             reportedOff = false
-            setStatus('ok')
+            setStatus(deepFlag ?? 'ok')
           }
         }, CHECK_EVERY_MS)
       })
@@ -147,9 +181,90 @@ export function useCameraMonitor({ enabled, stream, video, onEvent }: CameraMoni
         if (!cancelled) setStatus('no-detector')
       })
 
+    // The slower check: is it still the same person, and is there a phone or another person in view? Either model may
+    // fail to load; the face check above carries on without it.
+    let identity: Awaited<ReturnType<typeof loadFaceIdentity>> | null = null
+    let objects: Awaited<ReturnType<typeof loadObjectDetector>> | null = null
+    if (referenceFaces.current && referenceFaces.current.length > 0) {
+      void loadFaceIdentity()
+        .then((loaded) => {
+          if (!cancelled) identity = loaded
+        })
+        .catch(() => undefined)
+    }
+    void loadObjectDetector()
+      .then((loaded) => {
+        if (!cancelled) objects = loaded
+      })
+      .catch(() => undefined)
+
+    let deepBusy = false
+    deepTimer = setInterval(() => {
+      const element = video.current
+      if (deepBusy || !element || !track || track.readyState === 'ended' || !track.enabled) return
+      deepBusy = true
+      void (async () => {
+        try {
+          const now = Date.now()
+          const known = referenceFaces.current
+
+          // Who: only when exactly one face is in view, so a second face is reported as that and not as "different".
+          if (identity && known && known.length > 0 && latestFaces === 1) {
+            const face = await describeFace(identity, element)
+            if (face) {
+              const distance = distanceFromReference(known, face)
+              if (distance > SAME_FACE_MAX_DISTANCE) {
+                differentRun += 1
+                if (differentRun >= DEEP_CHECKS_BEFORE_REPORT) {
+                  deepFlag = 'different-face'
+                  setStatus('different-face')
+                  if (now - reportedDifferent > DEEP_REPEAT_REPORT_MS) {
+                    reportedDifferent = now
+                    report.current('FACE_MISMATCH', `A different face from the start of the test (distance ${distance.toFixed(2)})`)
+                  }
+                }
+              } else {
+                differentRun = 0
+                reportedDifferent = 0
+                if (deepFlag === 'different-face') deepFlag = null
+              }
+            }
+          }
+
+          // What: a phone, or another person's body in view.
+          if (objects) {
+            const scene = lookAround(objects, element)
+            phoneRun = scene.phone ? phoneRun + 1 : 0
+            peopleRun = scene.people >= 2 ? peopleRun + 1 : 0
+            if (phoneRun >= DEEP_CHECKS_BEFORE_REPORT) {
+              if (deepFlag !== 'different-face') deepFlag = 'device'
+              setStatus((current) => (current === 'ok' || current === 'device' ? 'device' : current))
+              if (now - reportedPhone > DEEP_REPEAT_REPORT_MS) {
+                reportedPhone = now
+                report.current('DEVICE_DETECTED', 'A mobile phone is in view')
+              }
+            } else if (deepFlag === 'device') {
+              deepFlag = null
+            }
+            if (peopleRun >= DEEP_CHECKS_BEFORE_REPORT && now - reportedPeople > DEEP_REPEAT_REPORT_MS) {
+              reportedPeople = now
+              report.current('MULTIPLE_FACES', 'Another person is in view')
+            }
+            if (scene.people < 2) reportedPeople = 0
+            if (!scene.phone) reportedPhone = 0
+          }
+        } catch {
+          // A failed look is skipped; the next one tries again.
+        } finally {
+          deepBusy = false
+        }
+      })()
+    }, DEEP_CHECK_EVERY_MS)
+
     return () => {
       cancelled = true
       clearInterval(timer)
+      clearInterval(deepTimer)
       clearTimeout(muteTimer)
       track?.removeEventListener('ended', onEnded)
       track?.removeEventListener('mute', onMute)

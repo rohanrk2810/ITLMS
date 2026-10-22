@@ -3,6 +3,7 @@ import { Camera, CameraOff, Loader2, ScanFace } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { CAMERA_PROBLEM_TEXT, CameraError, loadFaceDetector, openCamera, OVAL, readFaces } from '@/lib/face-detector'
+import { describeFace, loadFaceIdentity, REFERENCE_SAMPLES, samplesAgree } from '@/lib/face-identity'
 import type { CameraStatus } from '@/lib/use-camera-monitor'
 import { cn } from '@/lib/utils'
 
@@ -36,20 +37,31 @@ function OvalGuide({ good }: { good: boolean | null }) {
 interface CameraCheckProps {
   stream: MediaStream | null
   onStream: (stream: MediaStream) => void
-  /** True once a face has been seen, or when the face check cannot run here (the camera itself is on). */
+  /** True once a face has been seen and recorded, or when the face check cannot run here (the camera itself is on). */
   onReady: (ready: boolean) => void
+  /**
+   * The face recorded for this test, as numbers (not a picture), or null when it could not be taken. The test compares
+   * who is in front of the camera with it. It stays in this browser.
+   */
+  onReference?: (reference: Float32Array[] | null) => void
 }
 
 /**
  * Before a camera test starts: ask for the camera, show the student themselves, and wait until a face is in
  * view. The student cannot start until the camera is on and a face has been seen.
  */
-export function CameraCheck({ stream, onStream, onReady }: CameraCheckProps) {
+export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCheckProps) {
   const video = useRef<HTMLVideoElement>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [asking, setAsking] = useState(false)
   const [faces, setFaces] = useState<number | 'unavailable' | null>(null)
   const [inOval, setInOval] = useState(false)
+  // Recording whose face this is: a few samples, taken while the face is in the oval, that must agree with each other.
+  const [identity, setIdentity] = useState<'waiting' | 'collecting' | 'done' | 'unavailable'>('waiting')
+  const [collected, setCollected] = useState(0)
+  const [retake, setRetake] = useState(false)
+  const faceOk = faces === 1 && inOval
+  const samples = useRef<Float32Array[]>([])
   useStreamOnVideo(stream, video)
 
   useEffect(() => {
@@ -67,19 +79,85 @@ export function CameraCheck({ stream, onStream, onReady }: CameraCheckProps) {
           const reading = readFaces(detector, video.current)
           setFaces(reading.count)
           setInOval(reading.inOval)
-          onReady(reading.count === 1 && reading.inOval)
         }, 700)
       })
       .catch(() => {
         if (cancelled) return
         setFaces('unavailable')
-        onReady(true)
       })
     return () => {
       cancelled = true
       clearInterval(timer)
     }
-  }, [stream, onReady])
+  }, [stream])
+
+  // A new camera means a new recording of the face.
+  useEffect(() => {
+    samples.current = []
+    setCollected(0)
+    setIdentity('waiting')
+    setRetake(false)
+    onReference?.(null)
+  }, [stream, onReference])
+
+  // While a single face sits in the oval, take samples of it until there are enough that agree.
+  useEffect(() => {
+    if (!stream || !faceOk || identity === 'done' || identity === 'unavailable') return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    setIdentity('collecting')
+    loadFaceIdentity()
+      .then((identityNets) => {
+        const sample = async () => {
+          if (cancelled || !video.current) return
+          try {
+            const face = await describeFace(identityNets, video.current)
+            if (cancelled) return
+            if (face) {
+              samples.current.push(face)
+              setCollected(samples.current.length)
+              if (samples.current.length >= REFERENCE_SAMPLES) {
+                if (samplesAgree(samples.current)) {
+                  onReference?.(samples.current)
+                  setIdentity('done')
+                  return
+                }
+                // They disagree: the person moved or the light changed. Start the recording again.
+                samples.current = []
+                setCollected(0)
+                setRetake(true)
+              }
+            }
+          } catch {
+            // A failed look is skipped.
+          }
+          timer = setTimeout(() => void sample(), 1100)
+        }
+        void sample()
+      })
+      .catch(() => {
+        if (cancelled) return
+        // The recogniser could not load. The camera is still on and the face is visible; the test goes ahead without
+        // checking who it is, and says so to the trainer's record by simply having no reference.
+        onReference?.(null)
+        setIdentity('unavailable')
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [stream, faceOk, identity, onReference])
+
+  // Ready once a face is in the oval and recorded (or the face check cannot run here at all).
+  useEffect(() => {
+    if (!stream) {
+      onReady(false)
+    } else if (faces === 'unavailable') {
+      onReady(true)
+    } else {
+      onReady(faceOk && (identity === 'done' || identity === 'unavailable'))
+    }
+  }, [stream, faces, faceOk, identity, onReady])
 
   async function allow() {
     setAsking(true)
@@ -122,7 +200,13 @@ export function CameraCheck({ stream, onStream, onReady }: CameraCheckProps) {
             {faces === 0 && 'I cannot see your face. Face the camera, in good light, and sit a little closer.'}
             {typeof faces === 'number' && faces > 1 && 'More than one face is visible. Only you should be in view.'}
             {faces === 1 && !inOval && 'Move so your face is inside the oval.'}
-            {faces === 1 && inOval && 'Your face is inside the oval. You can start. Keep it there during the test.'}
+            {faces === 1 && inOval && identity !== 'done' && identity !== 'unavailable' &&
+              `Checking that it is you (${collected} of ${REFERENCE_SAMPLES}). Look at the camera and hold still.`}
+            {faces === 1 && inOval && retake && identity !== 'done' && ' The samples did not match; hold still and face the camera.'}
+            {faces === 1 && inOval && identity === 'done' &&
+              'Your face is recorded for this test, in this browser only. You can start. Keep your face in the oval, alone in the picture, with no phone in view.'}
+            {faces === 1 && inOval && identity === 'unavailable' &&
+              'Your face is inside the oval. You can start. Keep it there during the test.'}
           </p>
         </div>
       )}
@@ -140,6 +224,8 @@ const STATUS_TEXT: Record<CameraStatus, string> = {
   ok: 'Camera OK',
   'no-face': 'Face not visible',
   'out-of-oval': 'Keep your face inside the oval',
+  'different-face': 'A different face',
+  device: 'Phone in view',
   'multiple-faces': 'More than one face',
   off: 'Camera off',
   denied: 'Camera blocked',
@@ -158,7 +244,13 @@ interface CameraPreviewProps {
 export function CameraPreview({ stream, video, status, oval = false }: CameraPreviewProps) {
   useStreamOnVideo(stream, video)
   const bad =
-    status === 'no-face' || status === 'out-of-oval' || status === 'multiple-faces' || status === 'off' || status === 'denied'
+    status === 'no-face' ||
+    status === 'out-of-oval' ||
+    status === 'multiple-faces' ||
+    status === 'different-face' ||
+    status === 'device' ||
+    status === 'off' ||
+    status === 'denied'
 
   return (
     <div

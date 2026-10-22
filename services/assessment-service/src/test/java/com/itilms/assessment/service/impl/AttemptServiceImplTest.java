@@ -521,7 +521,8 @@ class AttemptServiceImplTest {
         QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
 
         for (ViolationType type : List.of(ViolationType.FACE_NOT_DETECTED, ViolationType.MULTIPLE_FACES,
-                ViolationType.CAMERA_DISABLED, ViolationType.CAMERA_PERMISSION_DENIED, ViolationType.FACE_NOT_DETECTED)) {
+                ViolationType.CAMERA_DISABLED, ViolationType.CAMERA_PERMISSION_DENIED, ViolationType.FACE_NOT_DETECTED,
+                ViolationType.FACE_OUT_OF_FRAME, ViolationType.FACE_MISMATCH, ViolationType.DEVICE_DETECTED)) {
             var outcome = service.recordViolation(9L, report(type));
             assertThat(outcome.message()).isEqualTo(type.warning()).startsWith("Warning:");
             assertThat(outcome.terminated()).isFalse();
@@ -530,7 +531,7 @@ class AttemptServiceImplTest {
         assertThat(a.getViolationCount()).isZero();
         assertThat(a.getStatus()).isEqualTo(AttemptStatus.IN_PROGRESS);
         verify(scorer, never()).terminate(any(), any(), any());
-        verify(violations, org.mockito.Mockito.times(5)).save(any());
+        verify(violations, org.mockito.Mockito.times(8)).save(any());
     }
 
     @Test
