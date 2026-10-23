@@ -410,6 +410,8 @@ public class QuizServiceImpl implements QuizService {
         question.setAllowLanguageChoice(type == QuestionType.CODING && Boolean.TRUE.equals(request.allowLanguageChoice())
                 && question.getCodeLanguage() != CodeLanguage.SQL);
         question.setAllowSuggestions(type == QuestionType.CODING && Boolean.TRUE.equals(request.allowSuggestions()));
+        question.setSetupSql(type == QuestionType.CODING && question.getCodeLanguage() == CodeLanguage.SQL
+                ? trim(request.setupSql()) : null);
         sequence = 1;
         for (QuestionRequest.TestCaseRequest testCase : cases) {
             question.getTestCases().add(QuizTestCase.builder()

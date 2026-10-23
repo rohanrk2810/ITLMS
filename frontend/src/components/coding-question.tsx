@@ -97,12 +97,21 @@ export function CodingQuestion({
         </Button>
       </div>
 
+      {language === 'SQL' && question.setupSql && (
+        <div className="flex flex-col gap-1 text-xs">
+          <span className="font-medium">Database - your query runs against these tables and rows</span>
+          <pre className="max-h-48 overflow-auto rounded-md border bg-muted/40 px-2 py-1 font-mono whitespace-pre-wrap">
+            {question.setupSql}
+          </pre>
+        </div>
+      )}
+
       {question.sampleTests.length > 0 && (
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium">Examples</span>
           {question.sampleTests.map((sample, i) => (
-            <div key={i} className="grid gap-2 text-xs sm:grid-cols-2">
-              <Labelled label="Input" text={sample.input} />
+            <div key={i} className={cn('grid gap-2 text-xs', language !== 'SQL' && 'sm:grid-cols-2')}>
+              {language !== 'SQL' && <Labelled label="Input" text={sample.input} />}
               <Labelled label="Expected output" text={sample.expectedOutput} />
             </div>
           ))}

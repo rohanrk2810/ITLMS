@@ -48,6 +48,10 @@ public record QuestionRequest(
         @Size(max = 20000, message = "Starter code is limited to 20000 characters")
         String starterCode,
 
+        @Schema(description = "CODING in SQL only: CREATE TABLE and INSERT statements that run before the student's query")
+        @Size(max = 50000, message = "Database setup is limited to 50000 characters")
+        String setupSql,
+
         @Schema(description = "SHORT_ANSWER only: any of these earns the marks (spaces and case are ignored)")
         @Size(max = 10, message = "At most 10 accepted answers")
         List<@NotBlank @Size(max = 500) String> acceptedAnswers,

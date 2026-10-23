@@ -75,7 +75,7 @@ public class CodingJudge {
         CodeLanguage used = language != null ? language : question.getCodeLanguage();
 
         List<CodeClient.RunResult> results = codeClient.runBatch(new CodeClient.RunBatchRequest(
-                used.name(), sourceCode, cases.stream().map(QuizTestCase::getInput).toList()));
+                used.name(), withSetup(question, used, sourceCode), cases.stream().map(QuizTestCase::getInput).toList()));
         if (results == null || results.size() != cases.size()) {
             throw new BusinessRuleException("CODE_RUNNER_UNAVAILABLE", "The code runner gave an incomplete answer. Try again.");
         }
@@ -103,6 +103,15 @@ public class CodingJudge {
                     run.timeSeconds(), run.memoryKb()));
         }
         return new Verdict(compileError, outcomes);
+    }
+
+    /** A SQL question's database is built first, on the fresh database every run starts with; the student's query follows. */
+    private static String withSetup(QuizQuestion question, CodeLanguage used, String sourceCode) {
+        String setup = question.getSetupSql();
+        if (used != CodeLanguage.SQL || setup == null || setup.isBlank()) {
+            return sourceCode;
+        }
+        return setup.stripTrailing() + "\n" + sourceCode;
     }
 
     /** Same text once line endings, trailing spaces on each line and trailing blank lines are ignored. */

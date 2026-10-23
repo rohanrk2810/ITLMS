@@ -52,7 +52,7 @@ public record QuizResponse(
                            int sequenceNo, String explanation, List<Option> options,
                            String codeLanguage, String starterCode, List<String> acceptedAnswers,
                            List<TestCase> testCases, boolean allowLanguageChoice,
-                           boolean allowSuggestions) {
+                           boolean allowSuggestions, String setupSql) {
 
         static Question from(QuizQuestion q) {
             return new Question(q.getId(), q.getQuestionText(), q.getType().name(), q.getMarks(),
@@ -61,7 +61,7 @@ public record QuizResponse(
                     q.getCodeLanguage() == null ? null : q.getCodeLanguage().name(), q.getStarterCode(),
                     List.copyOf(q.getAcceptedAnswers()),
                     q.getTestCases().stream().map(TestCase::from).toList(), q.isAllowLanguageChoice(),
-                    q.isAllowSuggestions());
+                    q.isAllowSuggestions(), q.getSetupSql());
         }
     }
 
