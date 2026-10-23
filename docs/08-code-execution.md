@@ -30,7 +30,11 @@ browser ──/api/code/run──▶ gateway ──▶ codeexec-service ──�
 | Editor and Run button | `frontend/src/components/practice-editor.tsx` |
 | Choosing a language when adding a lesson | `frontend/src/pages/courses/course-editor-page.tsx` |
 
-**Languages:** Java, Python, C, C++, C#, SQL (SQLite). **PL/SQL is not supported** — it needs an Oracle database behind it, which a sandbox does not provide.
+**Languages:** Java, Python, C, C++, C#, SQL.
+
+**SQL runs on Oracle Free**, not in the sandbox: the `oracle` service in `deploy/docker/docker-compose.yml` (`gvenzl/oracle-free`, about 2 GB of RAM; the first start takes a minute or two). `codeexec-service` creates a throwaway database user for every run, runs the script in that user's schema and drops the user, so one student never sees another's tables. Oracle syntax (`NUMBER`, `VARCHAR2`, `INSERT ALL`, `ROWNUM`, `NVL`, `dual`, sequences) and PL/SQL (`BEGIN ... END;` followed by `/`, `DBMS_OUTPUT.PUT_LINE`) work. SQL*Plus commands such as `SET SERVEROUTPUT ON` are ignored.
+
+What a script prints is the rows of every `SELECT`, one line per row, columns joined by `|`, no header, NULL as nothing, plus anything `DBMS_OUTPUT` printed. A quiz question's *Database setup* is run before the student's query, and the trainer's expected output is made by running the correct query the same way. Set `ORACLE_URL` blank to fall back to SQLite in the sandbox (`sqlite3`, see below).
 
 ## Endpoints
 

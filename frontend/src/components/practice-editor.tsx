@@ -138,7 +138,7 @@ export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId
           <h2 className="text-sm font-semibold">{title}</h2>
           <p className="text-xs text-muted-foreground">
             {label}
-            {language === 'SQL' && ' (runs on SQLite, starting from an empty database)'}
+            {language === 'SQL' && ' (runs on Oracle, starting from an empty schema)'}
           </p>
         </div>
         <div className="flex items-center gap-2">

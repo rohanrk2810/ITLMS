@@ -56,6 +56,14 @@ itilms:
         CSHARP: { language: csharp,  version: 6.12.0, file-name: Main }
         SQL:    { language: sqlite3, version: 3.36.0, file-name: main.sql }
 
+    # SQL runs on Oracle when a URL is set; blank means the sandbox's own SQLite (entries above).
+    # Each run builds a throwaway user, runs the script in it and drops it. The admin account must be
+    # allowed to create and drop users (system, in the oracle container).
+    oracle:
+      url: ${ORACLE_URL:}
+      admin-user: ${ORACLE_ADMIN_USER:system}
+      admin-password: ${ORACLE_PASSWORD:}
+
     limits:
       max-source-chars: 50000
       max-stdin-chars: 10000
