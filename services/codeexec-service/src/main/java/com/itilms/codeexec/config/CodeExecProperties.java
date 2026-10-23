@@ -26,6 +26,8 @@ public class CodeExecProperties {
 
     private Piston piston = new Piston();
 
+    private Oracle oracle = new Oracle();
+
     private Limits limits = new Limits();
 
     private RateLimit rateLimit = new RateLimit();
@@ -63,6 +65,21 @@ public class CodeExecProperties {
         private String version;
         /** Source file name, when the language cares (Java's public class must match it). Blank lets Piston choose. */
         private String fileName;
+    }
+
+    /** The Oracle database SQL runs on. Every run gets a throwaway schema in it, so one student cannot see another's tables. */
+    @Getter
+    @Setter
+    public static class Oracle {
+        /** e.g. {@code jdbc:oracle:thin:@//oracle:1521/FREEPDB1}. Blank means SQL runs on the sandbox's own SQLite instead. */
+        private String url;
+        /** An account that may create and drop users, e.g. {@code system}. */
+        private String adminUser = "system";
+        private String adminPassword;
+
+        public boolean isEnabled() {
+            return url != null && !url.isBlank();
+        }
     }
 
     @Getter

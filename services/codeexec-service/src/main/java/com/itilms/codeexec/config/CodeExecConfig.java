@@ -13,6 +13,8 @@ import org.springframework.web.client.RestClient;
 
 import com.itilms.codeexec.service.CodeRunner;
 import com.itilms.codeexec.service.Judge0CodeRunner;
+import com.itilms.codeexec.service.OracleAwareCodeRunner;
+import com.itilms.codeexec.service.OracleSqlRunner;
 import com.itilms.codeexec.service.PistonCodeRunner;
 import com.itilms.codeexec.service.RunRateLimiter;
 
@@ -45,7 +47,11 @@ public class CodeExecConfig {
         // compiles inside the same request (up to its 20s ceiling), so it gets that much extra.
         long extraSeconds = piston ? 25L : 10L;
         RestClient client = restClient(baseUrl, properties.getLimits().getWallTimeSeconds() + extraSeconds);
-        return piston ? new PistonCodeRunner(client, properties) : new Judge0CodeRunner(client, properties);
+        CodeRunner sandbox = piston ? new PistonCodeRunner(client, properties) : new Judge0CodeRunner(client, properties);
+        // SQL runs on Oracle when one is configured; every other language stays in the sandbox.
+        return properties.getOracle().isEnabled()
+                ? new OracleAwareCodeRunner(sandbox, new OracleSqlRunner(properties))
+                : sandbox;
     }
 
     private static RestClient restClient(String baseUrl, long readTimeoutSeconds) {

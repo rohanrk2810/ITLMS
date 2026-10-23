@@ -544,6 +544,7 @@ services:
       dockerfile: ../../deploy/docker/Dockerfile
     image: itilms/codeexec-service:dev
     # Stateless: it needs neither the database nor Kafka, so it does not wait for them.
+    # (A slow Oracle start only makes SQL runs say "not reachable" until it is up.)
     depends_on:
       config-server:
         condition: service_healthy
@@ -560,11 +561,35 @@ services:
       # Which sandbox runs the code: judge0 (default) or piston (the optional "piston" service below).
       CODEEXEC_ENGINE: ${CODEEXEC_ENGINE:-judge0}
       PISTON_URL: ${PISTON_URL:-}
+      # SQL runs on the Oracle below. Blank switches back to the sandbox's own SQLite.
+      ORACLE_URL: ${ORACLE_URL:-jdbc:oracle:thin:@//oracle:1521/FREEPDB1}
+      ORACLE_ADMIN_USER: ${ORACLE_ADMIN_USER:-system}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-itilms_oracle_dev}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8093/actuator/health || exit 1"]
+
+  # The database SQL questions run on (Oracle Free). Nothing else uses it: each run builds a throwaway
+  # user in it, runs the script there and drops the user. Its data is not kept, so it has no volume.
+  # The first start takes a minute or two; "faststart" ships a ready database so later ones are quick.
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    restart: unless-stopped
+    networks: [itilms]
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-itilms_oracle_dev}
+    deploy:
+      resources:
+        limits:
+          memory: ${ORACLE_MEMORY_LIMIT:-2560M}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
 
   # Optional code-execution sandbox: Piston, as an alternative to a self-hosted Judge0.
   # Not started by a plain "up": bring it up with
