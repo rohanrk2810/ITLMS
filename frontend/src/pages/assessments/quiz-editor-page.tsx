@@ -20,7 +20,7 @@ import {
   type TestCaseInput,
   VIOLATION_LABEL,
 } from '@/api/assessments'
-import { CODE_LANGUAGES, type CodeLanguageCode, codeLanguageLabel } from '@/api/code'
+import { CODE_LANGUAGES, type CodeLanguageCode, codeLanguageLabel, runCode } from '@/api/code'
 import { apiErrorMessage } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -117,7 +117,13 @@ export function QuizEditorPage() {
           <h2 className="text-sm font-medium text-muted-foreground">
             Questions ({quiz.questionCount}, {quiz.totalMarks} marks)
           </h2>
-          {quiz.status === 'DRAFT' && <AddQuestionDialog quizId={quiz.id} onAdded={invalidate} />}
+          {quiz.status === 'DRAFT' && (
+            <AddQuestionDialog
+              quizId={quiz.id}
+              onAdded={invalidate}
+              databases={[...new Set((quiz.questions ?? []).map((q) => q.setupSql).filter((s): s is string => !!s))]}
+            />
+          )}
         </div>
         <div className="flex flex-col gap-3">
           {quiz.questions?.map((question, index) => (
@@ -273,6 +279,9 @@ function QuestionKey({ question }: { question: QuizQuestionWithKey }) {
           {question.type === 'CODING' && (question.allowSuggestions ? ' · suggestions on' : ' · suggestions off')} &middot;{' '}
           {question.testCases.length} test case{question.testCases.length === 1 ? '' : 's'}
         </p>
+        {question.setupSql && (
+          <pre className="max-h-32 overflow-auto rounded-md border bg-muted/40 px-2 py-1 font-mono text-xs">{question.setupSql}</pre>
+        )}
         {question.starterCode && (
           <pre className="max-h-32 overflow-auto rounded-md border bg-muted/40 px-2 py-1 font-mono text-xs">{question.starterCode}</pre>
         )}
@@ -313,7 +322,7 @@ const TRUE_FALSE_OPTIONS: QuestionOptionInput[] = [
 ]
 const BLANK_CASE: TestCaseInput = { input: '', expectedOutput: '', hidden: false, weight: 1 }
 
-function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () => void }) {
+function AddQuestionDialog({ quizId, onAdded, databases }: { quizId: number; onAdded: () => void; databases: string[] }) {
   const [open, setOpen] = useState(false)
   const [questionText, setQuestionText] = useState('')
   const [type, setType] = useState<QuestionType>('SINGLE_CHOICE')
@@ -322,6 +331,8 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
   const [accepted, setAccepted] = useState('')
   const [codeLanguage, setCodeLanguage] = useState<CodeLanguageCode>('JAVA')
   const [starterCode, setStarterCode] = useState('')
+  const [setupSql, setSetupSql] = useState('')
+  const [answerQuery, setAnswerQuery] = useState('')
   const [allowChoice, setAllowChoice] = useState(false)
   const [allowSuggestions, setAllowSuggestions] = useState(false)
   const [testCases, setTestCases] = useState<TestCaseInput[]>([BLANK_CASE])
@@ -333,6 +344,8 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
     setOptions(BLANK_OPTIONS)
     setAccepted('')
     setStarterCode('')
+    setSetupSql('')
+    setAnswerQuery('')
     setAllowChoice(false)
     setAllowSuggestions(false)
     setTestCases([BLANK_CASE])
@@ -350,6 +363,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
       allowLanguageChoice: allowChoice && codeLanguage !== 'SQL',
       allowSuggestions,
       starterCode: starterCode || undefined,
+      setupSql: codeLanguage === 'SQL' && setupSql.trim() ? setupSql : undefined,
       testCases,
     }
   }
@@ -362,6 +376,19 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
       onAdded()
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not add the question.')),
+  })
+
+  /** Runs the author's correct query on the database above and keeps what it prints as the expected output. */
+  const expectedMutation = useMutation({
+    mutationFn: () => runCode({ language: 'SQL', sourceCode: `${setupSql.trimEnd()}\n${answerQuery}` }),
+    onSuccess: (result) => {
+      if (result.outcome !== 'SUCCESS') {
+        toast.error(result.stderr || result.compileOutput || result.statusDescription || 'The query did not run.')
+        return
+      }
+      setTestCases([{ ...BLANK_CASE, expectedOutput: (result.stdout ?? '').trimEnd() }])
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not run the query.')),
   })
 
   function changeType(next: QuestionType) {
@@ -537,6 +564,63 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
                   </span>
                 </span>
               </label>
+              {codeLanguage === 'SQL' && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="setupSql">Database setup</Label>
+                  {databases.length > 0 && (
+                    <select
+                      aria-label="Use the database of an earlier question"
+                      value=""
+                      onChange={(event) => event.target.value !== '' && setSetupSql(databases[Number(event.target.value)])}
+                      className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    >
+                      <option value="">Use the same database as an earlier question...</option>
+                      {databases.map((db, i) => (
+                        <option key={i} value={i}>
+                          Database {i + 1}: {db.replace(/\s+/g, ' ').slice(0, 60)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <textarea
+                    id="setupSql"
+                    rows={8}
+                    spellCheck={false}
+                    placeholder={'CREATE TABLE employees (id INTEGER, name TEXT, salary INTEGER);\nINSERT INTO employees VALUES (1, \'Asha\', 50000);'}
+                    className="rounded-md border bg-transparent px-3 py-2 font-mono text-xs"
+                    value={setupSql}
+                    onChange={(event) => setSetupSql(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The tables and rows go here. They are built fresh before every run and the student sees them, so the
+                    student only writes the query. Test cases then need only the expected output; add ORDER BY to the
+                    question when the row order matters.
+                  </p>
+                  <Label htmlFor="answerQuery">Correct query</Label>
+                  <textarea
+                    id="answerQuery"
+                    rows={3}
+                    spellCheck={false}
+                    placeholder="SELECT name, salary FROM employees ORDER BY salary DESC;"
+                    className="rounded-md border bg-transparent px-3 py-2 font-mono text-xs"
+                    value={answerQuery}
+                    onChange={(event) => setAnswerQuery(event.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="self-start"
+                    disabled={!setupSql.trim() || !answerQuery.trim() || expectedMutation.isPending}
+                    onClick={() => expectedMutation.mutate()}
+                  >
+                    {expectedMutation.isPending ? 'Running...' : 'Get the expected output'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Runs this query on the database and fills in the expected output below. The student never sees this query.
+                  </p>
+                </div>
+              )}
               <div className="flex flex-col gap-2">
                 <Label htmlFor="starterCode">Starter code (optional)</Label>
                 <textarea
@@ -552,19 +636,23 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <Label>Test cases - what the program reads, and what it must print</Label>
+                <Label>
+                  {codeLanguage === 'SQL' ? 'Expected output - what the correct query prints' : 'Test cases - what the program reads, and what it must print'}
+                </Label>
                 {testCases.map((c, index) => (
                   <div key={index} className="flex flex-col gap-2 rounded-md border p-3">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <textarea
-                        aria-label={`Test ${index + 1} input`}
-                        rows={2}
-                        placeholder="Input (leave empty if the program reads nothing)"
-                        spellCheck={false}
-                        className="rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
-                        value={c.input}
-                        onChange={(event) => updateCase(index, { input: event.target.value })}
-                      />
+                    <div className={codeLanguage === 'SQL' ? 'grid gap-2' : 'grid gap-2 sm:grid-cols-2'}>
+                      {codeLanguage !== 'SQL' && (
+                        <textarea
+                          aria-label={`Test ${index + 1} input`}
+                          rows={2}
+                          placeholder="Input (leave empty if the program reads nothing)"
+                          spellCheck={false}
+                          className="rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
+                          value={c.input}
+                          onChange={(event) => updateCase(index, { input: event.target.value })}
+                        />
+                      )}
                       <textarea
                         aria-label={`Test ${index + 1} expected output`}
                         rows={2}
@@ -600,7 +688,7 @@ function AddQuestionDialog({ quizId, onAdded }: { quizId: number; onAdded: () =>
                     </div>
                   </div>
                 ))}
-                {testCases.length < 10 && (
+                {testCases.length < 10 && codeLanguage !== 'SQL' && (
                   <Button type="button" size="sm" variant="ghost" className="self-start" onClick={() => setTestCases((prev) => [...prev, BLANK_CASE])}>
                     <Plus className="size-3.5" />
                     Add test case

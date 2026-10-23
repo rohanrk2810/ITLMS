@@ -87,6 +87,23 @@ class CodingJudgeTest {
     }
 
     @Test
+    @DisplayName("A SQL question's database is built first and the student's query follows it; other languages are untouched")
+    void sqlSetupRunsBeforeTheQuery() {
+        question.setCodeLanguage(CodeLanguage.SQL);
+        question.setSetupSql("CREATE TABLE t (id INTEGER);\nINSERT INTO t VALUES (1);\n");
+        when(client.runBatch(any())).thenReturn(List.of(ok("1"), ok("1")));
+
+        judge.judge(question, "SELECT id FROM t;");
+
+        verify(client).runBatch(new CodeClient.RunBatchRequest("SQL",
+                "CREATE TABLE t (id INTEGER);\nINSERT INTO t VALUES (1);\nSELECT id FROM t;", List.of("1 2", "5 5")));
+
+        question.setCodeLanguage(CodeLanguage.PYTHON);
+        judge.judge(question, "print(1)");
+        verify(client).runBatch(new CodeClient.RunBatchRequest("PYTHON", "print(1)", List.of("1 2", "5 5")));
+    }
+
+    @Test
     @DisplayName("A program that does not compile fails every case and reports the compiler's message")
     void compileError() {
         RunResult broken = outcome("COMPILE_ERROR", null, "Main.java:1: error: ';' expected");

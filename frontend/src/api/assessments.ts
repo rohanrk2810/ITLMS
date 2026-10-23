@@ -66,6 +66,8 @@ export interface AttemptQuestion {
   allowLanguageChoice: boolean
   /** CODING only: the editor may offer code suggestions. Off unless the author allows it. */
   allowSuggestions: boolean
+  /** CODING in SQL only: the statements that build the database the query runs against. */
+  setupSql: string | null
 }
 
 export interface SavedAnswer {
@@ -364,6 +366,7 @@ export interface QuizQuestionWithKey {
   testCases: QuizTestCase[]
   allowLanguageChoice: boolean
   allowSuggestions: boolean
+  setupSql: string | null
 }
 
 export interface QuizTestCase {
@@ -448,6 +451,8 @@ export interface QuestionInput {
   /** CODING only: the editor offers code suggestions to students. Off by default. */
   allowSuggestions?: boolean
   starterCode?: string
+  /** CODING in SQL only: CREATE TABLE and INSERT statements run before the student's query. */
+  setupSql?: string
   /** SHORT_ANSWER only. */
   acceptedAnswers?: string[]
   /** CODING only. */

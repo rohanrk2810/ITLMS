@@ -85,6 +85,10 @@ public class QuizQuestion extends AuditableEntity {
     @Column(name = "starter_code", columnDefinition = "text")
     private String starterCode;
 
+    /** CODING in SQL only: the tables and rows the student's query runs against. Run before the student's code; shown to the student. */
+    @Column(name = "setup_sql", columnDefinition = "text")
+    private String setupSql;
+
     /** SHORT_ANSWER only: any of these, compared after {@link #normalise}, earns the marks. The key: never sent to a student. */
     @ElementCollection
     @CollectionTable(name = "quiz_accepted_answers", joinColumns = @JoinColumn(name = "question_id"))
