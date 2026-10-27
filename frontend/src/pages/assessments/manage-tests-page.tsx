@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
-import { createQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
+import { CAMERA_CHECKS, type CameraCheckName, createQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
 import { searchCourses } from '@/api/courses'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -233,6 +233,36 @@ function NewQuizDialog() {
               warned when no face (or more than one) is visible or the camera is turned off, and each of these is
               recorded with its time for you to review. Nothing is failed automatically, and no pictures are stored.
             </p>
+            {form.requireCamera && (
+              <div className="flex flex-col gap-2 border-t pt-2">
+                <span className="text-sm font-medium">What to detect</span>
+                {CAMERA_CHECKS.map((check) => {
+                  const selected: CameraCheckName[] = form.cameraChecks ?? CAMERA_CHECKS.map((c) => c.name)
+                  return (
+                    <label key={check.name} className="flex items-start gap-2 text-sm">
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={selected.includes(check.name)}
+                        onCheckedChange={(value) =>
+                          setForm({
+                            ...form,
+                            cameraChecks:
+                              value === true ? [...selected, check.name] : selected.filter((n) => n !== check.name),
+                          })
+                        }
+                      />
+                      <span>
+                        {check.label}
+                        <span className="block text-xs text-muted-foreground">{check.help}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+                <p className="text-xs text-muted-foreground">
+                  The camera must stay on in every case; with all of these off it is only that.
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-2 rounded-md border p-3">
             <label className="flex items-center gap-2 text-sm font-medium">

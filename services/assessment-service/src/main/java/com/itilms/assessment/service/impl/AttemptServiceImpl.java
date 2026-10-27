@@ -187,6 +187,11 @@ public class AttemptServiceImpl implements AttemptService {
         // to make the page handle an error for a report it had every right to send.
         boolean applies = request.type().isCamera() ? quiz.isRequireCamera()
                 : request.type().isMicrophone() ? quiz.isRequireMicrophone() : quiz.isSecureMode();
+        // A camera check the trainer switched off is not kept either, whatever the browser sends.
+        if (applies && request.type().isCamera()
+                && !com.itilms.assessment.entity.CameraCheck.allows(quiz.cameraChecks(), request.type())) {
+            applies = false;
+        }
         if (!applies || attempt.getStatus().isFinished() || attempt.hasExpired(now)) {
             return outcome(attempt, quiz, false, null);
         }

@@ -47,6 +47,8 @@ public record AttemptViewResponse(
         @Schema(description = "The camera must stay on and show the student's face")
         boolean requireCamera,
         boolean requireMicrophone,
+        @Schema(description = "Camera tests: the checks that run (FACE, PEOPLE, IDENTITY, PHONE)")
+        List<String> cameraChecks,
         @Schema(description = "Violations that have counted so far in this attempt")
         int violationCount,
         List<Question> questions,
@@ -103,6 +105,7 @@ public record AttemptViewResponse(
                 attempt.getAttemptNo(), quiz.getAttemptsAllowed(), quiz.getTotalMarks(),
                 quiz.getPassPercentage(), attempt.getStartedAt(), attempt.getExpiresAt(),
                 attempt.secondsRemaining(now), quiz.isSecureMode(), quiz.getMaxViolations(),
-                quiz.isRequireCamera(), quiz.isRequireMicrophone(), attempt.getViolationCount(), paper, savedAnswers);
+                quiz.isRequireCamera(), quiz.isRequireMicrophone(),
+                com.itilms.assessment.entity.CameraCheck.names(quiz.cameraChecks()), attempt.getViolationCount(), paper, savedAnswers);
     }
 }

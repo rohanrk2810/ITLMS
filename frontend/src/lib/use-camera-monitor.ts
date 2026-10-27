@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useRef, useState } from 'react'
 
-import type { ViolationType } from '@/api/assessments'
+import type { CameraCheckName, ViolationType } from '@/api/assessments'
 import { loadFaceDetector, readFaces } from '@/lib/face-detector'
 import { describeFace, distanceFromReference, loadFaceIdentity, SAME_FACE_MAX_DISTANCE } from '@/lib/face-identity'
 import { loadObjectDetector, lookAround } from '@/lib/object-detector'
@@ -46,6 +46,8 @@ interface CameraMonitorOptions {
   onEvent: (type: ViolationType, detail?: string) => void
   /** The face(s) recorded at the start of the test. With them the monitor warns when a different face takes over. */
   reference?: Float32Array[] | null
+  /** Which checks the trainer switched on for this test. Left out means all of them. */
+  checks?: CameraCheckName[]
 }
 
 /**
@@ -53,7 +55,11 @@ interface CameraMonitorOptions {
  * different face from the one the test started with, a phone, the camera switched off, its permission taken away. It runs in this browser and can be fooled, so it only records and
  * warns - it never fails a student by itself. Returns the current status for the page to show.
  */
-export function useCameraMonitor({ enabled, stream, video, onEvent, reference }: CameraMonitorOptions): CameraStatus {
+export function useCameraMonitor({ enabled, stream, video, onEvent, reference, checks }: CameraMonitorOptions): CameraStatus {
+  const watchFace = !checks || checks.includes('FACE')
+  const watchPeople = !checks || checks.includes('PEOPLE')
+  const watchIdentity = !checks || checks.includes('IDENTITY')
+  const watchPhone = !checks || checks.includes('PHONE')
   const [status, setStatus] = useState<CameraStatus>('starting')
   const report = useRef(onEvent)
   useEffect(() => {
@@ -142,7 +148,10 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
           latestFaces = faces
           const now = Date.now()
 
-          if (faces === 1 && !inOval) {
+          if (!watchFace && faces <= 1) {
+            // Face presence is not being checked in this test; only the camera staying on is.
+            setStatus(deepFlag ?? 'ok')
+          } else if (faces === 1 && !inOval) {
             // One face, but outside the oval: warned at the first check, not after a wait.
             missing = 0
             crowded = 0
@@ -161,6 +170,8 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
                 report.current('FACE_NOT_DETECTED', `No face for ${missing} seconds`)
               }
             }
+          } else if (faces > 1 && !watchPeople) {
+            setStatus(deepFlag ?? 'ok')
           } else if (faces > 1) {
             crowded += 1
             missing = 0
@@ -192,18 +203,20 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
     // fail to load; the face check above carries on without it.
     let identity: Awaited<ReturnType<typeof loadFaceIdentity>> | null = null
     let objects: Awaited<ReturnType<typeof loadObjectDetector>> | null = null
-    if (referenceFaces.current && referenceFaces.current.length > 0) {
+    if (watchIdentity && referenceFaces.current && referenceFaces.current.length > 0) {
       void loadFaceIdentity()
         .then((loaded) => {
           if (!cancelled) identity = loaded
         })
         .catch((error: unknown) => console.warn('[camera-monitor] the same-face check could not start', error))
     }
-    void loadObjectDetector()
-      .then((loaded) => {
-        if (!cancelled) objects = loaded
-      })
-      .catch((error: unknown) => console.warn('[camera-monitor] the phone check could not start', error))
+    if (watchPhone || watchPeople) {
+      void loadObjectDetector()
+        .then((loaded) => {
+          if (!cancelled) objects = loaded
+        })
+        .catch((error: unknown) => console.warn('[camera-monitor] the phone check could not start', error))
+    }
 
     // Who is there, every couple of seconds: it costs the most.
     let deepBusy = false
@@ -253,7 +266,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
       try {
         const scene = lookAround(objects, element)
         const now = Date.now()
-        if (scene.phone) {
+        if (scene.phone && watchPhone) {
           phoneGone = 0
           if (deepFlag !== 'different-face') deepFlag = 'device'
           setStatus((current) => (current === 'ok' || current === 'device' ? 'device' : current))
@@ -270,7 +283,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
           }
         }
         // Another person's body is a weaker sign than a phone (a poster looks like one), so it takes two looks.
-        peopleRun = scene.people >= 2 ? peopleRun + 1 : 0
+        peopleRun = watchPeople && scene.people >= 2 ? peopleRun + 1 : 0
         if (peopleRun >= 2 && now - reportedPeople > DEEP_REPEAT_REPORT_MS) {
           reportedPeople = now
           report.current('MULTIPLE_FACES', 'Another person is in view')
@@ -292,7 +305,7 @@ export function useCameraMonitor({ enabled, stream, video, onEvent, reference }:
       track?.removeEventListener('unmute', onUnmute)
       if (permission) permission.onchange = null
     }
-  }, [enabled, stream, video])
+  }, [enabled, stream, video, watchFace, watchPeople, watchIdentity, watchPhone])
 
   return status
 }

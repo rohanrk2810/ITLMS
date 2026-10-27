@@ -23,6 +23,7 @@ export interface StudentQuizResponse {
   /** The camera must be on: allowed before starting and watched for a visible face. */
   requireCamera: boolean
   requireMicrophone: boolean
+  cameraChecks: CameraCheckName[]
   openNow: boolean
   canStart: boolean
   inProgressAttemptId: number | null
@@ -98,6 +99,7 @@ export interface AttemptViewResponse {
   /** The camera must stay on and show the student's face. */
   requireCamera: boolean
   requireMicrophone: boolean
+  cameraChecks: CameraCheckName[]
   /** Violations that have counted so far in this attempt. */
   violationCount: number
   questions: AttemptQuestion[]
@@ -146,6 +148,16 @@ export interface AttemptResultResponse {
   terminatedReason: string | null
   answers: AnswerResult[] | null
 }
+
+/** What a camera test can look for; the trainer picks which when making the test. */
+export type CameraCheckName = 'FACE' | 'PEOPLE' | 'IDENTITY' | 'PHONE'
+
+export const CAMERA_CHECKS: { name: CameraCheckName; label: string; help: string }[] = [
+  { name: 'FACE', label: 'Face in view', help: 'A face must be visible and stay inside the oval.' },
+  { name: 'PEOPLE', label: 'Only one person', help: 'Warns when a second face or another person is in view.' },
+  { name: 'IDENTITY', label: 'Same face', help: 'Warns when the face is not the one recorded at the start.' },
+  { name: 'PHONE', label: 'Phone', help: 'Warns when a mobile phone is in view.' },
+]
 
 export type ViolationType =
   | 'TAB_SWITCH'
@@ -397,6 +409,7 @@ export interface QuizResponse {
   maxViolations: number
   requireCamera: boolean
   requireMicrophone: boolean
+  cameraChecks: CameraCheckName[]
   status: string
   trainerId: number | null
   publishedAt: string | null
@@ -422,6 +435,8 @@ export interface QuizInput {
   maxViolations?: number
   requireCamera?: boolean
   requireMicrophone?: boolean
+  /** Camera tests: which checks run. Leave out for all of them on a new test. */
+  cameraChecks?: CameraCheckName[]
 }
 
 export interface QuestionOptionInput {

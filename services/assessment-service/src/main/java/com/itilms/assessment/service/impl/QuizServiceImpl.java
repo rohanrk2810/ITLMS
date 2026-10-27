@@ -18,6 +18,7 @@ import com.itilms.assessment.dto.request.QuestionRequest;
 import com.itilms.assessment.dto.response.QuizResponse;
 import com.itilms.assessment.dto.response.StudentQuizResponse;
 import com.itilms.assessment.entity.AttemptStatus;
+import com.itilms.assessment.entity.CameraCheck;
 import com.itilms.assessment.entity.QuestionType;
 import com.itilms.assessment.entity.QuizTestCase;
 import com.itilms.assessment.entity.Quiz;
@@ -83,6 +84,7 @@ public class QuizServiceImpl implements QuizService {
                 .maxViolations(request.maxViolations() == null ? 2 : request.maxViolations())
                 .requireCamera(Boolean.TRUE.equals(request.requireCamera()))
                 .requireMicrophone(Boolean.TRUE.equals(request.requireMicrophone()))
+                .cameraChecks(CameraCheck.join(request.cameraChecks() == null ? CameraCheck.all() : request.cameraChecks()))
                 .trainerId(caller.trainerIdOrNull())
                 .status(QuizStatus.DRAFT)
                 .build());
@@ -140,6 +142,9 @@ public class QuizServiceImpl implements QuizService {
         }
         if (request.requireMicrophone() != null) {
             quiz.setRequireMicrophone(request.requireMicrophone());
+        }
+        if (request.cameraChecks() != null) {
+            quiz.setCameraChecks(request.cameraChecks());
         }
         quizRepository.save(quiz);
         return detail(quiz);
