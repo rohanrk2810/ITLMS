@@ -97,6 +97,19 @@ public class Quiz extends AuditableEntity {
     @Column(name = "require_camera", nullable = false)
     private boolean requireCamera;
 
+    /** What a camera test looks for, as {@link CameraCheck} names joined by commas. See {@link #cameraChecks()}. */
+    @Column(name = "camera_checks", nullable = false, length = 60)
+    @Builder.Default
+    private String cameraChecks = CameraCheck.join(CameraCheck.all());
+
+    public java.util.Set<CameraCheck> cameraChecks() {
+        return CameraCheck.parse(cameraChecks);
+    }
+
+    public void setCameraChecks(java.util.Set<CameraCheck> checks) {
+        this.cameraChecks = CameraCheck.join(checks);
+    }
+
     /**
      * The student's microphone must be on: allowed before starting, and the browser reports when it is turned off
      * or when sustained sound is heard. Level only - no audio is recorded. Events warn and are kept; none ends the attempt.

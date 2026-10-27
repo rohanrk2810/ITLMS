@@ -65,6 +65,10 @@ public record CreateQuizRequest(
         Boolean requireCamera,
 
         @Schema(description = "The student's microphone must be on and is checked for sound (level only, nothing is recorded). Default false.")
-        Boolean requireMicrophone
+        Boolean requireMicrophone,
+
+        @Schema(description = "Camera tests: which checks run - FACE, PEOPLE, IDENTITY, PHONE. Omitted = all of them "
+                + "on a new test and unchanged on an update; an empty list = only that the camera stays on.")
+        java.util.Set<com.itilms.assessment.entity.CameraCheck> cameraChecks
 ) {
 }

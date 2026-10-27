@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from 'react'
 import { Camera, CameraOff, Loader2, ScanFace } from 'lucide-react'
 
+import type { CameraCheckName } from '@/api/assessments'
 import { Button } from '@/components/ui/button'
 import { CAMERA_PROBLEM_TEXT, CameraError, loadFaceDetector, openCamera, OVAL, readFaces } from '@/lib/face-detector'
 import { describeFace, loadFaceIdentity, REFERENCE_SAMPLES, samplesAgree } from '@/lib/face-identity'
@@ -45,13 +46,17 @@ interface CameraCheckProps {
    * who is in front of the camera with it. It stays in this browser.
    */
   onReference?: (reference: Float32Array[] | null) => void
+  /** Which checks the trainer switched on. Left out means all of them. */
+  checks?: CameraCheckName[]
 }
 
 /**
  * Before a camera test starts: ask for the camera, show the student themselves, and wait until a face is in
  * view. The student cannot start until the camera is on and a face has been seen.
  */
-export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCheckProps) {
+export function CameraCheck({ stream, onStream, onReady, onReference, checks }: CameraCheckProps) {
+  const watchIdentity = !checks || checks.includes('IDENTITY')
+  const watchObjects = !checks || checks.includes('PHONE') || checks.includes('PEOPLE')
   const video = useRef<HTMLVideoElement>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [asking, setAsking] = useState(false)
@@ -68,7 +73,7 @@ export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCh
   useStreamOnVideo(stream, video)
 
   useEffect(() => {
-    if (!stream) return
+    if (!stream || !watchObjects) return
     let cancelled = false
     loadObjectDetector()
       .then(() => !cancelled && setPhoneCheck('ready'))
@@ -79,7 +84,7 @@ export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCh
     return () => {
       cancelled = true
     }
-  }, [stream])
+  }, [stream, watchObjects])
 
   useEffect(() => {
     if (!stream) {
@@ -120,6 +125,11 @@ export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCh
   // While a single face sits in the oval, take samples of it until there are enough that agree.
   useEffect(() => {
     if (!stream || !faceOk || identity === 'done' || identity === 'unavailable') return
+    if (!watchIdentity) {
+      // The trainer is not checking who is sitting; nothing to record.
+      setIdentity('unavailable')
+      return
+    }
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
     setIdentity('collecting')
@@ -163,7 +173,7 @@ export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCh
       cancelled = true
       clearTimeout(timer)
     }
-  }, [stream, faceOk, identity, onReference])
+  }, [stream, faceOk, identity, onReference, watchIdentity])
 
   // Ready once a face is in the oval and recorded (or the face check cannot run here at all).
   useEffect(() => {
@@ -227,7 +237,7 @@ export function CameraCheck({ stream, onStream, onReady, onReference }: CameraCh
           </p>
         </div>
       )}
-      {stream && faces !== 'unavailable' && (
+      {stream && watchObjects && faces !== 'unavailable' && (
         <p className="text-xs text-muted-foreground">
           {phoneCheck === 'loading' && 'Getting the phone check ready...'}
           {phoneCheck === 'ready' && 'Phone and second-person check: ready. Keep phones out of the picture.'}
