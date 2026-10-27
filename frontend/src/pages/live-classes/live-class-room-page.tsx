@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { LiveKitRoom, VideoConference, useParticipants } from '@livekit/components-react'
-import { ChevronLeft, Clock, ExternalLink, Users } from 'lucide-react'
+import { ChevronLeft, Clock, ExternalLink, Maximize2, Minimize2, Users } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import '@livekit/components-styles'
@@ -10,10 +10,12 @@ import { type JoinTokenResponse, joinLiveClass } from '@/api/live-classes'
 import { apiErrorMessage } from '@/api/client'
 import { ClassMonitorGate } from '@/components/class-monitor'
 import { ContentProtection } from '@/components/content-protection'
+import { useFullscreenPanel } from '@/components/fullscreen-toggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isJitsiUrl, jitsiEmbedUrl } from '@/lib/jitsi'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { CaptionsControl, CaptionsOverlay, SubtitlesToggle } from './captions'
 import { EndClassButton } from './end-class-button'
@@ -27,6 +29,31 @@ export function LiveClassRoomPage() {
   const [credentials, setCredentials] = useState<JoinTokenResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const user = useAuthStore((s) => s.user)
+
+  // Full screen: the class laid over the whole window (no sidebar, no page header), and the browser's own
+  // fullscreen on top of that where it allows it. If the browser refuses, the overlay alone still works.
+  const [full, setFull] = useState(false)
+  const closeFull = useCallback(() => {
+    setFull(false)
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
+  }, [])
+  const toggleFull = useCallback(() => {
+    if (full) {
+      closeFull()
+      return
+    }
+    setFull(true)
+    void document.documentElement.requestFullscreen?.().catch(() => undefined)
+  }, [full, closeFull])
+  useFullscreenPanel(full, closeFull)
+  useEffect(() => {
+    // The browser's own Escape leaves fullscreen without telling the page any other way.
+    const onChange = () => {
+      if (!document.fullscreenElement) setFull(false)
+    }
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
 
   useEffect(() => {
     if (!sessionId) return
@@ -72,7 +99,7 @@ export function LiveClassRoomPage() {
   }
 
   const room = (
-    <div className="-m-6 flex h-[calc(100dvh-3.5rem)] flex-col">
+    <div className={cn('flex flex-col', full ? 'fixed inset-0 z-[45] bg-background' : '-m-6 h-[calc(100dvh-3.5rem)]')}>
       <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
           <LiveKitRoom
@@ -93,6 +120,8 @@ export function LiveClassRoomPage() {
                 showPeople={credentials.roomAdmin}
                 liveSessionId={credentials.liveSessionId}
                 isTrainer={credentials.role === 'TRAINER'}
+                full={full}
+                onToggleFull={toggleFull}
               />
               {/* The recording captures exactly this box: the class itself, without the side panel or the bar. */}
               <div id="class-stage" className="min-h-0 flex-1">
@@ -131,12 +160,16 @@ function RoomBar({
   showPeople,
   liveSessionId,
   isTrainer,
+  full,
+  onToggleFull,
 }: {
   title: string
   startsAt: string
   showPeople: boolean
   liveSessionId: number
   isTrainer: boolean
+  full: boolean
+  onToggleFull: () => void
 }) {
   const people = useParticipants().length
   const [now, setNow] = useState(() => Date.now())
@@ -160,6 +193,10 @@ function RoomBar({
       <span className="ml-auto flex items-center gap-2">
         {isTrainer ? <CaptionsControl liveSessionId={liveSessionId} /> : <SubtitlesToggle />}
         {showPeople && <EndClassButton liveSessionId={liveSessionId} />}
+        <button type="button" onClick={onToggleFull} className="class-room-chip cursor-pointer" title={full ? 'Exit full screen (Esc)' : 'Full screen'}>
+          {full ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+          {full ? 'Exit full screen' : 'Full screen'}
+        </button>
         <span className="class-room-chip">
           <Clock className="size-3.5" />
           {clock}
