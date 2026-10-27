@@ -25,6 +25,8 @@ spring:
             allowedOriginPatterns:
               - ${FRONTEND_URL:http://localhost:5173}
               - http://localhost:3000
+              # The Windows desktop app (desktop/) serves the web app from this origin.
+              - itilms://app
             allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
             allowedHeaders: "*"
             exposedHeaders: [Content-Disposition, X-Correlation-Id]
