@@ -29,7 +29,7 @@ No schema change: the session's existing `meeting_url` column (batch-service) ca
 ### Frontend
 
 - `lib/jitsi.ts` - provider type, room-link generator, `isJitsiUrl`, `jitsiEmbedUrl` (fills the display name, skips the pre-join screen).
-- `live-class-room-page.tsx` - renders the LiveKit room, the Jitsi iframe, or the external-link page depending on the join response.
+- `live-class-room-page.tsx` - renders the LiveKit room, the Jitsi iframe, or the external-link page depending on the join response. The LiveKit room has a **Full screen** button in its top bar (for trainer and students): the class is laid over the whole window, and the browser's fullscreen is requested on top where it allows it; Esc leaves.
 - `VITE_JITSI_HOST` (default `meet.jit.si`) points at your own Jitsi server.
 
 ## Limits
