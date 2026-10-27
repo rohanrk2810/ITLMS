@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@/api/client'
 import { codeLanguageLabel, type CodeLanguageCode, getCodeLanguages, runCode, type RunCodeResponse } from '@/api/code'
 import { CodeResultPanel } from '@/components/code-result-panel'
 import { LanguageSelect } from '@/components/language-select'
+import { FULLSCREEN_PANEL_CLASS, FullscreenToggle, useFullscreenPanel } from '@/components/fullscreen-toggle'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -76,6 +77,8 @@ export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId
   /** The code that produced `result`; the complexity estimate reads this, not whatever is typed since. */
   const [ranCode, setRanCode] = useState('')
   const [runError, setRunError] = useState<string | null>(null)
+  const [full, setFull] = useState(false)
+  useFullscreenPanel(full, () => setFull(false))
 
   const languagesQuery = useQuery({
     queryKey: ['code', 'languages'],
@@ -132,7 +135,13 @@ export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border bg-card p-4" aria-label={`${label} practice editor`}>
+    <section
+      className={cn(
+        'flex flex-col gap-3 p-4',
+        full ? `${FULLSCREEN_PANEL_CLASS} ${dark ? 'bg-neutral-950 text-neutral-100' : 'bg-card'}` : 'rounded-lg border bg-card',
+      )}
+      aria-label={`${label} practice editor`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold">{title}</h2>
@@ -143,6 +152,7 @@ export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId
         </div>
         <div className="flex items-center gap-2">
           {allowLanguageChoice && <LanguageSelect value={language} disabled={mutation.isPending} onChange={handleLanguage} />}
+          <FullscreenToggle full={full} onToggle={() => setFull((value) => !value)} />
           <Button type="button" size="sm" variant="ghost" onClick={handleReset} disabled={mutation.isPending}>
             <RotateCcw />
             Reset
@@ -162,17 +172,20 @@ export function PracticeEditor({ language: lessonLanguage, starterCode, lessonId
         </p>
       )}
 
-      <Suspense fallback={<div className="h-80 rounded-md border bg-muted/30" aria-busy />}>
-        <CodeEditor
-          language={language}
-          value={source}
-          onChange={handleChange}
-          onRun={() => canRunRef.current && mutation.mutate()}
-          height={editorHeight(lineCount)}
-          dark={dark}
-          ariaLabel={`${label} code`}
-        />
-      </Suspense>
+      <div className={cn(full && 'min-h-[320px] flex-1 overflow-hidden rounded-md border')}>
+        <Suspense fallback={<div className="h-80 rounded-md border bg-muted/30" aria-busy />}>
+          <CodeEditor
+            fill={full}
+            language={language}
+            value={source}
+            onChange={handleChange}
+            onRun={() => canRunRef.current && mutation.mutate()}
+            height={editorHeight(lineCount)}
+            dark={dark}
+            ariaLabel={`${label} code`}
+          />
+        </Suspense>
+      </div>
       <p className="text-xs text-muted-foreground">
         Suggestions appear as you type (Ctrl+Space for more) &middot; Tab indents &middot; Ctrl+M lets Tab move to the
         next field &middot; Ctrl+Enter runs

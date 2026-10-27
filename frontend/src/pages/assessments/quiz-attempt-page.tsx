@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CheckCircle2, ChevronLeft, ShieldAlert, XCircle } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, ShieldAlert, XCircle } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -101,6 +101,8 @@ export function QuizAttemptPage() {
   const [texts, setTexts] = useState<Texts>({})
   const [languages, setLanguages] = useState<Languages>({})
   const [tested, setTested] = useState<Tested>({})
+  /** Which question is on screen: the test shows one at a time. */
+  const [current, setCurrent] = useState(0)
   const answersRef = useRef<Answers>({})
   const textsRef = useRef<Texts>({})
   const languagesRef = useRef<Languages>({})
@@ -247,6 +249,7 @@ export function QuizAttemptPage() {
     video: videoRef,
     onEvent: handleViolation,
     reference: cameraReference,
+    checks: paper?.cameraChecks,
   })
   const cameraBlocked =
     watchingCamera && (!cameraStream || cameraStatus === 'off' || cameraStatus === 'denied')
@@ -388,7 +391,7 @@ export function QuizAttemptPage() {
             </ul>
             {intro.instructions && <p className="text-muted-foreground">{intro.instructions}</p>}
             {intro.requireCamera && (
-              <CameraCheck stream={cameraStream} onStream={setCameraStream} onReady={setCameraReady} onReference={setCameraReference} />
+              <CameraCheck stream={cameraStream} onStream={setCameraStream} onReady={setCameraReady} onReference={setCameraReference} checks={intro.cameraChecks} />
             )}
             {intro.requireMicrophone && (
               <MicCheck
@@ -466,8 +469,19 @@ export function QuizAttemptPage() {
 
   if (!paper) return null
 
+  // One question at a time. A coding question is a two-pane workspace and needs the width; the others stay narrow.
+  const total = paper.questions.length
+  const index = Math.min(current, Math.max(0, total - 1))
+  const shown = paper.questions[index]
+  const hasCoding = shown?.type === 'CODING'
+  const answeredIds = new Set(
+    toSubmitAnswers(paper, answers, texts)
+      .filter((a) => (a.selectedOptionIds?.length ?? 0) > 0 || a.answerText)
+      .map((a) => a.questionId),
+  )
+
   return (
-    <div className={cn('flex max-w-2xl flex-col gap-4', paper.secureMode && 'select-none')}>
+    <div className={cn('flex flex-col gap-4', hasCoding ? 'max-w-7xl' : 'max-w-2xl', paper.secureMode && 'select-none')}>
       <BackLink />
 
       {warning && (
@@ -557,10 +571,52 @@ export function QuizAttemptPage() {
         </Badge>
       </div>
 
-      {paper.instructions && <p className="text-sm text-muted-foreground">{paper.instructions}</p>}
+      {paper.instructions && <p className="max-w-2xl text-sm text-muted-foreground">{paper.instructions}</p>}
 
-      {paper.questions.map((question, qIndex) => (
-        <Card key={question.id}>
+      {/* The question map: jump to any question; green is answered, the outlined one is on screen. */}
+      <nav aria-label="Questions" className="flex flex-wrap items-center gap-1.5">
+        {paper.questions.map((q, i) => (
+          <button
+            key={q.id}
+            type="button"
+            onClick={() => setCurrent(i)}
+            aria-current={i === index ? 'step' : undefined}
+            title={answeredIds.has(q.id) ? 'Answered' : 'Not answered'}
+            className={cn(
+              'size-8 rounded-md border text-sm font-medium',
+              answeredIds.has(q.id) ? 'border-emerald-600 bg-emerald-600 text-white' : 'bg-card text-muted-foreground',
+              i === index && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+            )}
+          >
+            {i + 1}
+          </button>
+        ))}
+        <span className="ml-2 text-sm text-muted-foreground">
+          Question {index + 1} of {total}
+        </span>
+      </nav>
+
+      {paper.questions.map((question, qIndex) => qIndex !== index ? null : question.type === 'CODING' ? (
+        <CodingQuestion
+          key={question.id}
+          number={qIndex + 1}
+          clock={
+            <Badge variant={secondsRemaining < 60 ? 'destructive' : 'secondary'} className="font-mono text-sm">
+              {formatClock(secondsRemaining)}
+            </Badge>
+          }
+          attemptId={paper.attemptId}
+          question={question}
+          code={texts[question.id] ?? question.starterCode ?? ''}
+          onChange={(code) => setTexts((prev) => ({ ...prev, [question.id]: code }))}
+          chosenLanguage={languages[question.id]}
+          onLanguageChange={(language) => setLanguages((prev) => ({ ...prev, [question.id]: language }))}
+          savedPassed={tested[question.id]?.passed ?? null}
+          savedTotal={tested[question.id]?.total ?? null}
+          onTested={(questionId, passed, total) => setTested((prev) => ({ ...prev, [questionId]: { passed, total } }))}
+        />
+      ) : (
+        <Card key={question.id} className="max-w-2xl">
           <CardHeader>
             <CardTitle className="text-base font-medium">
               {qIndex + 1}. {question.questionText}
@@ -569,7 +625,6 @@ export function QuizAttemptPage() {
               {question.marks} {question.marks === 1 ? 'mark' : 'marks'}
               {question.type === 'MULTI_CHOICE' && ' · choose all that apply'}
               {question.type === 'SHORT_ANSWER' && ' · type your answer'}
-              {question.type === 'CODING' && ' · write code'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -580,20 +635,6 @@ export function QuizAttemptPage() {
                 maxLength={1000}
                 autoComplete="off"
                 onChange={(event) => setTexts((prev) => ({ ...prev, [question.id]: event.target.value }))}
-              />
-            ) : question.type === 'CODING' ? (
-              <CodingQuestion
-                attemptId={paper.attemptId}
-                question={question}
-                code={texts[question.id] ?? question.starterCode ?? ''}
-                onChange={(code) => setTexts((prev) => ({ ...prev, [question.id]: code }))}
-                chosenLanguage={languages[question.id]}
-                onLanguageChange={(language) => setLanguages((prev) => ({ ...prev, [question.id]: language }))}
-                savedPassed={tested[question.id]?.passed ?? null}
-                savedTotal={tested[question.id]?.total ?? null}
-                onTested={(questionId, passed, total) =>
-                  setTested((prev) => ({ ...prev, [questionId]: { passed, total } }))
-                }
               />
             ) : question.type === 'MULTI_CHOICE' ? (
               <div className="flex flex-col gap-2">
@@ -624,13 +665,25 @@ export function QuizAttemptPage() {
         </Card>
       ))}
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {countAnswered(paper, answers, texts)} of {paper.questions.length} answered
-        </p>
-        <Button onClick={() => setConfirmingSubmit(true)} disabled={submitting}>
-          {submitting ? 'Submitting (running your tests)...' : 'Submit test'}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="outline" onClick={() => setCurrent(index - 1)} disabled={index === 0}>
+          <ChevronLeft />
+          Previous
         </Button>
+        <p className="text-sm text-muted-foreground">
+          {countAnswered(paper, answers, texts)} of {total} answered
+        </p>
+        <div className="flex gap-2">
+          {index < total - 1 && (
+            <Button variant="outline" onClick={() => setCurrent(index + 1)}>
+              Next
+              <ChevronRight />
+            </Button>
+          )}
+          <Button variant={index < total - 1 ? 'secondary' : 'default'} onClick={() => setConfirmingSubmit(true)} disabled={submitting}>
+            {submitting ? 'Submitting (running your tests)...' : 'Submit test'}
+          </Button>
+        </div>
       </div>
 
       {confirmingSubmit && (

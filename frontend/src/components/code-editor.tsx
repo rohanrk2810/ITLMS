@@ -20,6 +20,8 @@ interface CodeEditorProps {
   readOnly?: boolean
   /** Pixel height. The editor scrolls inside it. */
   height?: number
+  /** Fill the parent (which must have a height) and draw no border: the parent supplies the frame. */
+  fill?: boolean
   ariaLabel?: string
   /** Autocomplete and snippets. On for practice; an exam turns it off unless its author allows it. */
   suggestions?: boolean
@@ -28,11 +30,11 @@ interface CodeEditorProps {
 }
 
 /** The one code editor used across the app: practice lessons, live-class questions and tests. */
-export default function CodeEditor({ language, value, onChange, onRun, readOnly, height = 320, ariaLabel, suggestions = true, dark: darkProp }: CodeEditorProps) {
+export default function CodeEditor({ language, value, onChange, onRun, readOnly, height = 320, fill = false, ariaLabel, suggestions = true, dark: darkProp }: CodeEditorProps) {
   const dark = darkProp ?? document.documentElement.classList.contains('dark')
 
   return (
-    <div className="overflow-hidden rounded-md border" style={{ height }}>
+    <div className={fill ? 'size-full overflow-hidden' : 'overflow-hidden rounded-md border'} style={fill ? undefined : { height }}>
       <Editor
         language={MONACO_LANGUAGE[language]}
         value={value}
