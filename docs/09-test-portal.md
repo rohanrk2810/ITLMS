@@ -38,6 +38,18 @@ Each one is recorded with its time and shows the student a warning (for example 
 
 **No pictures are stored or sent.** Only the events and their times are, and only the trainers of the test and staff can read them.
 
+### Choosing what is detected (`cameraChecks`)
+When making a test with **Require camera** ticked, the trainer picks which detections run (all four are on by default):
+
+| Check | What it looks for | Events it produces |
+|---|---|---|
+| `FACE` (Face in view) | a face in view and inside the oval | `FACE_NOT_DETECTED`, `FACE_OUT_OF_FRAME` |
+| `PEOPLE` (Only one person) | a second face or another person | `MULTIPLE_FACES` |
+| `IDENTITY` (Same face) | the face stays the one recorded at the start | `FACE_MISMATCH` |
+| `PHONE` (Phone) | a mobile phone in view | `DEVICE_DETECTED` |
+
+The camera staying on (and its permission) is always required, whatever is ticked. A check that is off does not run in the student's browser (its model is not even loaded: no phone/people model without `PHONE` and `PEOPLE`, no face recording without `IDENTITY`), and the server drops a report of it if one arrives anyway. The student still shows a face to start. Stored on `quizzes.camera_checks` (V13); tests from before keep all four. A test is a draft until published, and only a draft can be edited.
+
 ### The oval
 `face-detector.ts` (`OVAL`): the oval is 60% of the picture wide and 84% tall. The face passes when the centre of its box is inside the oval and its corners are not more than 20% outside it. The picture is shown 4:3 so what is drawn is exactly what is measured.
 
@@ -57,6 +69,11 @@ All of it runs in the student's browser and is served by this app, not a CDN. Fe
 | Same face | `@vladmandic/face-api` (TensorFlow.js): tiny face detector, 68-point tiny landmarks, face-recognition network (6.5 MB) | copied from the npm package into `public/models/face-api/` by the same script (git-ignored) |
 
 If a model cannot load the others carry on: without the recogniser the test goes ahead without the same-face check, without the object detector there is no phone check, and the camera stays on either way.
+
+## How a test is shown
+- **One question at a time.** A question map at the top (green = answered, outlined = on screen) jumps to any question; **Previous** and **Next** are at the bottom, and **Submit test** is always there. Moving between questions keeps every answer.
+- **Coding questions** get a wide two-pane workspace: the problem and its examples on the left (with the database for SQL), the editor on the right, and **Testcase** / **Test Result** tabs under it. **Run** (or Ctrl+Enter) runs every case, hidden ones included, and opens the Test Result tab. The two dividers can be dragged. Other question types stay in a narrow card.
+- **Full screen** for the coding workspace: the panel is laid over the page (not the browser's fullscreen, which a secure test already uses) with the clock in its toolbar; **Esc** leaves it. The test's warnings and the camera picture stay on top of it. The practice editor in a lesson and the trainer's code tab in a live class have the same button.
 
 ## What this can and cannot do
 
