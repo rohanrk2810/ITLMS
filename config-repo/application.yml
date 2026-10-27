@@ -113,6 +113,8 @@ itilms:
     allowed-origins:
       - ${FRONTEND_URL:http://localhost:5173}
       - http://localhost:3000
+      # The Windows desktop app (desktop/) serves the web app from this origin.
+      - itilms://app
   docs:
     gateway-url: ${GATEWAY_URL:http://localhost:8080}
 

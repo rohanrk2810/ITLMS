@@ -1,0 +1,36 @@
+{
+  "name": "sutravidya-desktop",
+  "version": "1.0.0",
+  "description": "SutraVidya for Windows: the web app in its own window, packaged as MSIX for the Microsoft Store",
+  "main": "main.js",
+  "private": true,
+  "author": "SutraVidya",
+  "scripts": {
+    "start": "electron .",
+    "build:web": "node scripts/build-web.mjs",
+    "dist": "npm run build:web && electron-builder --win appx",
+    "dist:exe": "npm run build:web && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.sutravidya.desktop",
+    "productName": "SutraVidya",
+    "executableName": "SutraVidya",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "build/icon.png", "app/**/*"],
+    "win": { "target": ["appx"], "icon": "build/icon.png" },
+    "appx": {
+      "identityName": "CHANGE_ME.SutraVidya",
+      "publisher": "CN=CHANGE_ME-PUBLISHER-ID",
+      "publisherDisplayName": "CHANGE ME",
+      "applicationId": "SutraVidya",
+      "displayName": "SutraVidya",
+      "backgroundColor": "#ffffff",
+      "languages": ["en-US"]
+    },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}
