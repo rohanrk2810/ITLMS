@@ -101,6 +101,41 @@ class CaptchaVerifierTest {
     }
 
     @Test
+    void theDesktopKeyStandsInForTheWidgetAndOnlyWhenItMatches() {
+        String key = "k".repeat(32);
+        IdentityProperties p = properties(true, "s3cret", "pub-key");
+        p.getCaptcha().setDesktopKey(key);
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();   // any call to Cloudflare would fail the test
+        CaptchaVerifier verifier = new CaptchaVerifier(p, builder.build());
+
+        verifier.require(null, "1.2.3.4", key);                        // the app: no token, no check
+        assertThat(verifier.config(key).enabled()).isFalse();           // and no widget to show
+        assertThat(verifier.config("wrong").enabled()).isTrue();        // anyone else still sees it
+        assertThatThrownBy(() -> verifier.require(null, null, "wrong")).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> verifier.require(null, null, null)).isInstanceOf(BusinessRuleException.class);
+        server.verify();
+    }
+
+    @Test
+    void withNoDesktopKeyConfiguredNoHeaderIsAKey() {
+        CaptchaVerifier verifier = new CaptchaVerifier(properties(true, "s3cret", "pub-key"), RestClient.create());
+
+        assertThat(verifier.isDesktop("")).isFalse();
+        assertThat(verifier.isDesktop(null)).isFalse();
+        assertThat(verifier.isDesktop("anything")).isFalse();
+    }
+
+    @Test
+    void aTooShortDesktopKeyStopsTheServiceStarting() {
+        IdentityProperties p = properties(true, "sec", "pub");
+        p.getCaptcha().setDesktopKey("short");
+
+        assertThatThrownBy(new CaptchaVerifier(p, RestClient.create())::refuseToRunHalfConfigured)
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void itRefusesToStartHalfConfigured() {
         CaptchaVerifier noSecret = new CaptchaVerifier(properties(true, "", "pub"), RestClient.create());
         CaptchaVerifier noSiteKey = new CaptchaVerifier(properties(true, "sec", ""), RestClient.create());

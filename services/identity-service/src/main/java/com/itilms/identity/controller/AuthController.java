@@ -65,7 +65,7 @@ public class AuthController {
     @SecurityRequirements
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
-        captcha.require(request.captchaToken(), metadata(http).ipAddress());
+        captcha.require(request.captchaToken(), metadata(http).ipAddress(), desktopKey(http));
         return authService.login(request, metadata(http));
     }
 
@@ -73,8 +73,12 @@ public class AuthController {
             description = "The sign-in, registration and forgot-password forms read this to decide whether to show the widget.")
     @SecurityRequirements
     @GetMapping("/captcha-config")
-    public CaptchaVerifier.Config captchaConfig() {
-        return captcha.config();
+    public CaptchaVerifier.Config captchaConfig(HttpServletRequest http) {
+        return captcha.config(desktopKey(http));
+    }
+
+    private static String desktopKey(HttpServletRequest http) {
+        return http.getHeader(CaptchaVerifier.DESKTOP_KEY_HEADER);
     }
 
     @Operation(summary = "Register as a student",
@@ -84,7 +88,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
                                                  HttpServletRequest http) {
-        captcha.require(request.captchaToken(), metadata(http).ipAddress());
+        captcha.require(request.captchaToken(), metadata(http).ipAddress(), desktopKey(http));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(authService.register(request, metadata(http)));
     }
@@ -134,7 +138,7 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ApiMessage forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
                                      HttpServletRequest http) {
-        captcha.require(request.captchaToken(), metadata(http).ipAddress());
+        captcha.require(request.captchaToken(), metadata(http).ipAddress(), desktopKey(http));
         authService.forgotPassword(request, metadata(http));
         return ApiMessage.ok("If that address belongs to an account, a 6-digit reset code has been sent to it.");
     }

@@ -363,6 +363,7 @@ services:
       CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
       CAPTCHA_SITE_KEY: ${CAPTCHA_SITE_KEY:-}
       CAPTCHA_SECRET: ${CAPTCHA_SECRET:-}
+      CAPTCHA_DESKTOP_KEY: ${CAPTCHA_DESKTOP_KEY:-}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1"]

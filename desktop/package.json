@@ -20,7 +20,7 @@
     "productName": "SutraVidya",
     "executableName": "SutraVidya",
     "directories": { "output": "dist" },
-    "files": ["main.js", "preload.js", "build/icon.png", "app/**/*"],
+    "files": ["main.js", "preload.js", "app-config.json", "build/icon.png", "app/**/*"],
     "win": { "target": ["appx"], "icon": "build/icon.png" },
     "appx": {
       "identityName": "CHANGE_ME.SutraVidya",
