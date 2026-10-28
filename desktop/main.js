@@ -1,27 +1,71 @@
 const { app, BrowserWindow, desktopCapturer, protocol, net, session, shell } = require('electron')
 const path = require('node:path')
+const os = require('node:os')
 const fs = require('node:fs')
 const { pathToFileURL } = require('node:url')
 
-// The web app is served from its own origin, itilms://app, so its routes (/app/..., /login) work like on a website.
-// The gateway must allow this origin (api-gateway.yml, allowedOriginPatterns).
+// The web app is bundled in the app and served to the window under the web site's own address (build-web.mjs writes it
+// to app-config.json). Cloudflare Turnstile, the human check on the login page, only runs on the host names it was
+// registered for, and a custom scheme is none of them. Only requests to that one host are answered from the bundled
+// files; everything else goes to the network as usual. Without a configured address the app falls back to itilms://app
+// (then the gateway must allow that origin and the human check cannot run).
 const SCHEME = 'itilms'
-const ORIGIN = `${SCHEME}://app`
 const WEB_ROOT = path.join(__dirname, 'app')
+
+function readConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, 'app-config.json'), 'utf8'))
+  } catch {
+    return {}
+  }
+}
+const CONFIG = readConfig()
+const WEB = CONFIG.webUrl ? new URL(CONFIG.webUrl) : null
+const API = CONFIG.apiUrl ? new URL(CONFIG.apiUrl) : null
+const ORIGIN = WEB ? WEB.origin : `${SCHEME}://app`
 
 protocol.registerSchemesAsPrivileged([
   { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
 ])
 
+function bundledFile(request) {
+  const url = new URL(request.url)
+  let file = path.normalize(path.join(WEB_ROOT, decodeURIComponent(url.pathname)))
+  // Nothing outside the app folder, and any address that is not a file is a page of the single-page app.
+  if (!file.startsWith(WEB_ROOT)) return new Response('Not found', { status: 404 })
+  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(WEB_ROOT, 'index.html')
+  return net.fetch(pathToFileURL(file).toString())
+}
+
 function serveApp() {
-  protocol.handle(SCHEME, (request) => {
-    const url = new URL(request.url)
-    let file = path.normalize(path.join(WEB_ROOT, decodeURIComponent(url.pathname)))
-    // Nothing outside the app folder, and any address that is not a file is a page of the single-page app.
-    if (!file.startsWith(WEB_ROOT)) return new Response('Not found', { status: 404 })
-    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(WEB_ROOT, 'index.html')
-    return net.fetch(pathToFileURL(file).toString())
-  })
+  if (WEB) {
+    protocol.handle('https', (request) =>
+      new URL(request.url).host === WEB.host ? bundledFile(request) : net.fetch(request, { bypassCustomProtocolHandlers: true }),
+    )
+  } else {
+    protocol.handle(SCHEME, bundledFile)
+  }
+}
+
+// One copy at a time. Two copies share the same cache folder, fight over it and one of them shows a blank window.
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) app.quit()
+app.on('second-instance', () => {
+  const [win] = BrowserWindow.getAllWindows()
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  }
+})
+
+// What the page and the window report goes to a small log file next to the app's data, so a blank window can be
+// explained afterwards: %APPDATA%\sutravidya-desktop\app.log
+function log(line) {
+  try {
+    fs.appendFileSync(path.join(app.getPath('userData'), 'app.log'), `${new Date().toISOString()} ${line}${os.EOL}`)
+  } catch {
+    // Logging must never stop the app.
+  }
 }
 
 function createWindow() {
@@ -39,6 +83,26 @@ function createWindow() {
   // The page sets its own title (the institute's name); the window keeps the product's name.
   win.on('page-title-updated', (event) => event.preventDefault())
   win.loadURL(`${ORIGIN}/`)
+  log(`start ${app.getVersion()} electron ${process.versions.electron} ${os.release()}`)
+  win.webContents.on('console-message', (_event, level, message, line, source) => {
+    if (level >= 2) log(`console[${level}] ${message} (${source}:${line})`)
+  })
+  win.webContents.on('did-finish-load', () => log(`loaded ${win.webContents.getURL()}`))
+  win.webContents.on('render-process-gone', (_event, details) => log(`render-process-gone ${details.reason} ${details.exitCode}`))
+  win.webContents.on('did-fail-load', (_event, code, description, url) => log(`did-fail-load ${code} ${description} ${url}`))
+  app.on('child-process-gone', (_event, details) => log(`child-process-gone ${details.type} ${details.reason}`))
+  // Ctrl+Shift+I opens the developer tools, to look at the page when something is wrong.
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && ((input.control && input.shift && input.key.toLowerCase() === 'i') || input.key === 'F12')) {
+      win.webContents.toggleDevTools()
+      event.preventDefault()
+    }
+  })
+  // A page that crashed or failed to load comes back by itself instead of staying blank.
+  win.webContents.on('render-process-gone', () => setTimeout(() => win.reload(), 500))
+  win.webContents.on('did-fail-load', (_event, _code, _description, _url, isMainFrame) => {
+    if (isMainFrame) setTimeout(() => win.loadURL(`${ORIGIN}/`), 1500)
+  })
 
   // Links to other sites open in the browser, not inside the app.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -54,7 +118,16 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (!gotLock) return
   serveApp()
+
+  // Cloudflare's human check does not pass inside an embedded browser, so the server lets this app skip it by a key
+  // shared with it (CAPTCHA_DESKTOP_KEY on the server, ITILMS_DESKTOP_KEY when this app is built). Sent only to the API.
+  if (API && CONFIG.desktopKey) {
+    session.defaultSession.webRequest.onBeforeSendHeaders({ urls: [`${API.origin}/*`] }, (details, callback) => {
+      callback({ requestHeaders: { ...details.requestHeaders, 'X-Desktop-Key': CONFIG.desktopKey } })
+    })
+  }
 
   // Camera, microphone, fullscreen and screen sharing are what tests and live classes need - for this app only.
   const allowed = new Set(['media', 'fullscreen', 'display-capture', 'clipboard-sanitized-write', 'notifications'])

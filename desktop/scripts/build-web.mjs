@@ -1,7 +1,7 @@
 // Builds the web app with the API address baked in, and copies it into desktop/app for packaging.
 //   ITILMS_API_URL=https://api.yourcollege.in npm run build:web
 // With nothing set it points at the local stack (http://localhost:8080), which is fine for trying the app.
-import { cpSync, existsSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, rmSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,3 +16,12 @@ execSync('npm run build', { cwd: frontend, stdio: 'inherit', env: { ...process.e
 if (existsSync(target)) rmSync(target, { recursive: true })
 cpSync(path.join(frontend, 'dist'), target, { recursive: true })
 console.log(`Copied to ${target}`)
+
+// The address the window shows the app under. By default the web site that goes with the API (https://api.X -> https://app.X);
+// set ITILMS_WEB_URL to say otherwise. With a local API there is no web site and the app uses its own itilms://app.
+const web = process.env.ITILMS_WEB_URL || (/^https:\/\/api\./.test(api) ? api.replace('://api.', '://app.') : '')
+// ITILMS_DESKTOP_KEY: the secret that lets the app skip the human check (same value as CAPTCHA_DESKTOP_KEY on the server).
+// It ends up inside the app, so it is never committed (app-config.json is git-ignored).
+const desktopKey = process.env.ITILMS_DESKTOP_KEY || ''
+writeFileSync(path.resolve(here, '../app-config.json'), JSON.stringify({ webUrl: web, apiUrl: api, desktopKey }, null, 2))
+console.log(`The app will run under ${web || 'itilms://app'}`)

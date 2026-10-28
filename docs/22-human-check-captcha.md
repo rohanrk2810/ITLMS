@@ -32,3 +32,12 @@ A "Verify you are human" box above the submit button. The button stays disabled 
 - It slows down bots, it does not stop a determined human or a paid solving service.
 - Turnstile only works on hostnames added to the widget, so a new domain must be added there.
 - The check needs the visitor's browser to reach `challenges.cloudflare.com`.
+
+## The Windows desktop app (SutraVidya)
+Cloudflare's widget does not pass inside the desktop app (an embedded browser: the widget fails with error 600010). So identity-service has a way for that one client to skip it:
+
+- `CAPTCHA_DESKTOP_KEY` in `deploy/docker/.env` (at least 24 random characters; the service refuses to start with a shorter one). Blank = no exemption.
+- The app is built with the same value (`ITILMS_DESKTOP_KEY=... npm run dist:exe` in `desktop/`) and sends it as the `X-Desktop-Key` header, only to the API.
+- A request with the right key skips the check on sign-in, registration and forgot-password, and `GET /api/auth/captcha-config` tells that client there is no widget (`enabled: false`). Anyone else, or a wrong key, is checked as before.
+
+This is a secret inside an app people can unpack, so it keeps honest users working and does not stop someone who extracts it. What is left against password guessing is the gateway's 5-requests-a-second limit and the lock-out after five failed sign-ins. To retire it, clear `CAPTCHA_DESKTOP_KEY` and restart identity-service.

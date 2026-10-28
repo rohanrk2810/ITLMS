@@ -33,6 +33,13 @@ public class IdentityProperties {
         private String secret = "";
         private String verifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
         private Duration timeout = Duration.ofSeconds(5);
+        /**
+         * Secret shared with the SutraVidya desktop app. The app sends it in the X-Desktop-Key header and the check is
+         * skipped for those requests: Cloudflare's widget does not pass inside an embedded browser. Blank (the default)
+         * means no such exemption. It is a shared secret inside a distributed app, so it keeps honest clients working
+         * rather than stopping someone who unpacks the app; the gateway's rate limit and the sign-in lock-out still apply.
+         */
+        private String desktopKey = "";
     }
 
     /**

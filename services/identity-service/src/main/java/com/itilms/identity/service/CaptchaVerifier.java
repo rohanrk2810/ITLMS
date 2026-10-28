@@ -1,5 +1,7 @@
 package com.itilms.identity.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,12 +56,42 @@ public class CaptchaVerifier {
         return builder.requestFactory(timeouts).build();
     }
 
+    /** The header the desktop app sends its key in. */
+    public static final String DESKTOP_KEY_HEADER = "X-Desktop-Key";
+    private static final int MIN_DESKTOP_KEY_LENGTH = 24;
+
     @PostConstruct
     void refuseToRunHalfConfigured() {
+        if (!isBlank(settings.getDesktopKey()) && settings.getDesktopKey().length() < MIN_DESKTOP_KEY_LENGTH) {
+            throw new IllegalStateException(
+                    "CAPTCHA_DESKTOP_KEY is set but shorter than " + MIN_DESKTOP_KEY_LENGTH + " characters");
+        }
         if (settings.isEnabled() && (isBlank(settings.getSecret()) || isBlank(settings.getSiteKey()))) {
             throw new IllegalStateException(
                     "The captcha is switched on (CAPTCHA_ENABLED=true) but CAPTCHA_SITE_KEY or CAPTCHA_SECRET is empty");
         }
+    }
+
+    /** Whether the request carries the desktop app's key. Always false when no key is configured. */
+    public boolean isDesktop(String presentedKey) {
+        String key = settings.getDesktopKey();
+        if (isBlank(key) || isBlank(presentedKey)) {
+            return false;
+        }
+        return MessageDigest.isEqual(key.getBytes(StandardCharsets.UTF_8), presentedKey.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** {@link #config()}, except that the desktop app is told there is no widget to show. */
+    public Config config(String desktopKey) {
+        return isDesktop(desktopKey) ? new Config(false, "") : config();
+    }
+
+    /** {@link #require(String, String)}, except that the desktop app's key stands in for the widget. */
+    public void require(String token, String clientIp, String desktopKey) {
+        if (isDesktop(desktopKey)) {
+            return;
+        }
+        require(token, clientIp);
     }
 
     public boolean enabled() {

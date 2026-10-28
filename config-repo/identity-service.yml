@@ -34,6 +34,7 @@ itilms:
     enabled: ${CAPTCHA_ENABLED:false}
     site-key: ${CAPTCHA_SITE_KEY:}
     secret: ${CAPTCHA_SECRET:}
+    desktop-key: ${CAPTCHA_DESKTOP_KEY:}
 
   security:
     # Off unless the institute takes admissions online. When off, accounts are
