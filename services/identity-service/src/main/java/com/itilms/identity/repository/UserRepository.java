@@ -33,6 +33,14 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
             """)
     Optional<User> findByEmailOrPhone(@Param("identifier") String identifier);
 
+    /** Accounts whose phone ends in these 10 digits, whatever punctuation or country code it was typed with. */
+    @Query(value = """
+            SELECT * FROM users
+            WHERE phone IS NOT NULL
+              AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 10) = :last10
+            """, nativeQuery = true)
+    java.util.List<User> findAllByPhoneEndingWith(@Param("last10") String last10);
+
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);

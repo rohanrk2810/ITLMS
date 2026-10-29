@@ -36,6 +36,20 @@ itilms:
     secret: ${CAPTCHA_SECRET:}
     desktop-key: ${CAPTCHA_DESKTOP_KEY:}
 
+  # "Continue with Google": set the OAuth client id (Web application) to switch it on.
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+
+  # Sign-in with a code sent on WhatsApp (Meta WhatsApp Cloud API, an approved authentication template).
+  whatsapp:
+    enabled: ${WHATSAPP_ENABLED:false}
+    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+    access-token: ${WHATSAPP_ACCESS_TOKEN:}
+    template-name: ${WHATSAPP_TEMPLATE_NAME:}
+    language-code: ${WHATSAPP_LANGUAGE:en}
+    default-country-code: ${WHATSAPP_DEFAULT_COUNTRY_CODE:91}
+    dev-log-codes: ${WHATSAPP_DEV_LOG_CODES:false}
+
   security:
     # Off unless the institute takes admissions online. When off, accounts are
     # created by staff as part of the admission workflow (Doc S7.1).

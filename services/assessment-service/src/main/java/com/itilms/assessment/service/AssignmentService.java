@@ -14,6 +14,9 @@ import com.itilms.common.dto.PageResponse;
 /** Assignments and submissions (Doc S6.10). */
 public interface AssignmentService {
 
+    /** Removes an assignment made by mistake, with every submission to it. Administrator only. */
+    void delete(Long id);
+
     AssignmentResponse create(CreateAssignmentRequest request);
 
     AssignmentResponse update(Long id, CreateAssignmentRequest request);

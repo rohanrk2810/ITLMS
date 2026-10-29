@@ -24,7 +24,11 @@ import com.itilms.identity.dto.response.AuthResponse;
 import com.itilms.identity.dto.response.SessionResponse;
 import com.itilms.identity.dto.response.UserResponse;
 import com.itilms.identity.service.AuthService;
+import com.itilms.identity.dto.request.GoogleLoginRequest;
+import com.itilms.identity.dto.request.WhatsAppCodeRequest;
+import com.itilms.identity.dto.request.WhatsAppVerifyRequest;
 import com.itilms.identity.service.CaptchaVerifier;
+import com.itilms.identity.service.SocialLoginService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -52,6 +56,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final CaptchaVerifier captcha;
+    private final SocialLoginService socialLogin;
 
     @Operation(summary = "Sign in",
             description = "Accepts an email address or a phone number. Returns an access token, "
@@ -75,6 +80,42 @@ public class AuthController {
     @GetMapping("/captcha-config")
     public CaptchaVerifier.Config captchaConfig(HttpServletRequest http) {
         return captcha.config(desktopKey(http));
+    }
+
+    @Operation(summary = "Which extra sign-in methods are on",
+            description = "The sign-in form reads this to decide whether to show Continue with Google (and with which public "
+                    + "client id) and the WhatsApp code option.")
+    @SecurityRequirements
+    @GetMapping("/social-config")
+    public SocialLoginService.Config socialConfig() {
+        return socialLogin.config();
+    }
+
+    @Operation(summary = "Sign in with Google",
+            description = "Takes the ID token Google gave the browser, checks it with Google, and signs in the account "
+                    + "with that verified email. A new student account is made only when online registration is open.")
+    @SecurityRequirements
+    @PostMapping("/google")
+    public AuthResponse google(@Valid @RequestBody GoogleLoginRequest request, HttpServletRequest http) {
+        return socialLogin.googleLogin(request.idToken(), metadata(http));
+    }
+
+    @Operation(summary = "Send a sign-in code on WhatsApp",
+            description = "Always returns 200, whether or not the number is registered, so it cannot be used to find out "
+                    + "who has an account. The code works once and expires in a few minutes.")
+    @SecurityRequirements
+    @PostMapping("/whatsapp/request-code")
+    public ApiMessage whatsappRequestCode(@Valid @RequestBody WhatsAppCodeRequest request, HttpServletRequest http) {
+        captcha.require(request.captchaToken(), metadata(http).ipAddress(), desktopKey(http));
+        socialLogin.requestCode(request.phone(), metadata(http));
+        return ApiMessage.ok("If this number can sign in, a code has been sent on WhatsApp.");
+    }
+
+    @Operation(summary = "Sign in with the WhatsApp code")
+    @SecurityRequirements
+    @PostMapping("/whatsapp/verify")
+    public AuthResponse whatsappVerify(@Valid @RequestBody WhatsAppVerifyRequest request, HttpServletRequest http) {
+        return socialLogin.verifyCode(request.phone(), request.code(), metadata(http));
     }
 
     private static String desktopKey(HttpServletRequest http) {

@@ -1,11 +1,11 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Camera, Clock, Keyboard, Mic, Plus, ShieldCheck } from 'lucide-react'
+import { Camera, Clock, Keyboard, Mic, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
-import { CAMERA_CHECKS, type CameraCheckName, createQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
+import { CAMERA_CHECKS, type CameraCheckName, createQuiz, deleteQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
 import { searchCourses } from '@/api/courses'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAuthStore } from '@/stores/auth-store'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -27,6 +28,27 @@ export function ManageTestsPage() {
   const quizzesQuery = useQuery({ queryKey: ['quizzes', 'manage'], queryFn: () => listQuizzes() })
   const coursesQuery = useQuery({ queryKey: ['courses', 'search', 'all'], queryFn: () => searchCourses({}) })
   const courseTitles = new Map((coursesQuery.data?.content ?? []).map((course) => [course.id, course.title]))
+  const isAdmin = useAuthStore((state) => state.user?.role) === 'ADMIN'
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: (quizId: number) => deleteQuiz(quizId),
+    onSuccess: () => {
+      toast.success('Test deleted')
+      void queryClient.invalidateQueries({ queryKey: ['quizzes'] })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not delete the test.')),
+  })
+
+  function handleDelete(quizId: number, title: string) {
+    if (
+      window.confirm(
+        `Delete "${title}"? Its questions and every student's attempt and answers are removed too. This cannot be undone.`,
+      )
+    ) {
+      deleteMutation.mutate(quizId)
+    }
+  }
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -51,6 +73,7 @@ export function ManageTestsPage() {
               <TableHead>Questions</TableHead>
               <TableHead>Duration</TableHead>
               <TableHead>Status</TableHead>
+              {isAdmin && <TableHead className="w-12" />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -97,11 +120,25 @@ export function ManageTestsPage() {
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[quiz.status] ?? 'outline'}>{quiz.status}</Badge>
                 </TableCell>
+                {isAdmin && (
+                  <TableCell>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive"
+                      aria-label={`Delete ${quiz.title}`}
+                      disabled={deleteMutation.isPending}
+                      onClick={() => handleDelete(quiz.id, quiz.title)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
             {quizzesQuery.data.content.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground">
                   No tests yet.
                 </TableCell>
               </TableRow>

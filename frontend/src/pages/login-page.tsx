@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { login } from '@/api/auth'
 import { SIGNED_OUT_NOTICE_KEY, apiErrorMessage } from '@/api/client'
+import { SocialLogin } from '@/components/social-login'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,14 +31,16 @@ export function LoginPage() {
     }
   }, [])
 
+  function goToApp() {
+    // A temporary password sends every route to /app/change-password anyway
+    // (see ProtectedRoute), so there is nothing special to do with that case here.
+    const state = location.state as { from?: { pathname?: string } } | null
+    void navigate(state?.from?.pathname ?? '/app', { replace: true })
+  }
+
   const mutation = useMutation({
     mutationFn: () => login(identifier, password, captcha.token),
-    onSuccess: () => {
-      // A temporary password sends every route to /app/change-password anyway
-      // (see ProtectedRoute), so there is nothing special to do with that case here.
-      const state = location.state as { from?: { pathname?: string } } | null
-      void navigate(state?.from?.pathname ?? '/app', { replace: true })
-    },
+    onSuccess: goToApp,
     onError: (error) => {
       toast.error(apiErrorMessage(error, 'Could not sign in. Check your details and try again.'))
       captcha.reset() // a token works once
@@ -88,6 +91,12 @@ export function LoginPage() {
             {mutation.isPending ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
+        <SocialLogin
+          captchaToken={captcha.token}
+          captchaRequired={captcha.enabled}
+          onCaptchaUsed={captcha.reset}
+          onSignedIn={goToApp}
+        />
         <p className="mt-4 text-center text-sm text-muted-foreground">
           New student?{' '}
           <Link to="/register" className="font-medium text-foreground hover:underline">

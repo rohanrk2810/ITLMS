@@ -534,6 +534,11 @@ export async function deleteQuestion(questionId: number | string): Promise<QuizR
 }
 
 /** Needs at least one question. The batch is notified. */
+/** Administrator only: removes a test made or run by mistake, with its questions, attempts and answers. */
+export async function deleteQuiz(quizId: number | string): Promise<void> {
+  await apiClient.delete(`/api/quizzes/${quizId}`)
+}
+
 export async function publishQuiz(quizId: number | string): Promise<QuizResponse> {
   const { data } = await apiClient.post<QuizResponse>(`/api/quizzes/${quizId}/publish`)
   return data

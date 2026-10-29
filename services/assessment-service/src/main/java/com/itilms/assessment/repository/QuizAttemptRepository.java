@@ -14,6 +14,8 @@ import com.itilms.assessment.entity.QuizAttempt;
 
 public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> {
 
+    long countByQuizId(Long quizId);
+
     long countByQuizIdAndStudentId(Long quizId, Long studentId);
 
     /** The sitting a student is in the middle of, if any. */

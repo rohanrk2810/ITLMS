@@ -7,6 +7,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -65,6 +66,16 @@ public class AssignmentController {
     @PostMapping("/{id}/publish")
     public AssignmentResponse publish(@PathVariable Long id) {
         return assignmentService.publish(id);
+    }
+
+    @Operation(summary = "Delete an assignment",
+            description = "For work made by mistake. Removes the assignment and every submission to it; cannot be undone. "
+                    + "Administrator only.")
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        assignmentService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Stop accepting submissions", description = "Marking can continue.")

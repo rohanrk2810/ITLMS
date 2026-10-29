@@ -142,6 +142,19 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
+    public void delete(Long id) {
+        Assignment assignment = requireAssignment(id);
+        long submissions = submissionRepository.findByAssignmentIdOrderBySubmittedAtAsc(id).size();
+        // The submissions and their files go with it (the database cascades), so what was lost is recorded.
+        assignmentRepository.delete(assignment);
+        events.audit(SERVICE_NAME, "ASSIGNMENT_DELETED", "Assignment", id, null,
+                Map.of("title", assignment.getTitle(), "batchId", assignment.getBatchId(),
+                        "status", assignment.getStatus().name(), "submissionsRemoved", submissions));
+        log.info("Assignment {} deleted with {} submission(s)", id, submissions);
+    }
+
+    @Override
+    @Transactional
     public AssignmentResponse close(Long id) {
         Assignment assignment = requireAssignment(id);
         access.requireManagesBatch(assignment.getBatchId());

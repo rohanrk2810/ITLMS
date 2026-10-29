@@ -36,6 +36,10 @@ public class GatewayJwtProperties {
             "/api/auth/reset-password",
             // The sign-in form reads this before anyone has a token: whether to show the human check.
             "/api/auth/captcha-config",
+            // Sign-in without a password: Google, and a code sent on WhatsApp.
+            "/api/auth/social-config",
+            "/api/auth/google",
+            "/api/auth/whatsapp/**",
             "/api/public/**",
             "/api/courses/public/**",
             "/api/certificates/verify/**",
