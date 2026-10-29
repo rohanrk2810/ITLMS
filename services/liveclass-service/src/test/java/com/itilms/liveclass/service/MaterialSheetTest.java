@@ -15,12 +15,14 @@ import com.itilms.liveclass.entity.QuestionType;
 
 class MaterialSheetTest {
 
+    private static final String NL = "\n";
+
     @Test
     void theTemplateItselfUploadsCleanly() throws IOException {
         MaterialSheet.Result result = MaterialSheet.parse(new ByteArrayInputStream(MaterialSheet.template()));
 
         assertThat(result.errors()).isEmpty();
-        assertThat(result.items()).hasSize(3);
+        assertThat(result.items()).hasSize(4);
 
         var mcq = result.items().get(0);
         assertThat(mcq.question().type()).isEqualTo(QuestionType.MCQ);
@@ -36,6 +38,11 @@ class MaterialSheetTest {
         assertThat(sql.question().dataset().get(0).rows()).hasSize(3);
 
         assertThat(result.items().get(2).question().correctOptions()).containsExactly(0);
+
+        var coding = result.items().get(3);
+        assertThat(coding.question().type()).isEqualTo(QuestionType.CODING);
+        assertThat(coding.question().language()).isEqualTo("python");
+        assertThat(coding.question().starterCode()).contains("def total");
     }
 
     @Test
@@ -55,6 +62,21 @@ class MaterialSheetTest {
         assertThat(result.items().get(1).question().marks()).isEqualTo(3);
         // Row 1 is the heading, so the first data row is row 2.
         assertThat(result.errors()).extracting(MaterialSheet.RowError::row).containsExactly(3, 4, 5, 6);
+    }
+
+    @Test
+    void severalTablesAndCodingFieldsAreRead() throws IOException {
+        String[] row = new String[27];
+        java.util.Arrays.fill(row, "");
+        row[1] = "SHORT_ANSWER"; row[2] = "Join them"; row[19] = "a"; row[20] = "id" + NL + "1"; row[23] = "b"; row[24] = "id,x" + NL + "1,2";
+        String[] bad = new String[27];
+        java.util.Arrays.fill(bad, "");
+        bad[1] = "MCQ"; bad[2] = "q"; bad[3] = "x"; bad[4] = "y"; bad[11] = "A"; bad[21] = "python";
+
+        MaterialSheet.Result result = MaterialSheet.parse(new ByteArrayInputStream(sheet(row, bad)));
+
+        assertThat(result.items().get(0).question().dataset()).extracting(t -> t.name()).containsExactly("a", "b");
+        assertThat(result.errors()).extracting(MaterialSheet.RowError::row).containsExactly(3);
     }
 
     @Test

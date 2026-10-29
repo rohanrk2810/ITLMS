@@ -30,15 +30,18 @@ public final class MaterialSheet {
 
     public static final int MAX_ROWS = 500;
     static final int MAX_OPTIONS = 8;
+    private static final String NL = "\n";
 
     // Column positions. Options sit in 3..10 so the answer key can name them A..H.
     static final int TITLE = 0, TYPE = 1, QUESTION = 2, OPTION_1 = 3, CORRECT = 11, MARKS = 12, EXPLANATION = 13,
-            TOPIC = 14, TAGS = 15, DIFFICULTY = 16, SHARED = 17, CODE = 18, TABLE_NAME = 19, TABLE_DATA = 20;
+            TOPIC = 14, TAGS = 15, DIFFICULTY = 16, SHARED = 17, CODE = 18, TABLE_NAME = 19, TABLE_DATA = 20,
+            LANGUAGE = 21, STARTER = 22, TABLE_2_NAME = 23, TABLE_2_DATA = 24, TABLE_3_NAME = 25, TABLE_3_DATA = 26;
 
     static final String[] HEADERS = {
             "Title", "Type", "Question", "Option A", "Option B", "Option C", "Option D", "Option E", "Option F",
             "Option G", "Option H", "Correct answer", "Marks", "Explanation", "Topic", "Tags", "Difficulty", "Share",
-            "Code to show", "Table name", "Table data"};
+            "Code to show", "Table name", "Table data", "Language (coding)", "Starter code (coding)", "Table 2 name",
+            "Table 2 data", "Table 3 name", "Table 3 data"};
 
     private MaterialSheet() {
     }
@@ -131,10 +134,21 @@ public final class MaterialSheet {
         }
 
         String code = text(row, CODE, f);
-        List<DataTable> dataset = tableOf(text(row, TABLE_NAME, f), text(row, TABLE_DATA, f));
+        List<DataTable> dataset = new ArrayList<>();
+        for (int[] pair : new int[][]{{TABLE_NAME, TABLE_DATA}, {TABLE_2_NAME, TABLE_2_DATA}, {TABLE_3_NAME, TABLE_3_DATA}}) {
+            dataset.addAll(tableOf(text(row, pair[0], f), text(row, pair[1], f)));
+        }
+        String language = text(row, LANGUAGE, f).toLowerCase(Locale.ROOT);
+        String starter = text(row, STARTER, f);
+        if (type != QuestionType.CODING && (!language.isEmpty() || !starter.isEmpty())) {
+            throw new IllegalArgumentException("Language and Starter code are only for CODING questions.");
+        }
 
-        AskQuestionRequest question = new AskQuestionRequest(type, prompt, options, correct, accepted, null, null,
-                blankToNull(text(row, EXPLANATION, f)), marks, blankToNull(code), code.isEmpty() ? null : "text", dataset);
+        AskQuestionRequest question = new AskQuestionRequest(type, prompt, options, correct, accepted,
+                type == QuestionType.CODING ? (language.isEmpty() ? "python" : language) : null,
+                type == QuestionType.CODING ? blankToNull(starter) : null,
+                blankToNull(text(row, EXPLANATION, f)), marks, blankToNull(code), code.isEmpty() ? null : "text",
+                dataset.isEmpty() ? null : dataset);
 
         String title = text(row, TITLE, f);
         if (title.isEmpty()) {
@@ -156,8 +170,9 @@ public final class MaterialSheet {
             case "TRUE_FALSE", "TRUE/FALSE" -> QuestionType.TRUE_FALSE;
             case "SHORT_ANSWER", "SHORT" -> QuestionType.SHORT_ANSWER;
             case "OTHER", "OPEN" -> QuestionType.OTHER;
+            case "CODING", "CODE" -> QuestionType.CODING;
             default -> throw new IllegalArgumentException(
-                    "Unknown type \"" + raw + "\". Use MCQ, MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER or OTHER.");
+                    "Unknown type \"" + raw + "\". Use MCQ, MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER, CODING or OTHER.");
         };
     }
 
@@ -194,7 +209,7 @@ public final class MaterialSheet {
     /** First line of the cell is the column names; each line after is a row. Commas or tabs between values. */
     private static List<DataTable> tableOf(String name, String data) {
         if (name.isEmpty() && data.isEmpty()) {
-            return null;
+            return List.of();
         }
         if (name.isEmpty() || data.isEmpty()) {
             throw new IllegalArgumentException("A table needs both a name and its data.");
@@ -242,7 +257,7 @@ public final class MaterialSheet {
     // The template
     // -----------------------------------------------------------------
 
-    /** The sheet trainers fill in: headings, three example rows and a page of instructions. */
+    /** The sheet trainers fill in: headings, four example rows and a page of instructions. */
     public static byte[] template() throws IOException {
         try (XSSFWorkbook book = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = book.createSheet("Questions");
@@ -270,12 +285,15 @@ public final class MaterialSheet {
                     "sql, where", "MEDIUM", "Yes", "", "employees", "id,name,salary\n1,Asha,50000\n2,Ravi,42000\n3,Meera,47000"});
             example(sheet, wrap, 3, new String[]{"Java is typed", "TRUE_FALSE", "Java is a statically typed language.",
                     "", "", "", "", "", "", "", "", "True", "1", "", "Java basics", "java", "EASY", "No", "", "", ""});
+            example(sheet, wrap, 4, new String[]{"Sum of a list", "CODING", "Write a function that returns the sum of a list.",
+                    "", "", "", "", "", "", "", "", "", "5", "", "Python functions", "python, functions", "MEDIUM", "No",
+                    "", "", "", "python", "def total(numbers):" + NL + "    # your code" + NL + "    pass"});
 
             Sheet help = book.createSheet("How to fill");
             String[] lines = {
-                    "One question per row, starting from row 2. Delete the three example rows before you upload.",
+                    "One question per row, starting from row 2. Delete the four example rows before you upload.",
                     "",
-                    "Type: MCQ (one right option), MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER or OTHER (open question). Blank means MCQ.",
+                    "Type: MCQ (one right option), MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER, CODING (student writes code) or OTHER (open question). Blank means MCQ.",
                     "Options A to H: fill only the ones you need (at least 2 for MCQ and MULTIPLE_SELECT).",
                     "Correct answer: MCQ - one letter, e.g. B. MULTIPLE_SELECT - letters, e.g. A,C. TRUE_FALSE - True or False.",
                     "   SHORT_ANSWER - the right answer; put | between answers that are also right, e.g. 6|six. Blank = you mark it yourself.",
@@ -283,7 +301,8 @@ public final class MaterialSheet {
                     "Tags: separated by commas. Difficulty: EASY, MEDIUM or HARD. Share: Yes lets other trainers use the question.",
                     "Code to show: code the students see above the question.",
                     "Table name and Table data: a small database shown as a table. First line of Table data is the column names, then one row per line",
-                    "   (press Alt+Enter inside the cell for a new line). Values are separated by commas.",
+                    "   (press Alt+Enter inside the cell for a new line). Values are separated by commas. Use Table 2 and Table 3 for more tables.",
+                    "Language and Starter code: for CODING only. Language is python, java, c, cpp ... (blank = python). Starter code is what the editor opens with.",
                     "Title is optional; the start of the question is used when it is blank.",
                     "Rows with a mistake are skipped and listed with the reason; the other rows are still saved."};
             for (int i = 0; i < lines.length; i++) {
