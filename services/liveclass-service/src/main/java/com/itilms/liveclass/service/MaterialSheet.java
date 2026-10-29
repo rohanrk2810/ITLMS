@@ -191,7 +191,8 @@ public final class MaterialSheet {
                 dataset.isEmpty() ? null : dataset,
                 type == QuestionType.CODING && !cases.isEmpty() ? cases : null,
                 type == QuestionType.CODING ? blankToNull(setup) : null,
-                type == QuestionType.CODING ? choice.equals("yes") || choice.equals("y") || choice.equals("true") : null);
+                type == QuestionType.CODING && !language.equals("sql")
+                        ? !(choice.equals("no") || choice.equals("n") || choice.equals("false")) : null);
 
         String title = text(row, TITLE, f);
         if (title.isEmpty()) {
@@ -411,7 +412,7 @@ public final class MaterialSheet {
                     "Table name and Table data: a small database shown as a table. First line of Table data is the column names, then one row per line",
                     "   (press Alt+Enter inside the cell for a new line). Values are separated by commas. Use Table 2 and Table 3 for more tables.",
                     "CODING questions: Language is the compiler - java, python, c, cpp, csharp or sql (blank = python). Starter code is what the editor opens with.",
-                    "   SQL setup (sql only) is the CREATE TABLE / INSERT statements that run before the student query. Let students pick language: Yes or No.",
+                    "   SQL setup (sql only) is the CREATE TABLE / INSERT statements that run before the student query. Let students pick language: blank or Yes lets them use any language, No keeps them to the one named.",
                     "Test cases go on the Test cases sheet, one row per case: Question row is the row number of the CODING question on the Questions sheet,",
                     "   then Input (what is typed in), Expected output (what a right program prints), Hidden (Yes = student sees only pass/fail) and Weight (1 to 100).",
                     "   Up to 10 per question. A test uses them to mark the code; without them the trainer reads the code.",

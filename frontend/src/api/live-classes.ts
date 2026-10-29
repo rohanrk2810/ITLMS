@@ -355,9 +355,12 @@ export async function renameFolder(path: string, to: string): Promise<void> {
   await apiClient.put('/api/liveclass/materials/folders', { path, to })
 }
 
-/** Only an empty folder can be deleted. */
-export async function deleteFolder(path: string): Promise<void> {
-  await apiClient.delete('/api/liveclass/materials/folders', { params: { path } })
+/** Deletes the folder with every folder inside it and every question filed in them. */
+export async function deleteFolder(path: string): Promise<{ questions: number; folders: number }> {
+  const { data } = await apiClient.delete<{ questions: number; folders: number }>('/api/liveclass/materials/folders', {
+    params: { path },
+  })
+  return data
 }
 
 export async function listMaterials(params: MaterialFilter = {}): Promise<LiveMaterial[]> {

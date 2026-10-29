@@ -528,6 +528,12 @@ export async function addQuestion(quizId: number | string, input: QuestionInput)
   return data
 }
 
+/** Draft tests only: replaces the question with this one, whatever its type. */
+export async function updateQuestion(questionId: number | string, input: QuestionInput): Promise<QuizResponse> {
+  const { data } = await apiClient.put<QuizResponse>(`/api/quizzes/questions/${questionId}`, input)
+  return data
+}
+
 export async function deleteQuestion(questionId: number | string): Promise<QuizResponse> {
   const { data } = await apiClient.delete<QuizResponse>(`/api/quizzes/questions/${questionId}`)
   return data

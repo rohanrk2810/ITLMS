@@ -1,11 +1,12 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import {
   addQuestion,
+  updateQuestion,
   closeQuiz,
   deleteQuestion,
   getQuiz,
@@ -142,14 +143,22 @@ export function QuizEditorPage() {
                     </span>
                   </p>
                   {quiz.status === 'DRAFT' && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => deleteQuestionMutation.mutate(question.id)}
-                      disabled={deleteQuestionMutation.isPending}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    <div className="flex shrink-0 items-center">
+                      <AddQuestionDialog
+                        quizId={quiz.id}
+                        question={question}
+                        onAdded={invalidate}
+                        databases={[...new Set((quiz.questions ?? []).map((q) => q.setupSql).filter((s): s is string => !!s))]}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteQuestionMutation.mutate(question.id)}
+                        disabled={deleteQuestionMutation.isPending}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -344,7 +353,13 @@ const TRUE_FALSE_OPTIONS: QuestionOptionInput[] = [
 ]
 const BLANK_CASE: TestCaseInput = { input: '', expectedOutput: '', hidden: false, weight: 1 }
 
-function AddQuestionDialog({ quizId, onAdded, databases }: { quizId: number; onAdded: () => void; databases: string[] }) {
+/** Adds a question to a draft test, or, given {@code question}, edits that one. */
+function AddQuestionDialog({ quizId, question, onAdded, databases }: {
+  quizId: number
+  question?: QuizQuestionWithKey
+  onAdded: () => void
+  databases: string[]
+}) {
   const [open, setOpen] = useState(false)
   const [questionText, setQuestionText] = useState('')
   const [type, setType] = useState<QuestionType>('SINGLE_CHOICE')
@@ -373,6 +388,23 @@ function AddQuestionDialog({ quizId, onAdded, databases }: { quizId: number; onA
     setTestCases([BLANK_CASE])
   }
 
+  /** Fills the form with an existing question, so editing starts from what is saved. */
+  function load(q: QuizQuestionWithKey) {
+    setQuestionText(q.questionText)
+    setType(q.type as QuestionType)
+    setMarks(q.marks)
+    setOptions(q.options.length > 0 ? q.options.map((o) => ({ optionText: o.optionText, correct: o.correct })) : BLANK_OPTIONS)
+    setAccepted(q.acceptedAnswers.join('\n'))
+    setCodeLanguage(q.codeLanguage ?? 'JAVA')
+    setStarterCode(q.starterCode ?? '')
+    setSetupSql(q.setupSql ?? '')
+    setAllowChoice(q.allowLanguageChoice)
+    setAllowSuggestions(q.allowSuggestions)
+    setTestCases(q.testCases.length > 0
+      ? q.testCases.map((c) => ({ input: c.input, expectedOutput: c.expectedOutput, hidden: c.hidden, weight: c.weight }))
+      : [BLANK_CASE])
+  }
+
   function buildInput(): QuestionInput {
     const base = { questionText, type, marks }
     if (isChoice) return { ...base, options }
@@ -391,13 +423,13 @@ function AddQuestionDialog({ quizId, onAdded, databases }: { quizId: number; onA
   }
 
   const mutation = useMutation({
-    mutationFn: () => addQuestion(quizId, buildInput()),
+    mutationFn: () => (question ? updateQuestion(question.id, buildInput()) : addQuestion(quizId, buildInput())),
     onSuccess: () => {
       setOpen(false)
-      reset()
+      if (!question) reset()
       onAdded()
     },
-    onError: (error) => toast.error(apiErrorMessage(error, 'Could not add the question.')),
+    onError: (error) => toast.error(apiErrorMessage(error, question ? 'Could not save the question.' : 'Could not add the question.')),
   })
 
   /** Runs the author's correct query on the database above and keeps what it prints as the expected output. */
@@ -456,16 +488,29 @@ function AddQuestionDialog({ quizId, onAdded, databases }: { quizId: number; onA
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Reopening an edit starts again from what is saved, not from a half-finished earlier try.
+        if (next && question) load(question)
+        setOpen(next)
+      }}
+    >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Plus className="size-3.5" />
-          Add question
-        </Button>
+        {question ? (
+          <Button size="sm" variant="ghost" title="Edit this question">
+            <Pencil className="size-3.5" />
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline">
+            <Plus className="size-3.5" />
+            Add question
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Add a question</DialogTitle>
+          <DialogTitle>{question ? 'Edit question' : 'Add a question'}</DialogTitle>
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-2">
@@ -725,7 +770,7 @@ function AddQuestionDialog({ quizId, onAdded, databases }: { quizId: number; onA
 
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Adding...' : 'Add question'}
+              {mutation.isPending ? 'Saving...' : question ? 'Save changes' : 'Add question'}
             </Button>
           </DialogFooter>
         </form>

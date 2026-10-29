@@ -9,6 +9,7 @@ import type { DataTable, LiveMaterial } from '@/api/live-classes'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { FolderTree } from '@/pages/live-classes/folder-tree'
 import { MaterialList } from '@/pages/live-classes/material-list'
 
 function tableText(table: DataTable) {
@@ -73,6 +74,7 @@ export function ImportFromBankDialog({ quizId, onAdded }: { quizId: number; onAd
   const [open, setOpen] = useState(false)
   const [picked, setPicked] = useState<Map<number, QuestionInput>>(new Map())
   const [busy, setBusy] = useState(false)
+  const [folder, setFolder] = useState('')
 
   async function importPicked() {
     setBusy(true)
@@ -102,7 +104,7 @@ export function ImportFromBankDialog({ quizId, onAdded }: { quizId: number; onAd
           Import from bank
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Import from your question bank</DialogTitle>
         </DialogHeader>
@@ -110,7 +112,11 @@ export function ImportFromBankDialog({ quizId, onAdded }: { quizId: number; onAd
           Single choice, multiple select, true/false, short answers with a right answer, and coding questions with test
           cases can be imported. Code shown with a question is added to its text.
         </p>
+        <div className="flex flex-col gap-4 sm:flex-row">
+        <FolderTree readOnly selected={folder} onSelect={setFolder} />
+        <div className="min-w-0 flex-1">
         <MaterialList
+          folder={folder}
           leading={(item) => {
             const converted = toTestQuestion(item)
             return typeof converted === 'string' ? (
@@ -130,6 +136,8 @@ export function ImportFromBankDialog({ quizId, onAdded }: { quizId: number; onAd
             )
           }}
         />
+        </div>
+        </div>
         <DialogFooter>
           <Button disabled={busy || picked.size === 0} onClick={() => void importPicked()}>
             {busy ? 'Adding...' : `Add ${picked.size || ''} to test`}

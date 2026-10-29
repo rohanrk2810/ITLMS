@@ -4,6 +4,8 @@ import { CheckCircle2, ChevronLeft, Download, Paperclip, Trash2, Upload } from '
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { useAsk } from '@/components/ask-dialog'
+
 import {
   type AssignmentResponse,
   type EvaluateSubmissionInput,
@@ -41,6 +43,7 @@ export function AssignmentDetailPage() {
   const isAdmin = role === 'ADMIN'
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const ask = useAsk()
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteAssignment(assignmentId!),
@@ -52,14 +55,13 @@ export function AssignmentDetailPage() {
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not delete the assignment.')),
   })
 
-  function handleDelete(title: string) {
-    if (
-      window.confirm(
-        `Delete "${title}"? Every submission to it, with marks and feedback, is removed too. This cannot be undone.`,
-      )
-    ) {
-      deleteMutation.mutate()
-    }
+  async function handleDelete(title: string) {
+    const ok = await ask.confirm({
+      title: `Delete "${title}"?`,
+      message: 'Every submission to it, with marks and feedback, is removed too. This cannot be undone.',
+      destructive: true,
+    })
+    if (ok) deleteMutation.mutate()
   }
 
   const query = useQuery({
@@ -74,6 +76,7 @@ export function AssignmentDetailPage() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
+      {ask.dialog}
       <Link to="/app/assessments" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="size-4" />
         Assessments

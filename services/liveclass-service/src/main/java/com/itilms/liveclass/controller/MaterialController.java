@@ -75,12 +75,12 @@ public class MaterialController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Delete an empty folder")
+    @Operation(summary = "Delete a folder",
+            description = "Takes every folder inside it and every question filed in them. Cannot be undone.")
     @PreAuthorize(Roles.ACADEMIC)
     @DeleteMapping("/folders")
-    public ResponseEntity<Void> deleteFolder(@RequestParam String path) {
-        materialService.deleteFolder(path);
-        return ResponseEntity.noContent().build();
+    public LiveMaterialService.FolderDeleted deleteFolder(@RequestParam String path) {
+        return materialService.deleteFolder(path);
     }
 
     @Operation(summary = "The Excel template for bulk upload",
