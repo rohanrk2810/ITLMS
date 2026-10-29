@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { BankMetaFields, EMPTY_META, type MetaDraft, metaToPayload } from './bank-meta-fields'
+import { FolderTree } from './folder-tree'
 import { MaterialList } from './material-list'
 import { QuestionForm } from './question-form'
 
@@ -23,6 +24,13 @@ export function LectureMaterialPage() {
   const [editing, setEditing] = useState<LiveMaterial | null>(null)
   const [title, setTitle] = useState('')
   const [meta, setMeta] = useState<MetaDraft>(EMPTY_META)
+  const [folder, setFolder] = useState('')
+
+  /** Browsing a folder also makes it the place the next new question is filed. */
+  function pickFolder(path: string) {
+    setFolder(path)
+    if (!editing) setMeta((m) => ({ ...m, folder: path }))
+  }
   const [savedKey, setSavedKey] = useState(0)
   const [importing, setImporting] = useState(false)
   const [report, setReport] = useState<MaterialImportResult | null>(null)
@@ -53,13 +61,14 @@ export function LectureMaterialPage() {
       tags: item.tags.join(', '),
       difficulty: item.difficulty ?? '',
       shared: item.shared,
+      folder: item.folder ?? '',
     })
   }
 
   function reset() {
     setEditing(null)
     setTitle('')
-    setMeta(EMPTY_META)
+    setMeta({ ...EMPTY_META, folder })
   }
 
   async function save(input: AskQuestionInput) {
@@ -137,7 +146,12 @@ export function LectureMaterialPage() {
             <CardTitle className="text-base">Bank</CardTitle>
           </CardHeader>
           <CardContent>
-            <MaterialList refreshKey={savedKey} onEdit={startEdit} />
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <FolderTree selected={folder} onSelect={pickFolder} refreshKey={savedKey} onChanged={() => setSavedKey((k) => k + 1)} />
+              <div className="min-w-0 flex-1">
+                <MaterialList refreshKey={savedKey} onEdit={startEdit} folder={folder} />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

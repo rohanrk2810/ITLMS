@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@/api/client'
 import {
   type Difficulty,
   type LiveMaterial,
+  type LiveQuestionType,
   type MaterialFilter,
   LIVE_QUESTION_TYPE_LABEL,
   copyMaterial,
@@ -24,7 +25,9 @@ const DIFFICULTIES: Difficulty[] = ['EASY', 'MEDIUM', 'HARD']
  * an own item can be edited or deleted and another trainer's shared one copied. {@code leading} puts something (a
  * checkbox, when picking questions for a test) before each row.
  */
-export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, leading }: {
+export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, leading, folder }: {
+  /** Show only this folder and the ones beneath it. */
+  folder?: string
   liveSessionId?: number
   refreshKey?: number
   onSent?: () => void
@@ -36,6 +39,7 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
   const [query, setQuery] = useState('')
   const [tag, setTag] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty | ''>('')
+  const [type, setType] = useState<LiveQuestionType | ''>('')
 
   const load = useCallback(() => {
     listMaterials({
@@ -43,10 +47,12 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
       query: query.trim() || undefined,
       tag: tag.trim() || undefined,
       difficulty: difficulty || undefined,
+      folder: folder || undefined,
+      type: type || undefined,
     })
       .then(setItems)
       .catch((err) => toast.error(apiErrorMessage(err, 'Could not load the question bank.')))
-  }, [scope, query, tag, difficulty])
+  }, [scope, query, tag, difficulty, folder, type])
 
   // Typing in the search box waits a moment so each keystroke is not a request.
   useEffect(() => {
@@ -97,6 +103,16 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search..." className="h-8 min-w-32 flex-1" />
         <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Tag" className="h-8 w-24" />
         <select
+          value={type}
+          onChange={(e) => setType(e.target.value as LiveQuestionType | '')}
+          className="h-8 rounded-md border bg-transparent px-2 text-sm"
+        >
+          <option value="">Any format</option>
+          {(Object.keys(LIVE_QUESTION_TYPE_LABEL) as LiveQuestionType[]).map((t) => (
+            <option key={t} value={t}>{LIVE_QUESTION_TYPE_LABEL[t]}</option>
+          ))}
+        </select>
+        <select
           value={difficulty}
           onChange={(e) => setDifficulty(e.target.value as Difficulty | '')}
           className="h-8 rounded-md border bg-transparent px-2 text-sm"
@@ -121,6 +137,9 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
                 {LIVE_QUESTION_TYPE_LABEL[item.question.type]}
                 {item.question.snippet && ' · code'}
                 {item.question.dataset?.length ? ` · ${item.question.dataset.length} table(s)` : ''}
+                {item.question.type === 'CODING' && item.question.language && ` · ${item.question.language}`}
+                {item.question.testCases?.length ? ` · ${item.question.testCases.length} test case(s)` : ''}
+                {item.folder && !folder && ` · 📁 ${item.folder}`}
                 {item.topic && ` · ${item.topic}`}
                 {item.difficulty && ` · ${item.difficulty.toLowerCase()}`}
                 {!item.mine && item.ownerName && ` · by ${item.ownerName}`}

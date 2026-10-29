@@ -16,6 +16,7 @@ public record MaterialResponse(
         String difficulty,
         boolean shared,
         boolean mine,
+        String folder,
         String ownerName,
         Instant createdAt) {
 }
