@@ -43,6 +43,7 @@ class MaterialSheetTest {
         assertThat(coding.question().type()).isEqualTo(QuestionType.CODING);
         assertThat(coding.question().language()).isEqualTo("python");
         assertThat(coding.question().starterCode()).contains("input().split()");
+        assertThat(coding.question().allowLanguageChoice()).isTrue();
         assertThat(coding.question().testCases()).hasSize(2);
         assertThat(coding.question().testCases().get(1).hidden()).isTrue();
         assertThat(coding.question().testCases().get(1).weight()).isEqualTo(2);

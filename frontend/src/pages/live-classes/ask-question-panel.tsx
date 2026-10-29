@@ -11,6 +11,7 @@ import {
   closeQuestion,
 } from '@/api/live-classes'
 import { apiErrorMessage } from '@/api/client'
+import { useAsk } from '@/components/ask-dialog'
 import { Button } from '@/components/ui/button'
 import { MaterialList } from './material-list'
 import { QuestionForm } from './question-form'
@@ -64,6 +65,7 @@ export function AskQuestionPanel({ liveSessionId, classSessionId }: { liveSessio
 }
 
 function AskForm({ liveSessionId, onAsked }: { liveSessionId: number; onAsked: () => void }) {
+  const dialogs = useAsk()
   const [tab, setTab] = useState<'new' | 'saved'>('new')
   const [savedKey, setSavedKey] = useState(0)
 
@@ -81,7 +83,12 @@ function AskForm({ liveSessionId, onAsked }: { liveSessionId: number; onAsked: (
   async function keep(build: () => AskQuestionInput | null) {
     const input = build()
     if (!input) return
-    const title = window.prompt('Save as (a name you will recognise):', input.prompt.slice(0, 60))
+    const title = await dialogs.prompt({
+      title: 'Save to your question bank',
+      label: 'Name',
+      initial: input.prompt.slice(0, 60),
+      confirmLabel: 'Save',
+    })
     if (!title?.trim()) return
     try {
       await saveMaterial(title.trim(), input)
@@ -94,6 +101,7 @@ function AskForm({ liveSessionId, onAsked }: { liveSessionId: number; onAsked: (
 
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3">
+      {dialogs.dialog}
       <div className="flex gap-1">
         <Button size="sm" variant={tab === 'new' ? 'default' : 'outline'} onClick={() => setTab('new')}>Ask a question</Button>
         <Button size="sm" variant={tab === 'saved' ? 'default' : 'outline'} onClick={() => setTab('saved')}>Question bank</Button>

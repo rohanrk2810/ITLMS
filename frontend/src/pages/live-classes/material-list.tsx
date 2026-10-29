@@ -14,6 +14,8 @@ import {
   listMaterials,
   sendMaterial,
 } from '@/api/live-classes'
+import { useAsk } from '@/components/ask-dialog'
+import { useAuthStore } from '@/stores/auth-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,6 +36,8 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
   onEdit?: (item: LiveMaterial) => void
   leading?: (item: LiveMaterial) => ReactNode
 }) {
+  const ask = useAsk()
+  const isAdmin = useAuthStore((state) => state.user?.role) === 'ADMIN'
   const [items, setItems] = useState<LiveMaterial[] | null>(null)
   const [scope, setScope] = useState<MaterialFilter['scope']>(undefined)
   const [query, setQuery] = useState('')
@@ -80,8 +84,24 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
     }
   }
 
+  /** Another trainer's question cannot be changed, so it is copied into the caller's bank and the copy is edited. */
+  async function editCopy(item: LiveMaterial) {
+    try {
+      const copy = await copyMaterial(item.id)
+      load()
+      onEdit?.(copy)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not copy it.'))
+    }
+  }
+
   async function remove(item: LiveMaterial) {
-    if (!window.confirm(`Delete "${item.title}"?`)) return
+    const ok = await ask.confirm({
+      title: `Delete "${item.title}"?`,
+      message: 'It is removed from your question bank for good.',
+      destructive: true,
+    })
+    if (!ok) return
     try {
       await deleteMaterial(item.id)
       load()
@@ -92,6 +112,7 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
 
   return (
     <div className="flex flex-col gap-2">
+      {ask.dialog}
       <div className="flex flex-wrap items-center gap-1">
         {([[undefined, 'All'], ['mine', 'Mine'], ['shared', 'Shared by others']] as const).map(([value, label]) => (
           <Button key={label} size="sm" variant={scope === value ? 'default' : 'outline'} onClick={() => setScope(value)}>
@@ -158,9 +179,14 @@ export function MaterialList({ liveSessionId, refreshKey = 0, onSent, onEdit, le
                 <Send className="size-3.5" /> Send
               </Button>
             )}
-            {item.mine && onEdit && (
+            {onEdit && (item.mine || (isAdmin && item.shared)) && (
               <Button size="icon" variant="ghost" title="Edit" onClick={() => onEdit(item)}>
                 <Pencil className="size-4" />
+              </Button>
+            )}
+            {onEdit && !item.mine && !(isAdmin && item.shared) && (
+              <Button size="sm" variant="ghost" title="Make your own copy and edit that" onClick={() => void editCopy(item)}>
+                <Pencil className="size-3.5" /> Edit copy
               </Button>
             )}
             {!item.mine && liveSessionId == null && !leading && (

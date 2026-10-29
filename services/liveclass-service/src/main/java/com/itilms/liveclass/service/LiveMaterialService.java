@@ -14,6 +14,7 @@ import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.exception.ForbiddenOperationException;
 import com.itilms.common.exception.ResourceNotFoundException;
 import com.itilms.common.security.AppPrincipal;
+import com.itilms.common.security.Roles;
 import com.itilms.common.security.SecurityUtils;
 import com.itilms.liveclass.dto.request.AskQuestionRequest;
 import com.itilms.liveclass.dto.request.MaterialRequest;
@@ -79,10 +80,17 @@ public class LiveMaterialService {
 
     @Transactional
     public MaterialResponse update(Long id, MaterialRequest request) {
-        LiveMaterial material = requireOwned(id);
+        AppPrincipal me = SecurityUtils.requirePrincipal();
+        LiveMaterial material = require(id);
+        // The owner edits their own; an administrator may also correct one that has been shared.
+        boolean allowed = material.getOwnerUserId().equals(me.userId())
+                || (Roles.ADMIN.equals(me.role()) && material.isShared());
+        if (!allowed) {
+            throw new ForbiddenOperationException("This material belongs to another trainer.");
+        }
         apply(material, request);
         material.setUpdatedAt(Instant.now());
-        return toResponse(materials.save(material), material.getOwnerUserId());
+        return toResponse(materials.save(material), me.userId());
     }
 
     @Transactional
@@ -187,15 +195,25 @@ public class LiveMaterialService {
         }
     }
 
-    /** Only an empty folder goes; questions are never deleted as a side effect of tidying folders. */
+    /**
+     * Deletes a folder with every folder inside it and every question filed in any of them. The caller's own only:
+     * a question shared with other trainers goes too, since it lives in this folder. Returns what was removed.
+     */
     @Transactional
-    public void deleteFolder(String path) {
+    public FolderDeleted deleteFolder(String path) {
         Long me = SecurityUtils.requirePrincipal().userId();
         String clean = requireFolder(path);
-        if (materials.findByOwnerUserId(me).stream().anyMatch(m -> inFolder(m.getFolder(), clean))) {
-            throw new BusinessRuleException("Move or delete the questions in this folder first.");
-        }
-        folders.findByOwnerUserId(me).stream().filter(f -> inFolder(f.getPath(), clean)).forEach(folders::delete);
+        List<LiveMaterial> doomedQuestions = materials.findByOwnerUserId(me).stream()
+                .filter(m -> inFolder(m.getFolder(), clean)).toList();
+        List<LiveMaterialFolder> doomedFolders = folders.findByOwnerUserId(me).stream()
+                .filter(f -> inFolder(f.getPath(), clean)).toList();
+        materials.deleteAll(doomedQuestions);
+        folders.deleteAll(doomedFolders);
+        return new FolderDeleted(doomedQuestions.size(), doomedFolders.size());
+    }
+
+    /** What deleting a folder took with it. */
+    public record FolderDeleted(int questions, int folders) {
     }
 
     /** "Java/OOPs/ Coding " becomes "Java/OOPs/Coding"; blank is the top level (null). */

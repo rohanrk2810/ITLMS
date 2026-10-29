@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { type BankFolder, createFolder, deleteFolder, listFolders, renameFolder } from '@/api/live-classes'
+import { useAsk } from '@/components/ask-dialog'
 import { Button } from '@/components/ui/button'
 
 interface Node {
@@ -36,12 +37,15 @@ function buildRows(folders: BankFolder[]): Node[] {
  * The bank's folders, like a file explorer. Picking a folder narrows the list beside it to that folder and
  * everything under it; "All questions" clears it.
  */
-export function FolderTree({ selected, onSelect, refreshKey = 0, onChanged }: {
+export function FolderTree({ selected, onSelect, refreshKey = 0, onChanged, readOnly = false }: {
+  /** Browse only: no making, renaming or deleting (used when picking questions for a test). */
+  readOnly?: boolean
   selected: string
   onSelect: (path: string) => void
   refreshKey?: number
   onChanged?: () => void
 }) {
+  const ask = useAsk()
   const [folders, setFolders] = useState<BankFolder[]>([])
 
   const load = useCallback(() => {
@@ -53,7 +57,12 @@ export function FolderTree({ selected, onSelect, refreshKey = 0, onChanged }: {
   const looseCount = useMemo(() => folders.reduce((sum, f) => sum + f.count, 0), [folders])
 
   async function add() {
-    const name = window.prompt(selected ? `New folder inside ${selected}:` : 'New folder (e.g. Java/OOPs/Coding):')
+    const name = await ask.prompt({
+      title: selected ? `New folder inside ${selected}` : 'New folder',
+      label: 'Folder name',
+      placeholder: selected ? 'e.g. Coding' : 'e.g. Java/OOPs/Coding',
+      confirmLabel: 'Create',
+    })
     if (!name?.trim()) return
     try {
       const created = await createFolder(selected ? `${selected}/${name.trim()}` : name.trim())
@@ -66,7 +75,13 @@ export function FolderTree({ selected, onSelect, refreshKey = 0, onChanged }: {
   }
 
   async function rename() {
-    const name = window.prompt('Rename folder (the full path, so it can also be moved):', selected)
+    const name = await ask.prompt({
+      title: 'Rename or move folder',
+      message: 'Give the full path. A different parent moves it, with everything inside.',
+      label: 'Folder path',
+      initial: selected,
+      confirmLabel: 'Save',
+    })
     if (!name?.trim() || name.trim() === selected) return
     try {
       await renameFolder(selected, name.trim())
@@ -79,9 +94,20 @@ export function FolderTree({ selected, onSelect, refreshKey = 0, onChanged }: {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete the empty folder "${selected}"?`)) return
+    const node = rows.find((r) => r.path === selected)
+    const inside = rows.filter((r) => r.path.startsWith(selected + '/')).length
+    const ok = await ask.confirm({
+      title: `Delete folder "${selected}"?`,
+      message:
+        `This also deletes ${inside} folder${inside === 1 ? '' : 's'} inside it and ${node?.total ?? 0} ` +
+        `question${node?.total === 1 ? '' : 's'} filed in them. This cannot be undone.`,
+      confirmLabel: 'Delete everything',
+      destructive: true,
+    })
+    if (!ok) return
     try {
-      await deleteFolder(selected)
+      const gone = await deleteFolder(selected)
+      toast.success(`Deleted ${gone.folders} folder${gone.folders === 1 ? '' : 's'} and ${gone.questions} question${gone.questions === 1 ? '' : 's'}`)
       onSelect('')
       load()
       onChanged?.()
@@ -92,16 +118,17 @@ export function FolderTree({ selected, onSelect, refreshKey = 0, onChanged }: {
 
   return (
     <div className="flex w-full shrink-0 flex-col gap-1 sm:w-52">
+      {ask.dialog}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Folders</span>
-        <div className="flex">
+        <div className={readOnly ? 'hidden' : 'flex'}>
           <Button size="icon" variant="ghost" className="size-7" title="New folder" onClick={() => void add()}>
             <FolderPlus className="size-4" />
           </Button>
           <Button size="icon" variant="ghost" className="size-7" title="Rename / move" disabled={!selected} onClick={() => void rename()}>
             <Pencil className="size-4" />
           </Button>
-          <Button size="icon" variant="ghost" className="size-7" title="Delete empty folder" disabled={!selected} onClick={() => void remove()}>
+          <Button size="icon" variant="ghost" className="size-7" title="Delete folder with everything in it" disabled={!selected} onClick={() => void remove()}>
             <Trash2 className="size-4" />
           </Button>
         </div>

@@ -29,12 +29,14 @@ import com.itilms.liveclass.repository.LiveMaterialRepository;
 class LiveMaterialServiceTest {
 
     private LiveMaterialRepository repository;
+    private LiveMaterialFolderRepository folderRepository;
     private LiveMaterialService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(LiveMaterialRepository.class);
-        service = new LiveMaterialService(repository, mock(LiveMaterialFolderRepository.class), mock(LiveQuestionService.class), new ObjectMapper());
+        folderRepository = mock(LiveMaterialFolderRepository.class);
+        service = new LiveMaterialService(repository, folderRepository, mock(LiveQuestionService.class), new ObjectMapper());
         when(repository.save(any(LiveMaterial.class))).thenAnswer(i -> i.getArgument(0));
         signInAs(7L);
     }
@@ -45,7 +47,11 @@ class LiveMaterialServiceTest {
     }
 
     private static void signInAs(Long userId) {
-        AppPrincipal trainer = new AppPrincipal(userId, "t@x", "Trainer " + userId, "TRAINER", userId);
+        signInAs(userId, "TRAINER");
+    }
+
+    private static void signInAs(Long userId, String role) {
+        AppPrincipal trainer = new AppPrincipal(userId, "t@x", "Trainer " + userId, role, userId);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(trainer, null, trainer.authorities()));
     }
@@ -99,6 +105,49 @@ class LiveMaterialServiceTest {
         assertThat(copy.mine()).isTrue();
         assertThat(copy.shared()).isFalse();
         assertThat(copy.topic()).isEqualTo("SQL");
+    }
+
+    @Test
+    void deletingAFolderTakesItsSubfoldersAndQuestionsButNotALookAlike() {
+        LiveMaterial inRoot = filed(1L, "Java");
+        LiveMaterial inChild = filed(2L, "Java/OOPs/Coding");
+        LiveMaterial lookAlike = filed(3L, "JavaScript");
+        LiveMaterial other = filed(4L, "Python");
+        when(repository.findByOwnerUserId(7L)).thenReturn(List.of(inRoot, inChild, lookAlike, other));
+        com.itilms.liveclass.entity.LiveMaterialFolder oops = com.itilms.liveclass.entity.LiveMaterialFolder.builder()
+                .ownerUserId(7L).path("Java/OOPs").build();
+        com.itilms.liveclass.entity.LiveMaterialFolder js = com.itilms.liveclass.entity.LiveMaterialFolder.builder()
+                .ownerUserId(7L).path("JavaScript").build();
+        when(folderRepository.findByOwnerUserId(7L)).thenReturn(List.of(oops, js));
+
+        LiveMaterialService.FolderDeleted removed = service.deleteFolder("Java");
+
+        assertThat(removed.questions()).isEqualTo(2);
+        assertThat(removed.folders()).isEqualTo(1);
+        org.mockito.Mockito.verify(repository).deleteAll(List.of(inRoot, inChild));
+        org.mockito.Mockito.verify(folderRepository).deleteAll(List.of(oops));
+    }
+
+    @Test
+    void anAdminMayEditASharedQuestionButATrainerMayNot() {
+        LiveMaterial shared = stored(8L, 9L, "Shared", "SQL", "sql", true);
+        LiveMaterial privateOne = stored(10L, 9L, "Private", null, null, false);
+        when(repository.findById(8L)).thenReturn(Optional.of(shared));
+        when(repository.findById(10L)).thenReturn(Optional.of(privateOne));
+
+        assertThatThrownBy(() -> service.update(8L, request("x", null, null, true)))
+                .isInstanceOf(ForbiddenOperationException.class);
+
+        signInAs(1L, "ADMIN");
+        assertThat(service.update(8L, request("Fixed", "SQL", null, true)).title()).isEqualTo("Fixed");
+        assertThatThrownBy(() -> service.update(10L, request("x", null, null, false)))
+                .isInstanceOf(ForbiddenOperationException.class);
+    }
+
+    private LiveMaterial filed(Long id, String folder) {
+        LiveMaterial m = stored(id, 7L, "Q" + id, null, null, false);
+        m.setFolder(folder);
+        return m;
     }
 
     private LiveMaterial stored(Long id, Long owner, String title, String topic, String tags, boolean shared) {

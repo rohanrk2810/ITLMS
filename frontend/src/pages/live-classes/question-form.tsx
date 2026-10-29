@@ -42,7 +42,7 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
   const [language, setLanguage] = useState(initial?.language ?? 'python')
   const [starterCode, setStarterCode] = useState(initial?.starterCode ?? '')
   const [setupSql, setSetupSql] = useState(initial?.setupSql ?? '')
-  const [allowChoice, setAllowChoice] = useState(initial?.allowLanguageChoice ?? false)
+  const [allowChoice, setAllowChoice] = useState(initial?.allowLanguageChoice ?? true)
   const [testCases, setTestCases] = useState<CodeTestCase[]>(initial?.testCases ?? [])
   const [explanation, setExplanation] = useState(initial?.explanation ?? '')
   const [marks, setMarks] = useState(initial?.marks ?? 1)
@@ -109,7 +109,7 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
       await onSubmit(input)
       setPrompt(''); setOptions(['', '']); setCorrect([]); setAccepted(''); setStarterCode('')
       setExplanation(''); setMarks(1); setSnippet(''); setShowSnippet(false); setTables([])
-      setSetupSql(''); setTestCases([]); setAllowChoice(false)
+      setSetupSql(''); setTestCases([]); setAllowChoice(true)
     } finally {
       setBusy(false)
     }
@@ -250,7 +250,7 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm">
-              Compiler
+              Starting compiler
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
@@ -264,7 +264,7 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
             {language !== 'sql' && (
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={allowChoice} onCheckedChange={(v) => setAllowChoice(v === true)} />
-                Let students choose the language
+                Students can use any language (they pick; this one is the starting choice)
               </label>
             )}
           </div>

@@ -4,6 +4,8 @@ import { Camera, Clock, Keyboard, Mic, Plus, ShieldCheck, Trash2 } from 'lucide-
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { useAsk } from '@/components/ask-dialog'
+
 import { apiErrorMessage } from '@/api/client'
 import { CAMERA_CHECKS, type CameraCheckName, createQuiz, deleteQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
 import { searchCourses } from '@/api/courses'
@@ -30,6 +32,7 @@ export function ManageTestsPage() {
   const courseTitles = new Map((coursesQuery.data?.content ?? []).map((course) => [course.id, course.title]))
   const isAdmin = useAuthStore((state) => state.user?.role) === 'ADMIN'
   const queryClient = useQueryClient()
+  const ask = useAsk()
 
   const deleteMutation = useMutation({
     mutationFn: (quizId: number) => deleteQuiz(quizId),
@@ -40,18 +43,18 @@ export function ManageTestsPage() {
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not delete the test.')),
   })
 
-  function handleDelete(quizId: number, title: string) {
-    if (
-      window.confirm(
-        `Delete "${title}"? Its questions and every student's attempt and answers are removed too. This cannot be undone.`,
-      )
-    ) {
-      deleteMutation.mutate(quizId)
-    }
+  async function handleDelete(quizId: number, title: string) {
+    const ok = await ask.confirm({
+      title: `Delete "${title}"?`,
+      message: "Its questions and every student's attempt and answers are removed too. This cannot be undone.",
+      destructive: true,
+    })
+    if (ok) deleteMutation.mutate(quizId)
   }
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
+      {ask.dialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Tests</h1>
