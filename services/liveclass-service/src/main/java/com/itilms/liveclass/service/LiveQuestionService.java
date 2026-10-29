@@ -19,6 +19,7 @@ import com.itilms.common.security.AppPrincipal;
 import com.itilms.common.security.SecurityUtils;
 import com.itilms.liveclass.dto.request.AnswerQuestionRequest;
 import com.itilms.liveclass.dto.request.AskQuestionRequest;
+import com.itilms.liveclass.dto.request.DataTable;
 import com.itilms.liveclass.dto.response.LiveAnswerResponse;
 import com.itilms.liveclass.dto.response.LiveQuestionResponse;
 import com.itilms.liveclass.dto.response.LiveQuestionResponse.MyAnswer;
@@ -208,9 +209,44 @@ public class LiveQuestionService {
                 .language(type == QuestionType.CODING ? (r.language() == null || r.language().isBlank() ? "python" : r.language().trim().toLowerCase()) : null)
                 .starterCode(type == QuestionType.CODING ? blankToNull(r.starterCode()) : null)
                 .explanation(blankToNull(r.explanation()))
+                .snippet(blankToNull(r.snippet()))
+                .snippetLanguage(blankToNull(r.snippet()) == null ? null : blankToNull(r.snippetLanguage()))
+                .dataset(datasetJson(r.dataset()))
                 .marks(marks).askedAt(now)
                 .offsetSeconds(QuestionGrader.offsetSeconds(classStart, now))
                 .build();
+    }
+
+    /** Keeps the tables small enough to read on a student's screen; a ragged row would misalign the grid. */
+    private String datasetJson(List<DataTable> tables) {
+        if (tables == null || tables.isEmpty()) {
+            return null;
+        }
+        if (tables.size() > 5) {
+            throw new BusinessRuleException("Show at most 5 tables with a question.");
+        }
+        for (DataTable t : tables) {
+            if (t.name() == null || t.name().isBlank() || t.columns() == null || t.columns().isEmpty()
+                    || t.columns().size() > 12 || t.columns().stream().anyMatch(c -> c == null || c.isBlank())) {
+                throw new BusinessRuleException("Every table needs a name and 1 to 12 named columns.");
+            }
+            List<List<String>> rows = t.rows() == null ? List.of() : t.rows();
+            if (rows.size() > 50 || rows.stream().anyMatch(row -> row == null || row.size() != t.columns().size())) {
+                throw new BusinessRuleException("Table " + t.name() + ": up to 50 rows, each with a value per column.");
+            }
+        }
+        return write(tables);
+    }
+
+    private List<DataTable> readDataset(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return json.readValue(value, new TypeReference<List<DataTable>>() { });
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Stored question data is not valid JSON", ex);
+        }
     }
 
     private void validateAnswer(LiveQuestion question, List<String> options, AnswerQuestionRequest r) {
@@ -297,7 +333,8 @@ public class LiveQuestionService {
                 reveal ? read(q.getCorrectOptions(), INTS) : null,
                 reveal ? read(q.getAcceptedAnswers(), STRINGS) : null,
                 reveal ? q.getExplanation() : null,
-                host ? answered : null, host ? correctCount : null, my);
+                host ? answered : null, host ? correctCount : null, my,
+                q.getSnippet(), q.getSnippetLanguage(), readDataset(q.getDataset()));
     }
 
     private LiveAnswerResponse toAnswer(LiveQuestionAnswer a) {

@@ -28,7 +28,10 @@ public record LiveQuestionResponse(
         String explanation,
         Integer answered,
         Integer correctCount,
-        MyAnswer myAnswer) {
+        MyAnswer myAnswer,
+        String snippet,
+        String snippetLanguage,
+        List<com.itilms.liveclass.dto.request.DataTable> dataset) {
 
     public record MyAnswer(List<Integer> selected, String text, String code, String language, Boolean correct,
                            Integer awardedMarks, boolean viaRecording, Instant submittedAt) {

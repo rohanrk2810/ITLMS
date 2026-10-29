@@ -52,6 +52,9 @@ const QuizIndexPage = lazy(() =>
   import('@/pages/assessments/quiz-index-page').then((m) => ({ default: m.QuizIndexPage })),
 )
 
+const LectureMaterialPage = lazy(() =>
+  import('@/pages/live-classes/lecture-material-page').then((m) => ({ default: m.LectureMaterialPage })),
+)
 const LiveClassesPage = lazy(() =>
   import('@/pages/live-classes/live-classes-page').then((m) => ({ default: m.LiveClassesPage })),
 )
@@ -239,6 +242,9 @@ export default function App() {
                     <Route path="/app/assessments/assignments/:assignmentId" element={<AssignmentDetailPage />} />
                   </Route>
 
+                  <Route element={<ProtectedRoute roles={['ADMIN', 'COORDINATOR', 'TRAINER']} />}>
+                    <Route path="/app/lecture-material" element={<LectureMaterialPage />} />
+                  </Route>
                   <Route element={<ProtectedRoute roles={FINANCE_ROLES} />}>
                     <Route path="/app/finance" element={<FinanceIndexPage />} />
                     <Route path="/app/finance/:feePlanId" element={<FeePlanDetailPage />} />

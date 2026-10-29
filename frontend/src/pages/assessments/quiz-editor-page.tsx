@@ -40,6 +40,7 @@ import { Label } from '@/components/ui/label'
 import { TypingReplayButton } from '@/components/typing-replay'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ImportFromBankDialog } from './import-from-bank-dialog'
 
 export function QuizEditorPage() {
   const { quizId } = useParams<{ quizId: string }>()
@@ -119,11 +120,14 @@ export function QuizEditorPage() {
             Questions ({quiz.questionCount}, {quiz.totalMarks} marks)
           </h2>
           {quiz.status === 'DRAFT' && (
-            <AddQuestionDialog
-              quizId={quiz.id}
-              onAdded={invalidate}
-              databases={[...new Set((quiz.questions ?? []).map((q) => q.setupSql).filter((s): s is string => !!s))]}
-            />
+            <div className="flex items-center gap-2">
+              <ImportFromBankDialog quizId={quiz.id} onAdded={invalidate} />
+              <AddQuestionDialog
+                quizId={quiz.id}
+                onAdded={invalidate}
+                databases={[...new Set((quiz.questions ?? []).map((q) => q.setupSql).filter((s): s is string => !!s))]}
+              />
+            </div>
           )}
         </div>
         <div className="flex flex-col gap-3">
