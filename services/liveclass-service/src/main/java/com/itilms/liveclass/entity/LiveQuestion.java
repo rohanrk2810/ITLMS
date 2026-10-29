@@ -73,6 +73,15 @@ public class LiveQuestion {
 
     private String explanation;
 
+    /** Code the question shows, and its language. */
+    private String snippet;
+
+    @Column(name = "snippet_language")
+    private String snippetLanguage;
+
+    /** JSON array of {name, columns, rows}: a small database shown as tables. */
+    private String dataset;
+
     @Builder.Default
     @Column(nullable = false)
     private int marks = 1;

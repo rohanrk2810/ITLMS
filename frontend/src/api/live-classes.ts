@@ -269,6 +269,85 @@ export interface AskQuestionInput {
   starterCode?: string
   explanation?: string
   marks?: number
+  /** Code shown above the question. */
+  snippet?: string
+  snippetLanguage?: string
+  /** A small database shown as tables. */
+  dataset?: DataTable[]
+}
+
+export interface DataTable {
+  name: string
+  columns: string[]
+  rows: string[][]
+}
+
+export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD'
+
+/** Where a question sits in the bank: how to find it again, and whether other trainers may use it. */
+export interface MaterialMeta {
+  courseId?: number | null
+  topic?: string
+  tags?: string[]
+  difficulty?: Difficulty | ''
+  shared?: boolean
+}
+
+/** A question in the trainer's bank, or one another trainer shared (mine = false). */
+export interface LiveMaterial {
+  id: number
+  title: string
+  question: AskQuestionInput
+  courseId: number | null
+  topic: string | null
+  tags: string[]
+  difficulty: Difficulty | null
+  shared: boolean
+  mine: boolean
+  ownerName: string | null
+  createdAt: string
+}
+
+export interface MaterialFilter {
+  scope?: 'mine' | 'shared'
+  query?: string
+  courseId?: number
+  tag?: string
+  difficulty?: Difficulty
+}
+
+export async function listMaterials(params: MaterialFilter = {}): Promise<LiveMaterial[]> {
+  const { data } = await apiClient.get<LiveMaterial[]>('/api/liveclass/materials', { params })
+  return data
+}
+
+export async function saveMaterial(
+  title: string,
+  question: AskQuestionInput,
+  meta: MaterialMeta = {},
+  id?: number,
+): Promise<LiveMaterial> {
+  const body = { title, question, ...meta, difficulty: meta.difficulty || undefined }
+  const { data } = id
+    ? await apiClient.put<LiveMaterial>(`/api/liveclass/materials/${id}`, body)
+    : await apiClient.post<LiveMaterial>('/api/liveclass/materials', body)
+  return data
+}
+
+export async function copyMaterial(id: number): Promise<LiveMaterial> {
+  const { data } = await apiClient.post<LiveMaterial>(`/api/liveclass/materials/${id}/copy`)
+  return data
+}
+
+export async function deleteMaterial(id: number): Promise<void> {
+  await apiClient.delete(`/api/liveclass/materials/${id}`)
+}
+
+export async function sendMaterial(id: number, liveSessionId: number): Promise<LiveQuestion> {
+  const { data } = await apiClient.post<LiveQuestion>(`/api/liveclass/materials/${id}/send`, null, {
+    params: { liveSessionId },
+  })
+  return data
 }
 
 export interface AnswerQuestionInput {
@@ -309,6 +388,9 @@ export interface LiveQuestion {
   answered: number | null
   correctCount: number | null
   myAnswer: LiveQuestionMyAnswer | null
+  snippet: string | null
+  snippetLanguage: string | null
+  dataset: DataTable[] | null
 }
 
 export interface LiveAnswer {

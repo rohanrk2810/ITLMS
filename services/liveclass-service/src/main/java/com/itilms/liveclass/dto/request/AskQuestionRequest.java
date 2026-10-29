@@ -18,5 +18,10 @@ public record AskQuestionRequest(
         String language,
         @Size(max = 20000) String starterCode,
         @Size(max = 4000) String explanation,
-        Integer marks) {
+        Integer marks,
+        /** Code shown above the question ("what does this print?"). */
+        @Size(max = 20000) String snippet,
+        String snippetLanguage,
+        /** A small database shown as tables ("write the query"). */
+        List<DataTable> dataset) {
 }

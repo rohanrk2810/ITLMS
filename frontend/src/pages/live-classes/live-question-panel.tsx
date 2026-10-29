@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { QuestionMaterial } from './question-material'
 
 const CodeEditor = lazy(() => import('@/components/code-editor'))
 
@@ -39,7 +40,12 @@ export function LiveQuestionPanel({ classSessionId }: { classSessionId: number }
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-40 flex justify-center p-3">
-      <div className="w-full max-w-xl rounded-lg border bg-background p-4 shadow-lg">
+      {/* Tables and code need room to be read, so the box widens for them and scrolls when it is still too tall. */}
+      <div
+        className={`max-h-[80vh] w-full overflow-y-auto rounded-lg border bg-background p-4 shadow-lg ${
+          question.snippet || question.dataset?.length ? 'max-w-4xl' : 'max-w-xl'
+        }`}
+      >
         <AnswerForm
           question={question}
           onAnswered={(q) => setQuestion(q)}
@@ -123,6 +129,8 @@ function AnswerForm({ question, onAnswered, onSkip }: {
         <button type="button" className="text-xs text-muted-foreground hover:underline" onClick={onSkip}>Hide</button>
       </div>
 
+      <QuestionMaterial snippet={question.snippet} dataset={question.dataset} />
+
       {(question.type === 'MCQ' || question.type === 'TRUE_FALSE') && (
         <RadioGroup value={String(selected[0] ?? '')} onValueChange={(v) => setSelected([Number(v)])}>
           {(question.options ?? []).map((opt, i) => (
@@ -143,9 +151,20 @@ function AnswerForm({ question, onAnswered, onSkip }: {
         </div>
       )}
 
-      {question.type === 'SHORT_ANSWER' && (
+      {question.type === 'SHORT_ANSWER' && (question.snippet || question.dataset?.length ? (
+        // A code-output or SQL answer is often several lines (a result table), so it gets a box, not a line.
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Type the output / your query"
+          rows={4}
+          maxLength={4000}
+          spellCheck={false}
+          className="rounded-md border bg-transparent px-3 py-2 font-mono text-sm"
+        />
+      ) : (
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Your answer" maxLength={4000} />
-      )}
+      ))}
 
       {question.type === 'OTHER' && (
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Your answer" maxLength={4000} />

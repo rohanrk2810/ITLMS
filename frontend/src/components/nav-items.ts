@@ -56,6 +56,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT'],
   },
   {
+    label: 'Question bank',
+    to: '/app/lecture-material',
+    icon: FileText,
+    roles: ['ADMIN', 'COORDINATOR', 'TRAINER'],
+  },
+  {
     label: 'Assessments',
     to: '/app/assessments',
     icon: ClipboardList,
