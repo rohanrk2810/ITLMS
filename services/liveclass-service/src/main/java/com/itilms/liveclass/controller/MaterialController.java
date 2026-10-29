@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.itilms.common.security.Roles;
 import com.itilms.liveclass.dto.request.MaterialRequest;
 import com.itilms.liveclass.dto.response.LiveQuestionResponse;
+import com.itilms.liveclass.dto.response.MaterialImportResponse;
 import com.itilms.liveclass.dto.response.MaterialResponse;
 import com.itilms.liveclass.service.LiveMaterialService;
 
@@ -46,6 +47,27 @@ public class MaterialController {
                                        @RequestParam(required = false) String tag,
                                        @RequestParam(required = false) String difficulty) {
         return materialService.list(scope, query, courseId, tag, difficulty);
+    }
+
+    @Operation(summary = "The Excel template for bulk upload",
+            description = "Headings, three example rows and a page of instructions.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping("/import/template")
+    public ResponseEntity<byte[]> template() throws java.io.IOException {
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"question-bank-template.xlsx\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(com.itilms.liveclass.service.MaterialSheet.template());
+    }
+
+    @Operation(summary = "Upload an Excel sheet of questions",
+            description = "Every usable row is saved to my bank. Rows with a mistake are skipped and reported.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public MaterialImportResponse importSheet(@RequestParam("file") org.springframework.web.multipart.MultipartFile file)
+            throws java.io.IOException {
+        return materialService.importSheet(file.getInputStream());
     }
 
     @Operation(summary = "Copy a shared item into my bank")
