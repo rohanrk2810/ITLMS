@@ -73,6 +73,11 @@ export function CourseEditorPage() {
         code: c.code,
         summary: c.summary ?? '',
         description: c.description ?? '',
+        // Carried through unchanged: the PUT replaces the whole course, so leaving these out would blank them.
+        learningOutcomes: c.learningOutcomes ?? undefined,
+        prerequisites: c.prerequisites ?? undefined,
+        technologyStack: c.technologyStack ?? undefined,
+        thumbnailRef: c.thumbnailRef ?? undefined,
         level: c.level,
         durationHours: c.durationHours ?? undefined,
         fee: c.fee ?? undefined,
