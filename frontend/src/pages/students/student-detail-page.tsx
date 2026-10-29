@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
+import { hasRole, useAuthStore } from '@/stores/auth-store'
+
+import { EditStudentDialog } from './edit-student-dialog'
 
 const STATUSES = ['ACTIVE', 'ALUMNI', 'DROPPED', 'SUSPENDED']
 
@@ -24,6 +27,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 export function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>()
   const queryClient = useQueryClient()
+  const role = useAuthStore((state) => state.user?.role)
+  const canEdit = hasRole(role, ['ADMIN', 'COORDINATOR'])
 
   const query = useQuery({
     queryKey: ['students', studentId],
@@ -58,6 +63,8 @@ export function StudentDetailPage() {
             {student.studentCode} &middot; {student.email} &middot; {student.phone}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        {canEdit && <EditStudentDialog student={student} isAdmin={role === 'ADMIN'} />}
         <select
           value={student.status}
           onChange={(event) => statusMutation.mutate(event.target.value)}
@@ -70,6 +77,7 @@ export function StudentDetailPage() {
             </option>
           ))}
         </select>
+        </div>
       </div>
 
       <Badge variant={STATUS_VARIANT[student.status] ?? 'outline'} className="w-fit">

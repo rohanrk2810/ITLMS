@@ -51,6 +51,28 @@ export async function getStudent(id: number | string): Promise<StudentResponse> 
   return data
 }
 
+export interface StudentProfileInput {
+  dateOfBirth?: string
+  gender?: string
+  highestEducation?: string
+  college?: string
+  graduationYear?: number
+  addressLine?: string
+  city?: string
+  state?: string
+  pincode?: string
+  guardianName?: string
+  guardianPhone?: string
+  emergencyContact?: string
+  remarks?: string
+}
+
+/** Staff edit of the profile. Name, email and phone belong to the login account (see updateUser). */
+export async function updateStudent(id: number | string, input: StudentProfileInput): Promise<StudentResponse> {
+  const { data } = await apiClient.put<StudentResponse>(`/api/students/${id}`, input)
+  return data
+}
+
 /** ACTIVE, ALUMNI, DROPPED or SUSPENDED - separate from the login account's own status. */
 export async function updateStudentStatus(
   id: number | string,
