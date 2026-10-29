@@ -2,8 +2,10 @@ import { lazy, Suspense, useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { CODE_LANGUAGES, type CodeLanguageCode } from '@/api/code'
 import {
   type AskQuestionInput,
+  type CodeTestCase,
   type LiveQuestionType,
   LIVE_QUESTION_TYPE_LABEL,
 } from '@/api/live-classes'
@@ -39,6 +41,9 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
   const [accepted, setAccepted] = useState(initial?.acceptedAnswers?.join(', ') ?? '')
   const [language, setLanguage] = useState(initial?.language ?? 'python')
   const [starterCode, setStarterCode] = useState(initial?.starterCode ?? '')
+  const [setupSql, setSetupSql] = useState(initial?.setupSql ?? '')
+  const [allowChoice, setAllowChoice] = useState(initial?.allowLanguageChoice ?? false)
+  const [testCases, setTestCases] = useState<CodeTestCase[]>(initial?.testCases ?? [])
   const [explanation, setExplanation] = useState(initial?.explanation ?? '')
   const [marks, setMarks] = useState(initial?.marks ?? 1)
   const [snippet, setSnippet] = useState(initial?.snippet ?? '')
@@ -73,6 +78,14 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
     } else if (type === 'CODING') {
       input.language = language
       input.starterCode = starterCode
+      if (language === 'sql' && setupSql.trim()) input.setupSql = setupSql
+      if (language !== 'sql') input.allowLanguageChoice = allowChoice
+      const cases = testCases.filter((c) => c.expectedOutput.trim() !== '')
+      if (cases.length !== testCases.length) {
+        toast.error('Every test case needs an expected output.')
+        return null
+      }
+      if (cases.length > 0) input.testCases = cases
     }
     if (explanation.trim()) input.explanation = explanation.trim()
     if (showSnippet && snippet.trim()) {
@@ -96,6 +109,7 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
       await onSubmit(input)
       setPrompt(''); setOptions(['', '']); setCorrect([]); setAccepted(''); setStarterCode('')
       setExplanation(''); setMarks(1); setSnippet(''); setShowSnippet(false); setTables([])
+      setSetupSql(''); setTestCases([]); setAllowChoice(false)
     } finally {
       setBusy(false)
     }
@@ -234,10 +248,102 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
 
       {type === 'CODING' && (
         <div className="flex flex-col gap-2">
-          <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="Language (e.g. python, java)" className="w-40" />
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              Compiler
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="h-9 rounded-md border bg-transparent px-2 text-sm"
+              >
+                {CODE_LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code.toLowerCase()}>{l.label}</option>
+                ))}
+              </select>
+            </label>
+            {language !== 'sql' && (
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={allowChoice} onCheckedChange={(v) => setAllowChoice(v === true)} />
+                Let students choose the language
+              </label>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">Starter code - what the editor opens with</span>
           <Suspense fallback={<div className="flex h-24 items-center justify-center"><Loader2 className="size-4 animate-spin" /></div>}>
-            <CodeEditor language="PYTHON" value={starterCode} onChange={setStarterCode} height={160} ariaLabel="Starter code" />
+            <CodeEditor language={language.toUpperCase() as CodeLanguageCode} value={starterCode} onChange={setStarterCode} height={160} ariaLabel="Starter code" />
           </Suspense>
+          {language === 'sql' && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Database setup - CREATE TABLE and INSERT statements that run before the student's query</span>
+              <textarea
+                value={setupSql}
+                onChange={(e) => setSetupSql(e.target.value)}
+                spellCheck={false}
+                wrap="off"
+                rows={5}
+                className="rounded-md border bg-transparent px-3 py-2 font-mono text-xs whitespace-pre"
+                placeholder={'CREATE TABLE employees (id INT, name VARCHAR(50), salary INT);\nINSERT INTO employees VALUES (1, \'Asha\', 50000);'}
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-2 rounded-md border p-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium">Test cases ({testCases.length}/10)</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={testCases.length >= 10}
+                onClick={() => setTestCases((c) => [...c, { input: '', expectedOutput: '', hidden: false, weight: 1 }])}
+              >
+                <Plus className="size-4" /> Add test case
+              </Button>
+            </div>
+            {testCases.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Optional. With test cases a test marks the code automatically; without them the trainer reads it.
+              </p>
+            )}
+            {testCases.map((tc, i) => (
+              <div key={i} className="grid gap-1 rounded-md bg-muted/30 p-2 sm:grid-cols-2">
+                <textarea
+                  value={tc.input}
+                  onChange={(e) => setTestCases((all) => all.map((c, idx) => (idx === i ? { ...c, input: e.target.value } : c)))}
+                  placeholder="Input (what is typed in)"
+                  rows={2}
+                  spellCheck={false}
+                  className="rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
+                />
+                <textarea
+                  value={tc.expectedOutput}
+                  onChange={(e) => setTestCases((all) => all.map((c, idx) => (idx === i ? { ...c, expectedOutput: e.target.value } : c)))}
+                  placeholder="Expected output"
+                  rows={2}
+                  spellCheck={false}
+                  className="rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
+                />
+                <div className="flex items-center gap-3 sm:col-span-2">
+                  <label className="flex items-center gap-1 text-xs">
+                    <Checkbox checked={tc.hidden} onCheckedChange={(v) => setTestCases((all) => all.map((c, idx) => (idx === i ? { ...c, hidden: v === true } : c)))} />
+                    Hidden
+                  </label>
+                  <label className="flex items-center gap-1 text-xs">
+                    Weight
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={tc.weight}
+                      onChange={(e) => setTestCases((all) => all.map((c, idx) => (idx === i ? { ...c, weight: Math.min(100, Math.max(1, Number(e.target.value) || 1)) } : c)))}
+                      className="h-7 w-16"
+                    />
+                  </label>
+                  <Button size="icon" variant="ghost" className="ml-auto" onClick={() => setTestCases((all) => all.filter((_, idx) => idx !== i))}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

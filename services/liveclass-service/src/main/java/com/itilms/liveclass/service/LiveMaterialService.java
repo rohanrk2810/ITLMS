@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.exception.ForbiddenOperationException;
 import com.itilms.common.exception.ResourceNotFoundException;
 import com.itilms.common.security.AppPrincipal;
@@ -20,6 +21,9 @@ import com.itilms.liveclass.dto.response.LiveQuestionResponse;
 import com.itilms.liveclass.dto.response.MaterialImportResponse;
 import com.itilms.liveclass.dto.response.MaterialResponse;
 import com.itilms.liveclass.entity.LiveMaterial;
+import com.itilms.liveclass.entity.LiveMaterialFolder;
+import com.itilms.liveclass.dto.response.FolderResponse;
+import com.itilms.liveclass.repository.LiveMaterialFolderRepository;
 import com.itilms.liveclass.repository.LiveMaterialRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +41,7 @@ public class LiveMaterialService {
     public static final String SCOPE_SHARED = "shared";
 
     private final LiveMaterialRepository materials;
+    private final LiveMaterialFolderRepository folders;
     private final LiveQuestionService questions;
     private final ObjectMapper json;
 
@@ -45,15 +50,19 @@ public class LiveMaterialService {
      * @param query  matches the title, topic, tags and question text
      */
     @Transactional(readOnly = true)
-    public List<MaterialResponse> list(String scope, String query, Long courseId, String tag, String difficulty) {
+    public List<MaterialResponse> list(String scope, String query, Long courseId, String tag, String difficulty,
+                                       String folder, String type) {
         Long me = SecurityUtils.requirePrincipal().userId();
         String needle = query == null || query.isBlank() ? null : query.trim().toLowerCase(Locale.ROOT);
+        String wantedFolder = normalizeFolder(folder);
         String wantedTag = tag == null || tag.isBlank() ? null : tag.trim().toLowerCase(Locale.ROOT);
         return materials.findByOwnerUserIdOrSharedTrueOrderByCreatedAtDesc(me).stream()
                 .filter(m -> !SCOPE_MINE.equals(scope) || m.getOwnerUserId().equals(me))
                 .filter(m -> !SCOPE_SHARED.equals(scope) || !m.getOwnerUserId().equals(me))
                 .filter(m -> courseId == null || courseId.equals(m.getCourseId()))
                 .filter(m -> difficulty == null || difficulty.isBlank() || difficulty.equalsIgnoreCase(m.getDifficulty()))
+                .filter(m -> wantedFolder == null || inFolder(m.getFolder(), wantedFolder))
+                .filter(m -> type == null || type.isBlank() || type.equalsIgnoreCase(readQuestion(m.getPayload()).type().name()))
                 .filter(m -> wantedTag == null || tagsOf(m).contains(wantedTag))
                 .filter(m -> needle == null || haystack(m).contains(needle))
                 .map(m -> toResponse(m, me))
@@ -111,7 +120,7 @@ public class LiveMaterialService {
                 .ownerUserId(me.userId()).ownerName(me.fullName())
                 .title(source.getTitle()).payload(source.getPayload())
                 .courseId(source.getCourseId()).topic(source.getTopic()).tags(source.getTags())
-                .difficulty(source.getDifficulty()).shared(false)
+                .difficulty(source.getDifficulty()).folder(source.getFolder()).shared(false)
                 .build());
         return toResponse(copy, me.userId());
     }
@@ -120,6 +129,101 @@ public class LiveMaterialService {
     public LiveQuestionResponse send(Long id, Long liveSessionId) {
         LiveMaterial material = requireVisible(id, SecurityUtils.requirePrincipal().userId());
         return questions.ask(liveSessionId, readQuestion(material.getPayload()));
+    }
+
+    // -----------------------------------------------------------------
+    // Folders
+    // -----------------------------------------------------------------
+
+    /** The caller's folders: those made on purpose and those only implied by a question filed in them. */
+    @Transactional(readOnly = true)
+    public List<FolderResponse> folders() {
+        Long me = SecurityUtils.requirePrincipal().userId();
+        java.util.Map<String, Integer> counts = new java.util.TreeMap<>();
+        folders.findByOwnerUserId(me).forEach(f -> counts.putIfAbsent(f.getPath(), 0));
+        materials.findByOwnerUserId(me).stream().filter(m -> m.getFolder() != null)
+                .forEach(m -> counts.merge(m.getFolder(), 1, Integer::sum));
+        return counts.entrySet().stream().map(e -> new FolderResponse(e.getKey(), e.getValue())).toList();
+    }
+
+    @Transactional
+    public FolderResponse createFolder(String path) {
+        Long me = SecurityUtils.requirePrincipal().userId();
+        String clean = requireFolder(path);
+        if (folders.findByOwnerUserIdAndPath(me, clean).isEmpty()) {
+            folders.save(LiveMaterialFolder.builder().ownerUserId(me).path(clean).build());
+        }
+        return new FolderResponse(clean, 0);
+    }
+
+    /** Renames a folder and everything under it, or moves it under another (to = "Java/OOPs" for "OOPs"). */
+    @Transactional
+    public void renameFolder(String from, String to) {
+        Long me = SecurityUtils.requirePrincipal().userId();
+        String source = requireFolder(from);
+        String target = requireFolder(to);
+        if (source.equals(target)) {
+            return;
+        }
+        if (inFolder(target, source)) {
+            throw new BusinessRuleException("A folder cannot be moved into itself.");
+        }
+        for (LiveMaterial m : materials.findByOwnerUserId(me)) {
+            if (inFolder(m.getFolder(), source)) {
+                m.setFolder(target + m.getFolder().substring(source.length()));
+                materials.save(m);
+            }
+        }
+        for (LiveMaterialFolder f : folders.findByOwnerUserId(me)) {
+            if (inFolder(f.getPath(), source)) {
+                String moved = target + f.getPath().substring(source.length());
+                if (folders.findByOwnerUserIdAndPath(me, moved).isPresent()) {
+                    folders.delete(f);
+                } else {
+                    f.setPath(moved);
+                    folders.save(f);
+                }
+            }
+        }
+    }
+
+    /** Only an empty folder goes; questions are never deleted as a side effect of tidying folders. */
+    @Transactional
+    public void deleteFolder(String path) {
+        Long me = SecurityUtils.requirePrincipal().userId();
+        String clean = requireFolder(path);
+        if (materials.findByOwnerUserId(me).stream().anyMatch(m -> inFolder(m.getFolder(), clean))) {
+            throw new BusinessRuleException("Move or delete the questions in this folder first.");
+        }
+        folders.findByOwnerUserId(me).stream().filter(f -> inFolder(f.getPath(), clean)).forEach(folders::delete);
+    }
+
+    /** "Java/OOPs/ Coding " becomes "Java/OOPs/Coding"; blank is the top level (null). */
+    static String normalizeFolder(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        List<String> parts = Arrays.stream(raw.split("[/\\\\]")).map(String::trim).filter(p -> !p.isEmpty()).toList();
+        if (parts.isEmpty()) {
+            return null;
+        }
+        if (parts.size() > 6 || parts.stream().anyMatch(p -> p.length() > 60)) {
+            throw new BusinessRuleException("A folder path has at most 6 levels, each up to 60 characters.");
+        }
+        return String.join("/", parts);
+    }
+
+    private static String requireFolder(String raw) {
+        String clean = normalizeFolder(raw);
+        if (clean == null) {
+            throw new BusinessRuleException("Give the folder a name.");
+        }
+        return clean;
+    }
+
+    /** True for the folder itself and anything beneath it. */
+    static boolean inFolder(String path, String folder) {
+        return path != null && (path.equals(folder) || path.startsWith(folder + "/"));
     }
 
     private void apply(LiveMaterial material, MaterialRequest r) {
@@ -132,6 +236,7 @@ public class LiveMaterialService {
                 .filter(t -> !t.isEmpty()).distinct().toList())));
         material.setDifficulty(blankToNull(r.difficulty()));
         material.setShared(Boolean.TRUE.equals(r.shared()));
+        material.setFolder(normalizeFolder(r.folder()));
     }
 
     private LiveMaterial require(Long id) {
@@ -166,7 +271,7 @@ public class LiveMaterialService {
     private MaterialResponse toResponse(LiveMaterial m, Long me) {
         return new MaterialResponse(m.getId(), m.getTitle(), readQuestion(m.getPayload()), m.getCourseId(),
                 m.getTopic(), tagsOf(m), m.getDifficulty(), m.isShared(), m.getOwnerUserId().equals(me),
-                m.getOwnerName(), m.getCreatedAt());
+                m.getFolder(), m.getOwnerName(), m.getCreatedAt());
     }
 
     private AskQuestionRequest readQuestion(String payload) {

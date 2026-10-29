@@ -17,6 +17,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import com.itilms.liveclass.dto.request.AskQuestionRequest;
+import com.itilms.liveclass.dto.request.AskQuestionRequest.CodeTestCase;
 import com.itilms.liveclass.dto.request.DataTable;
 import com.itilms.liveclass.dto.request.MaterialRequest;
 import com.itilms.liveclass.entity.QuestionType;
@@ -35,13 +36,19 @@ public final class MaterialSheet {
     // Column positions. Options sit in 3..10 so the answer key can name them A..H.
     static final int TITLE = 0, TYPE = 1, QUESTION = 2, OPTION_1 = 3, CORRECT = 11, MARKS = 12, EXPLANATION = 13,
             TOPIC = 14, TAGS = 15, DIFFICULTY = 16, SHARED = 17, CODE = 18, TABLE_NAME = 19, TABLE_DATA = 20,
-            LANGUAGE = 21, STARTER = 22, TABLE_2_NAME = 23, TABLE_2_DATA = 24, TABLE_3_NAME = 25, TABLE_3_DATA = 26;
+            LANGUAGE = 21, STARTER = 22, TABLE_2_NAME = 23, TABLE_2_DATA = 24, TABLE_3_NAME = 25, TABLE_3_DATA = 26,
+            SQL_SETUP = 27, LANG_CHOICE = 28, FOLDER = 29;
+
+    /** The compilers a coding question can name; the same set tests accept. */
+    static final List<String> LANGUAGES = List.of("java", "python", "c", "cpp", "csharp", "sql");
 
     static final String[] HEADERS = {
             "Title", "Type", "Question", "Option A", "Option B", "Option C", "Option D", "Option E", "Option F",
             "Option G", "Option H", "Correct answer", "Marks", "Explanation", "Topic", "Tags", "Difficulty", "Share",
             "Code to show", "Table name", "Table data", "Language (coding)", "Starter code (coding)", "Table 2 name",
-            "Table 2 data", "Table 3 name", "Table 3 data"};
+            "Table 2 data", "Table 3 name", "Table 3 data", "SQL setup (coding)", "Let students pick language (coding)",
+            "Folder"};
+    static final String[] TEST_HEADERS = {"Question row", "Input", "Expected output", "Hidden", "Weight"};
 
     private MaterialSheet() {
     }
@@ -59,6 +66,8 @@ public final class MaterialSheet {
         DataFormatter format = new DataFormatter(Locale.ROOT);
         try (Workbook book = new XSSFWorkbook(in)) {
             Sheet sheet = book.getSheetAt(0);
+            java.util.Map<Integer, List<CodeTestCase>> cases = testCases(book, format, errors);
+            java.util.Set<Integer> codingRows = new java.util.HashSet<>();
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null || isBlank(row, format)) {
@@ -69,16 +78,25 @@ public final class MaterialSheet {
                     break;
                 }
                 try {
-                    items.add(toItem(row, format));
+                    MaterialRequest item = toItem(row, format, cases.getOrDefault(r + 1, List.of()));
+                    if (item.question().type() == QuestionType.CODING) {
+                        codingRows.add(r + 1);
+                    }
+                    items.add(item);
                 } catch (IllegalArgumentException ex) {
                     errors.add(new RowError(r + 1, ex.getMessage()));
+                }
+            }
+            for (Integer questionRow : cases.keySet()) {
+                if (!codingRows.contains(questionRow)) {
+                    errors.add(new RowError(questionRow, "Test cases point at this row, but it is not a CODING question that was read."));
                 }
             }
         }
         return new Result(items, errors);
     }
 
-    private static MaterialRequest toItem(Row row, DataFormatter f) {
+    private static MaterialRequest toItem(Row row, DataFormatter f, List<CodeTestCase> cases) {
         String prompt = text(row, QUESTION, f);
         if (prompt.isEmpty()) {
             throw new IllegalArgumentException("The question is empty.");
@@ -140,15 +158,40 @@ public final class MaterialSheet {
         }
         String language = text(row, LANGUAGE, f).toLowerCase(Locale.ROOT);
         String starter = text(row, STARTER, f);
-        if (type != QuestionType.CODING && (!language.isEmpty() || !starter.isEmpty())) {
-            throw new IllegalArgumentException("Language and Starter code are only for CODING questions.");
+        String setup = text(row, SQL_SETUP, f);
+        String choice = text(row, LANG_CHOICE, f).toLowerCase(Locale.ROOT);
+        if (type != QuestionType.CODING
+                && (!language.isEmpty() || !starter.isEmpty() || !setup.isEmpty() || !choice.isEmpty() || !cases.isEmpty())) {
+            throw new IllegalArgumentException(
+                    "Language, starter code, SQL setup and test cases are only for CODING questions.");
+        }
+        if (type == QuestionType.CODING) {
+            if (language.isEmpty()) {
+                language = "python";
+            }
+            if (!LANGUAGES.contains(language)) {
+                throw new IllegalArgumentException(
+                        "Language \"" + language + "\" is not available. Use java, python, c, cpp, csharp or sql.");
+            }
+            if (!setup.isEmpty() && !language.equals("sql")) {
+                throw new IllegalArgumentException("SQL setup is only for the sql language.");
+            }
+        }
+        String folder;
+        try {
+            folder = LiveMaterialService.normalizeFolder(text(row, FOLDER, f));
+        } catch (com.itilms.common.exception.BusinessRuleException ex) {
+            throw new IllegalArgumentException(ex.getMessage());
         }
 
         AskQuestionRequest question = new AskQuestionRequest(type, prompt, options, correct, accepted,
-                type == QuestionType.CODING ? (language.isEmpty() ? "python" : language) : null,
+                type == QuestionType.CODING ? language : null,
                 type == QuestionType.CODING ? blankToNull(starter) : null,
                 blankToNull(text(row, EXPLANATION, f)), marks, blankToNull(code), code.isEmpty() ? null : "text",
-                dataset.isEmpty() ? null : dataset);
+                dataset.isEmpty() ? null : dataset,
+                type == QuestionType.CODING && !cases.isEmpty() ? cases : null,
+                type == QuestionType.CODING ? blankToNull(setup) : null,
+                type == QuestionType.CODING ? choice.equals("yes") || choice.equals("y") || choice.equals("true") : null);
 
         String title = text(row, TITLE, f);
         if (title.isEmpty()) {
@@ -159,7 +202,54 @@ public final class MaterialSheet {
         String share = text(row, SHARED, f).toLowerCase(Locale.ROOT);
         boolean shared = share.equals("yes") || share.equals("y") || share.equals("true");
         return new MaterialRequest(title.length() > 160 ? title.substring(0, 160) : title, question, null,
-                blankToNull(text(row, TOPIC, f)), tags, difficulty.isEmpty() ? null : difficulty, shared);
+                blankToNull(text(row, TOPIC, f)), tags, difficulty.isEmpty() ? null : difficulty, shared, folder);
+    }
+
+    /** The "Test cases" sheet: each row belongs to the CODING question on the Questions row it names. */
+    private static java.util.Map<Integer, List<CodeTestCase>> testCases(Workbook book, DataFormatter f, List<RowError> errors) {
+        java.util.Map<Integer, List<CodeTestCase>> byRow = new java.util.LinkedHashMap<>();
+        if (book.getNumberOfSheets() < 2 || !"Test cases".equalsIgnoreCase(book.getSheetName(1))) {
+            return byRow;
+        }
+        Sheet sheet = book.getSheetAt(1);
+        for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) {
+                continue;
+            }
+            String ref = text(row, 0, f);
+            String input = text(row, 1, f);
+            String expected = text(row, 2, f);
+            if (ref.isEmpty() && input.isEmpty() && expected.isEmpty()) {
+                continue;
+            }
+            String where = "Test cases sheet, row " + (r + 1) + ": ";
+            try {
+                int questionRow = (int) Math.round(Double.parseDouble(ref));
+                if (questionRow < 2) {
+                    throw new NumberFormatException();
+                }
+                if (expected.isEmpty()) {
+                    throw new IllegalArgumentException("Expected output is empty.");
+                }
+                String hidden = text(row, 3, f).toLowerCase(Locale.ROOT);
+                String weightText = text(row, 4, f);
+                int weight = weightText.isEmpty() ? 1 : (int) Math.round(Double.parseDouble(weightText));
+                if (weight < 1 || weight > 100) {
+                    throw new IllegalArgumentException("Weight must be between 1 and 100.");
+                }
+                List<CodeTestCase> list = byRow.computeIfAbsent(questionRow, k -> new ArrayList<>());
+                if (list.size() >= 10) {
+                    throw new IllegalArgumentException("A question takes at most 10 test cases.");
+                }
+                list.add(new CodeTestCase(input, expected, hidden.equals("yes") || hidden.equals("y") || hidden.equals("true"), weight));
+            } catch (NumberFormatException ex) {
+                errors.add(new RowError(r + 1, where + "\"Question row\" must be the row number of the question on the Questions sheet."));
+            } catch (IllegalArgumentException ex) {
+                errors.add(new RowError(r + 1, where + ex.getMessage()));
+            }
+        }
+        return byRow;
     }
 
     private static QuestionType typeOf(String raw) {
@@ -285,9 +375,27 @@ public final class MaterialSheet {
                     "sql, where", "MEDIUM", "Yes", "", "employees", "id,name,salary\n1,Asha,50000\n2,Ravi,42000\n3,Meera,47000"});
             example(sheet, wrap, 3, new String[]{"Java is typed", "TRUE_FALSE", "Java is a statically typed language.",
                     "", "", "", "", "", "", "", "", "True", "1", "", "Java basics", "java", "EASY", "No", "", "", ""});
-            example(sheet, wrap, 4, new String[]{"Sum of a list", "CODING", "Write a function that returns the sum of a list.",
-                    "", "", "", "", "", "", "", "", "", "5", "", "Python functions", "python, functions", "MEDIUM", "No",
-                    "", "", "", "python", "def total(numbers):" + NL + "    # your code" + NL + "    pass"});
+            example(sheet, wrap, 4, new String[]{"Sum of three numbers", "CODING",
+                    "Read three numbers from one line and print their sum.",
+                    "", "", "", "", "", "", "", "", "", "5", "", "Input and output", "python, input", "EASY", "No",
+                    "", "", "", "python", "numbers = input().split()" + NL + "# print the sum"});
+            folder(sheet, 1, "Python/Loops/MCQ");
+            folder(sheet, 2, "SQL/Basics/Short answer");
+            folder(sheet, 3, "Java/Basics/True-False");
+            folder(sheet, 4, "Python/Basics/Coding");
+
+            // Row 5 of the Questions sheet is the coding example above; its test cases name that row.
+            Sheet tests = book.createSheet("Test cases");
+            Row testHeader = tests.createRow(0);
+            for (int i = 0; i < TEST_HEADERS.length; i++) {
+                Cell cell = testHeader.createCell(i);
+                cell.setCellValue(TEST_HEADERS[i]);
+                cell.setCellStyle(bold);
+                tests.setColumnWidth(i, i == 0 ? 4800 : 9000);
+            }
+            tests.createFreezePane(0, 1);
+            testCase(tests, 1, "5", "1 2 3", "6", "No", "1");
+            testCase(tests, 2, "5", "10 20 30", "60", "Yes", "2");
 
             Sheet help = book.createSheet("How to fill");
             String[] lines = {
@@ -302,7 +410,12 @@ public final class MaterialSheet {
                     "Code to show: code the students see above the question.",
                     "Table name and Table data: a small database shown as a table. First line of Table data is the column names, then one row per line",
                     "   (press Alt+Enter inside the cell for a new line). Values are separated by commas. Use Table 2 and Table 3 for more tables.",
-                    "Language and Starter code: for CODING only. Language is python, java, c, cpp ... (blank = python). Starter code is what the editor opens with.",
+                    "CODING questions: Language is the compiler - java, python, c, cpp, csharp or sql (blank = python). Starter code is what the editor opens with.",
+                    "   SQL setup (sql only) is the CREATE TABLE / INSERT statements that run before the student query. Let students pick language: Yes or No.",
+                    "Test cases go on the Test cases sheet, one row per case: Question row is the row number of the CODING question on the Questions sheet,",
+                    "   then Input (what is typed in), Expected output (what a right program prints), Hidden (Yes = student sees only pass/fail) and Weight (1 to 100).",
+                    "   Up to 10 per question. A test uses them to mark the code; without them the trainer reads the code.",
+                    "Folder: where the question is filed, e.g. Java/OOPs/Coding. Folders are made for you. Blank = the top level.",
                     "Title is optional; the start of the question is used when it is blank.",
                     "Rows with a mistake are skipped and listed with the reason; the other rows are still saved."};
             for (int i = 0; i < lines.length; i++) {
@@ -312,6 +425,19 @@ public final class MaterialSheet {
 
             book.write(out);
             return out.toByteArray();
+        }
+    }
+
+    private static void folder(Sheet sheet, int rowIndex, String path) {
+        sheet.getRow(rowIndex).createCell(FOLDER).setCellValue(path);
+    }
+
+    private static void testCase(Sheet sheet, int rowIndex, String questionRow, String input, String expected,
+                                 String hidden, String weight) {
+        Row row = sheet.createRow(rowIndex);
+        String[] values = {questionRow, input, expected, hidden, weight};
+        for (int i = 0; i < values.length; i++) {
+            row.createCell(i).setCellValue(values[i]);
         }
     }
 

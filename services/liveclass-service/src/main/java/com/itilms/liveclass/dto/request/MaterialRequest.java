@@ -16,5 +16,7 @@ public record MaterialRequest(
         @Size(max = 120) String topic,
         @Size(max = 10, message = "At most 10 tags") List<@Size(max = 40) String> tags,
         @Pattern(regexp = "^$|EASY|MEDIUM|HARD", message = "Difficulty is EASY, MEDIUM or HARD") String difficulty,
-        Boolean shared) {
+        Boolean shared,
+        /** Where it is filed, like Java/OOPs/Coding. Blank means the top level. */
+        @Size(max = 300) String folder) {
 }

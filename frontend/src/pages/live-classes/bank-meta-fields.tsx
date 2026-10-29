@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { type CourseSummaryResponse, searchCourses } from '@/api/courses'
-import type { Difficulty, MaterialMeta } from '@/api/live-classes'
+import { type BankFolder, type Difficulty, type MaterialMeta, listFolders } from '@/api/live-classes'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 
@@ -12,9 +12,10 @@ export interface MetaDraft {
   tags: string
   difficulty: Difficulty | ''
   shared: boolean
+  folder: string
 }
 
-export const EMPTY_META: MetaDraft = { courseId: null, topic: '', tags: '', difficulty: '', shared: false }
+export const EMPTY_META: MetaDraft = { courseId: null, topic: '', tags: '', difficulty: '', shared: false, folder: '' }
 
 export function metaToPayload(draft: MetaDraft): MaterialMeta {
   return {
@@ -23,13 +24,16 @@ export function metaToPayload(draft: MetaDraft): MaterialMeta {
     tags: draft.tags.split(',').map((t) => t.trim()).filter(Boolean),
     difficulty: draft.difficulty,
     shared: draft.shared,
+    folder: draft.folder.trim(),
   }
 }
 
 /** Course, topic, tags, difficulty and sharing for a question in the bank. */
 export function BankMetaFields({ value, onChange }: { value: MetaDraft; onChange: (next: MetaDraft) => void }) {
   const [courses, setCourses] = useState<CourseSummaryResponse[]>([])
+  const [folders, setFolders] = useState<BankFolder[]>([])
   useEffect(() => {
+    listFolders().then(setFolders).catch(() => undefined)
     // A course is only a label here; if the list cannot be read the question can still be saved without one.
     searchCourses({}).then((page) => setCourses(page.content)).catch(() => undefined)
   }, [])
@@ -37,6 +41,18 @@ export function BankMetaFields({ value, onChange }: { value: MetaDraft; onChange
   return (
     <div className="flex flex-col gap-2 rounded-md border p-2">
       <p className="text-xs font-medium text-muted-foreground">Find it again later</p>
+      <Input
+        value={value.folder}
+        onChange={(e) => onChange({ ...value, folder: e.target.value })}
+        list="bank-folders"
+        placeholder="Folder, e.g. Java/OOPs/Coding (blank = top level)"
+        maxLength={300}
+      />
+      <datalist id="bank-folders">
+        {folders.map((f) => (
+          <option key={f.path} value={f.path} />
+        ))}
+      </datalist>
       <div className="grid gap-2 sm:grid-cols-2">
         <select
           value={value.courseId ?? ''}

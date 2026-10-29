@@ -23,6 +23,7 @@ import com.itilms.liveclass.dto.request.MaterialRequest;
 import com.itilms.liveclass.dto.response.MaterialResponse;
 import com.itilms.liveclass.entity.LiveMaterial;
 import com.itilms.liveclass.entity.QuestionType;
+import com.itilms.liveclass.repository.LiveMaterialFolderRepository;
 import com.itilms.liveclass.repository.LiveMaterialRepository;
 
 class LiveMaterialServiceTest {
@@ -33,7 +34,7 @@ class LiveMaterialServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(LiveMaterialRepository.class);
-        service = new LiveMaterialService(repository, mock(LiveQuestionService.class), new ObjectMapper());
+        service = new LiveMaterialService(repository, mock(LiveMaterialFolderRepository.class), mock(LiveQuestionService.class), new ObjectMapper());
         when(repository.save(any(LiveMaterial.class))).thenAnswer(i -> i.getArgument(0));
         signInAs(7L);
     }
@@ -52,7 +53,7 @@ class LiveMaterialServiceTest {
     private static MaterialRequest request(String title, String topic, List<String> tags, boolean shared) {
         AskQuestionRequest q = new AskQuestionRequest(QuestionType.SHORT_ANSWER, "What does it print?", null, null,
                 List.of("6"), null, null, null, 1, "print(3*2)", "python", null);
-        return new MaterialRequest(title, q, null, topic, tags, "EASY", shared);
+        return new MaterialRequest(title, q, null, topic, tags, "EASY", shared, null);
     }
 
     @Test
@@ -70,11 +71,11 @@ class LiveMaterialServiceTest {
         LiveMaterial other = stored(2L, 8L, "Loops", "Python", "loops", true);
         when(repository.findByOwnerUserIdOrSharedTrueOrderByCreatedAtDesc(7L)).thenReturn(List.of(mine, other));
 
-        assertThat(service.list(null, null, null, "SQL", null)).extracting(MaterialResponse::id).containsExactly(1L);
-        assertThat(service.list(null, "python", null, null, null)).extracting(MaterialResponse::id).containsExactly(2L);
-        assertThat(service.list("shared", null, null, null, null)).extracting(MaterialResponse::id).containsExactly(2L);
-        assertThat(service.list("mine", null, null, null, null)).extracting(MaterialResponse::id).containsExactly(1L);
-        assertThat(service.list(null, "print(3*2)", null, null, null)).hasSize(2);
+        assertThat(service.list(null, null, null, "SQL", null, null, null)).extracting(MaterialResponse::id).containsExactly(1L);
+        assertThat(service.list(null, "python", null, null, null, null, null)).extracting(MaterialResponse::id).containsExactly(2L);
+        assertThat(service.list("shared", null, null, null, null, null, null)).extracting(MaterialResponse::id).containsExactly(2L);
+        assertThat(service.list("mine", null, null, null, null, null, null)).extracting(MaterialResponse::id).containsExactly(1L);
+        assertThat(service.list(null, "print(3*2)", null, null, null, null, null)).hasSize(2);
     }
 
     @Test

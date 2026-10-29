@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 
 import { addQuestion, type QuestionInput } from '@/api/assessments'
 import { apiErrorMessage } from '@/api/client'
+import type { CodeLanguageCode } from '@/api/code'
 import type { DataTable, LiveMaterial } from '@/api/live-classes'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -44,8 +45,24 @@ export function toTestQuestion(item: LiveMaterial): QuestionInput | string {
       return q.acceptedAnswers?.length
         ? { ...base, type: 'SHORT_ANSWER', acceptedAnswers: q.acceptedAnswers }
         : 'no right answer set'
-    case 'CODING':
-      return 'coding needs test cases'
+    case 'CODING': {
+      if (!q.testCases?.length) return 'coding needs test cases'
+      const language = (q.language ?? 'python').toUpperCase() as CodeLanguageCode
+      return {
+        ...base,
+        type: 'CODING',
+        codeLanguage: language,
+        allowLanguageChoice: language === 'SQL' ? undefined : q.allowLanguageChoice,
+        starterCode: q.starterCode || undefined,
+        setupSql: language === 'SQL' ? q.setupSql || undefined : undefined,
+        testCases: q.testCases.map((c) => ({
+          input: c.input,
+          expectedOutput: c.expectedOutput,
+          hidden: c.hidden,
+          weight: c.weight,
+        })),
+      }
+    }
     default:
       return 'open questions are not marked'
   }
@@ -90,8 +107,8 @@ export function ImportFromBankDialog({ quizId, onAdded }: { quizId: number; onAd
           <DialogTitle>Import from your question bank</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          Single choice, multiple select, true/false and short answers with a right answer can be imported. Code shown
-          with a question is added to its text.
+          Single choice, multiple select, true/false, short answers with a right answer, and coding questions with test
+          cases can be imported. Code shown with a question is added to its text.
         </p>
         <MaterialList
           leading={(item) => {

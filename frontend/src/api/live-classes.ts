@@ -274,6 +274,18 @@ export interface AskQuestionInput {
   snippetLanguage?: string
   /** A small database shown as tables. */
   dataset?: DataTable[]
+  /** CODING: what a correct program prints for each input. A test marks the code with these. */
+  testCases?: CodeTestCase[]
+  /** CODING in SQL: CREATE TABLE and INSERT statements that run before the student's query. */
+  setupSql?: string
+  allowLanguageChoice?: boolean
+}
+
+export interface CodeTestCase {
+  input: string
+  expectedOutput: string
+  hidden: boolean
+  weight: number
 }
 
 export interface DataTable {
@@ -291,6 +303,8 @@ export interface MaterialMeta {
   tags?: string[]
   difficulty?: Difficulty | ''
   shared?: boolean
+  /** Where it is filed, like Java/OOPs/Coding. */
+  folder?: string
 }
 
 /** A question in the trainer's bank, or one another trainer shared (mine = false). */
@@ -304,6 +318,7 @@ export interface LiveMaterial {
   difficulty: Difficulty | null
   shared: boolean
   mine: boolean
+  folder: string | null
   ownerName: string | null
   createdAt: string
 }
@@ -314,6 +329,35 @@ export interface MaterialFilter {
   courseId?: number
   tag?: string
   difficulty?: Difficulty
+  /** A folder path; its sub-folders are included. */
+  folder?: string
+  type?: LiveQuestionType
+}
+
+export interface BankFolder {
+  path: string
+  /** Questions filed directly in this folder, not in its sub-folders. */
+  count: number
+}
+
+export async function listFolders(): Promise<BankFolder[]> {
+  const { data } = await apiClient.get<BankFolder[]>('/api/liveclass/materials/folders')
+  return data
+}
+
+export async function createFolder(path: string): Promise<BankFolder> {
+  const { data } = await apiClient.post<BankFolder>('/api/liveclass/materials/folders', { path })
+  return data
+}
+
+/** Renames a folder and everything under it, or moves it by giving a longer path. */
+export async function renameFolder(path: string, to: string): Promise<void> {
+  await apiClient.put('/api/liveclass/materials/folders', { path, to })
+}
+
+/** Only an empty folder can be deleted. */
+export async function deleteFolder(path: string): Promise<void> {
+  await apiClient.delete('/api/liveclass/materials/folders', { params: { path } })
 }
 
 export async function listMaterials(params: MaterialFilter = {}): Promise<LiveMaterial[]> {

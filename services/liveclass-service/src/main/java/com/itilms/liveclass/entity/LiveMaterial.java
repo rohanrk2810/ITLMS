@@ -56,6 +56,9 @@ public class LiveMaterial {
     @Column(nullable = false)
     private boolean shared = false;
 
+    /** Slash-separated path such as Java/OOPs/Coding; null is the top level. */
+    private String folder;
+
     @Column(name = "owner_name")
     private String ownerName;
 
