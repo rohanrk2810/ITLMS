@@ -40,6 +40,9 @@ public record StudentQuizResponse(
         @Schema(description = "Camera tests: the checks that run (FACE, PEOPLE, IDENTITY, PHONE)")
         java.util.List<String> cameraChecks,
 
+        @Schema(description = "Coding answers are recorded as typed, for the trainer to replay")
+        boolean recordTyping,
+
         @Schema(description = "True when the test is open right now")
         boolean openNow,
 
@@ -65,7 +68,7 @@ public record StudentQuizResponse(
                 q.getDurationMinutes(), q.getTotalMarks(), q.getPassPercentage(), q.getAttemptsAllowed(),
                 attemptsUsed, q.getAvailableFrom(), q.getAvailableUntil(), q.isMandatory(),
                 q.isSecureMode(), q.getMaxViolations(), q.isRequireCamera(), q.isRequireMicrophone(),
-                com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()),
+                com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.isRecordTyping(),
                 open, canStart, inProgressAttemptId, best,
                 best == null ? null : q.passed(best));
     }

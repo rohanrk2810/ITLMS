@@ -1,9 +1,11 @@
+import { useEffect, useRef } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker'
 
 import type { CodeLanguageCode } from '@/api/code'
 import { MONACO_LANGUAGE, registerCompletions } from '@/lib/code-completions'
+import type { EditorEdit } from '@/lib/typing-recorder'
 
 // Serve Monaco from this bundle instead of the CDN the wrapper defaults to: the page must work offline
 // and inside a network that blocks third-party scripts. Only the base worker is needed - there is no
@@ -27,10 +29,21 @@ interface CodeEditorProps {
   suggestions?: boolean
   /** Dark editor theme; by default it follows the page. */
   dark?: boolean
+  /** Told about every change as it is made (typing replay). Setting the value from outside is reported as one replace-all. */
+  onEdits?: (edits: EditorEdit[]) => void
+  /** Told when text has just been pasted. */
+  onPaste?: () => void
 }
 
 /** The one code editor used across the app: practice lessons, live-class questions and tests. */
-export default function CodeEditor({ language, value, onChange, onRun, readOnly, height = 320, fill = false, ariaLabel, suggestions = true, dark: darkProp }: CodeEditorProps) {
+export default function CodeEditor({ language, value, onChange, onRun, readOnly, height = 320, fill = false, ariaLabel, suggestions = true, dark: darkProp, onEdits, onPaste }: CodeEditorProps) {
+  // Monaco wires its listeners once, on mount; these keep them calling the latest callbacks.
+  const editsRef = useRef(onEdits)
+  const pasteRef = useRef(onPaste)
+  useEffect(() => {
+    editsRef.current = onEdits
+    pasteRef.current = onPaste
+  }, [onEdits, onPaste])
   const dark = darkProp ?? document.documentElement.classList.contains('dark')
 
   return (
@@ -50,6 +63,16 @@ export default function CodeEditor({ language, value, onChange, onRun, readOnly,
           if (onRun) {
             editor.addCommand(instance.KeyMod.CtrlCmd | instance.KeyCode.Enter, onRun)
           }
+          editor.onDidPaste(() => pasteRef.current?.())
+          editor.onDidChangeModelContent((event) => {
+            const report = editsRef.current
+            if (!report) return
+            if (event.isFlush) {
+              report([{ offset: 0, removed: -1, text: editor.getValue() }])
+              return
+            }
+            report(event.changes.map((c) => ({ offset: c.rangeOffset, removed: c.rangeLength, text: c.text })))
+          })
         }}
         loading={<div className="p-3 text-xs text-muted-foreground">Loading editor...</div>}
         options={{

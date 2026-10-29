@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Camera, Mic, Plus, ShieldCheck } from 'lucide-react'
+import { Camera, Clock, Keyboard, Mic, Plus, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -71,6 +72,18 @@ export function ManageTestsPage() {
                       Camera
                     </Badge>
                   )}
+                  {(quiz.availableFrom || quiz.availableUntil) && (
+                    <Badge variant="outline" className="ml-2 gap-1">
+                      <Clock className="size-3" />
+                      Fixed time
+                    </Badge>
+                  )}
+                  {quiz.recordTyping && (
+                    <Badge variant="outline" className="ml-2 gap-1">
+                      <Keyboard className="size-3" />
+                      Typing replay
+                    </Badge>
+                  )}
                   {quiz.requireMicrophone && (
                     <Badge variant="outline" className="ml-2 gap-1">
                       <Mic className="size-3" />
@@ -103,11 +116,15 @@ export function ManageTestsPage() {
 function NewQuizDialog() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<Partial<QuizInput>>({ durationMinutes: 30, passPercentage: 40, attemptsAllowed: 1 })
+  // When the test can be taken: any time once it is published, or only between two moments (then it expires).
+  const [timing, setTiming] = useState<'anytime' | 'scheduled'>('anytime')
+  const [opensAt, setOpensAt] = useState('')
+  const [closesAt, setClosesAt] = useState('')
   const queryClient = useQueryClient()
   const coursesQuery = useQuery({ queryKey: ['courses', 'search', 'new-test'], queryFn: () => searchCourses({}), enabled: open })
 
   const mutation = useMutation({
-    mutationFn: () => createQuiz(form as QuizInput),
+    mutationFn: (payload: Partial<QuizInput>) => createQuiz(payload as QuizInput),
     onSuccess: () => {
       toast.success('Test created as a draft')
       setOpen(false)
@@ -118,7 +135,21 @@ function NewQuizDialog() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    mutation.mutate()
+    if (timing === 'anytime') {
+      mutation.mutate({ ...form, availableFrom: undefined, availableUntil: undefined })
+      return
+    }
+    const opens = new Date(opensAt)
+    const closes = new Date(closesAt)
+    if (!opensAt || !closesAt || Number.isNaN(opens.getTime()) || Number.isNaN(closes.getTime())) {
+      toast.error('Choose when the test opens and when it closes.')
+      return
+    }
+    if (closes <= opens) {
+      toast.error('The closing time must be after the opening time.')
+      return
+    }
+    mutation.mutate({ ...form, availableFrom: opens.toISOString(), availableUntil: closes.toISOString() })
   }
 
   return (
@@ -189,6 +220,42 @@ function NewQuizDialog() {
                 onChange={(event) => setForm({ ...form, attemptsAllowed: Number(event.target.value) })}
               />
             </div>
+          </div>
+          <div className="flex flex-col gap-3 rounded-md border p-3">
+            <span className="text-sm font-medium">When can students take it?</span>
+            <RadioGroup value={timing} onValueChange={(value) => setTiming(value as 'anytime' | 'scheduled')}>
+              <label className="flex items-start gap-2 text-sm">
+                <RadioGroupItem value="anytime" className="mt-0.5" />
+                <span>
+                  Any time
+                  <span className="block text-xs text-muted-foreground">
+                    Open from the moment it is published until you close it.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <RadioGroupItem value="scheduled" className="mt-0.5" />
+                <span>
+                  At a fixed time
+                  <span className="block text-xs text-muted-foreground">
+                    Students must start it between the two times. After the closing time it has expired and cannot be
+                    started. A sitting that is already running ends at the closing time too.
+                  </span>
+                </span>
+              </label>
+            </RadioGroup>
+            {timing === 'scheduled' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="opensAt">Opens</Label>
+                  <Input id="opensAt" type="datetime-local" value={opensAt} onChange={(event) => setOpensAt(event.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="closesAt">Closes (expires)</Label>
+                  <Input id="closesAt" type="datetime-local" value={closesAt} onChange={(event) => setClosesAt(event.target.value)} />
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-3 rounded-md border p-3">
             <label className="flex items-center gap-2 text-sm font-medium">
@@ -277,6 +344,20 @@ function NewQuizDialog() {
               off or when sustained sound is picked up, and each is recorded with its time for you to review. Only the
               loudness is measured against the room&apos;s own background level: nothing is recorded or stored, it cannot
               tell speech from other noise, and nothing is failed automatically.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-md border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox
+                checked={form.recordTyping ?? false}
+                onCheckedChange={(value) => setForm({ ...form, recordTyping: value === true })}
+              />
+              Record typing (typing replay)
+            </label>
+            <p className="text-xs text-muted-foreground">
+              For coding questions, the student&apos;s browser records every edit with its time. You can replay how each
+              answer was written, and a solution that appeared all at once (pasted) stands out. Students are told it is
+              recorded. It is what their browser reports, so use it as a hint, not as proof.
             </p>
           </div>
           <DialogFooter>

@@ -331,9 +331,20 @@ Assignments/submissions (Doc S6.10) and MCQ tests/attempts/results (Doc S6.11) â
 | available_from, available_until | | CHECK until > from |
 | shuffle_questions, show_result_immediately, mandatory | BOOLEAN | |
 | secure_mode, max_violations, require_camera, require_microphone | BOOLEAN / INT | monitoring options, see 09-test-portal.md |
+| record_typing | BOOLEAN | NOT NULL, default false (V14): coding answers are recorded as typed, for the trainer's replay |
 | camera_checks | VARCHAR(60) | NOT NULL, default `FACE,IDENTITY,PEOPLE,PHONE` (V13): the detections a camera test runs, names joined by commas; tests made before V13 keep all four |
 | status | VARCHAR(20) | CHECK: DRAFT, PUBLISHED, CLOSED; CHECK requires published_at + total_marks > 0 once PUBLISHED |
 | trainer_id, published_at, created_at, updated_at, created_by, updated_by | | |
+
+### `quiz_typing_chunks` (V14)
+| Column | Type | Notes |
+|---|---|---|
+| id | BIGINT | **PK** |
+| attempt_id | BIGINT | **FK â†’** quiz_attempts.id, `ON DELETE CASCADE` |
+| question_id | BIGINT | the coding question |
+| seq | INTEGER | CHECK >= 0; UNIQUE (attempt_id, question_id, seq): a batch sent twice is kept once |
+| events | TEXT | JSON array of `[time_ms, offset, removed, inserted_text, pasted]` |
+| created_at | TIMESTAMPTZ | |
 
 ### `quiz_questions`
 | Column | Type | Notes |

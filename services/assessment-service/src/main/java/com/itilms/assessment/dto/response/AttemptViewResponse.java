@@ -49,6 +49,8 @@ public record AttemptViewResponse(
         boolean requireMicrophone,
         @Schema(description = "Camera tests: the checks that run (FACE, PEOPLE, IDENTITY, PHONE)")
         List<String> cameraChecks,
+        @Schema(description = "Coding answers are recorded as typed; the page records them and tells the student")
+        boolean recordTyping,
         @Schema(description = "Violations that have counted so far in this attempt")
         int violationCount,
         List<Question> questions,
@@ -106,6 +108,7 @@ public record AttemptViewResponse(
                 quiz.getPassPercentage(), attempt.getStartedAt(), attempt.getExpiresAt(),
                 attempt.secondsRemaining(now), quiz.isSecureMode(), quiz.getMaxViolations(),
                 quiz.isRequireCamera(), quiz.isRequireMicrophone(),
-                com.itilms.assessment.entity.CameraCheck.names(quiz.cameraChecks()), attempt.getViolationCount(), paper, savedAnswers);
+                com.itilms.assessment.entity.CameraCheck.names(quiz.cameraChecks()), quiz.isRecordTyping(),
+                attempt.getViolationCount(), paper, savedAnswers);
     }
 }

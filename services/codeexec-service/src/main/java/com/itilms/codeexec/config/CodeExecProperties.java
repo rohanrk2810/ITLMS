@@ -76,6 +76,8 @@ public class CodeExecProperties {
         /** An account that may create and drop users, e.g. {@code system}. */
         private String adminUser = "system";
         private String adminPassword;
+        /** Where a throwaway user keeps its tables: {@code USERS} in Oracle Free, {@code DATA} in Autonomous Database. */
+        private String tablespace = "USERS";
 
         public boolean isEnabled() {
             return url != null && !url.isBlank();

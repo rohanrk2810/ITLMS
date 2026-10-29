@@ -37,6 +37,7 @@ public class AttemptController {
 
     private final AttemptService attemptService;
     private final com.itilms.assessment.service.CodingComparisonService comparisons;
+    private final com.itilms.assessment.service.TypingService typing;
 
     @Operation(summary = "The paper for a running attempt", description = "Never includes the answer key.")
     @PreAuthorize("hasRole('STUDENT')")
@@ -94,6 +95,25 @@ public class AttemptController {
     @GetMapping("/{id}/violations")
     public List<ViolationResponse.Entry> violations(@PathVariable Long id) {
         return attemptService.violations(id);
+    }
+
+    @Operation(summary = "A batch of edits to a coding answer (typing replay)",
+            description = "Sent by the student's browser on a test that records typing. On any other test, a question "
+                    + "that is not a coding question of it, or an attempt that is over, accepted and ignored.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/{id}/questions/{questionId}/typing")
+    public void recordTyping(@PathVariable Long id, @PathVariable Long questionId,
+                             @Valid @RequestBody com.itilms.assessment.dto.request.TypingChunkRequest request) {
+        typing.record(id, questionId, request);
+    }
+
+    @Operation(summary = "How a coding answer was typed",
+            description = "Trainers of the test and staff. The edits in order, with the starting and the final code.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping("/{id}/questions/{questionId}/typing")
+    public com.itilms.assessment.dto.response.TypingReplayResponse typingReplay(@PathVariable Long id,
+                                                                                @PathVariable Long questionId) {
+        return typing.replay(id, questionId);
     }
 
     @Operation(summary = "Submit an attempt",

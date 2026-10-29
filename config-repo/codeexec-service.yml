@@ -63,6 +63,8 @@ itilms:
       url: ${ORACLE_URL:}
       admin-user: ${ORACLE_ADMIN_USER:system}
       admin-password: ${ORACLE_PASSWORD:}
+      # USERS in the Oracle Free container; DATA in an Oracle Cloud Autonomous Database (whose admin user is ADMIN).
+      tablespace: ${ORACLE_TABLESPACE:USERS}
 
     limits:
       max-source-chars: 50000

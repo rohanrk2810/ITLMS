@@ -70,6 +70,24 @@ All of it runs in the student's browser and is served by this app, not a CDN. Fe
 
 If a model cannot load the others carry on: without the recogniser the test goes ahead without the same-face check, without the object detector there is no phone check, and the camera stays on either way.
 
+## When a test can be taken (`availableFrom` / `availableUntil`)
+The trainer chooses when making the test:
+
+- **Any time**: no times. Open from the moment it is published until the trainer closes it.
+- **At a fixed time**: an opening and a closing time. A student can start it only between them. After the closing time it has **expired** and cannot be started (*"This test is not open right now."*); the student's tests list says *Closed ... expired, you did not take it*. A sitting that is already running ends at the closing time too, even if its duration is not up (a test that closes at 11:00 closes at 11:00 for someone who started at 10:50 on a 30-minute paper).
+
+The server decides all of it (`Quiz.isOpenAt`, and the deadline in `AttemptServiceImpl.start`). The times are chosen in the trainer's own time zone and stored as instants.
+
+## Typing replay (`recordTyping`)
+Optional per test, for **coding questions**. The student's browser records every edit to the code answer with its time and sends it in batches while they type; the trainer replays it afterwards from the results table (**Typing -> Replay**): play, pause, speed 1x to 16x, a slider, long pauses cut to 1.5 s.
+
+- What is recorded: `[time_ms, offset, removed, inserted_text, pasted]` per edit (Monaco's change events); a paste is the editor's own paste event (`onDidPaste`). The starting text of each session is recorded too, so a resumed answer replays from where it stood. Nothing but the code is recorded.
+- What the trainer sees: edits, time from first to last, characters typed and pasted, the pasted blocks of 40 characters or more (red marks on the slider; click to jump), a warning when most of the answer was pasted, and whether the replay ends with the submitted answer.
+- Students are told on the rules screen before they start.
+- Stored in `quiz_typing_chunks` (V14), one row per batch (`seq` per question; a batch sent twice is kept once). Capped at 3,000,000 characters per attempt and 20,000 edits per answer. Accepted and ignored when the test does not record typing, the question is not a coding question of it, or the attempt is over.
+- API: `POST /api/quiz-attempts/{id}/questions/{questionId}/typing` (student), `GET` the same path (trainers of the test and staff).
+- It is what the student's browser reports, so it can be switched off or faked: a hint to look closer, not proof. A coding answer with no typing at all is worth a look too.
+
 ## How a test is shown
 - **One question at a time.** A question map at the top (green = answered, outlined = on screen) jumps to any question; **Previous** and **Next** are at the bottom, and **Submit test** is always there. Moving between questions keeps every answer.
 - **Coding questions** get a wide two-pane workspace: the problem and its examples on the left (with the database for SQL), the editor on the right, and **Testcase** / **Test Result** tabs under it. **Run** (or Ctrl+Enter) runs every case, hidden ones included, and opens the Test Result tab. The two dividers can be dragged. Other question types stay in a narrow card.
