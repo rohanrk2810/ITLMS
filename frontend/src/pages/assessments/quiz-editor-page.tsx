@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { TypingReplayButton } from '@/components/typing-replay'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -168,6 +169,7 @@ export function QuizEditorPage() {
                 <TableHead>Score</TableHead>
                 <TableHead>Result</TableHead>
                 {(quiz.secureMode || quiz.requireCamera) && <TableHead>Monitoring</TableHead>}
+                {quiz.recordTyping && codingQuestionsOf(quiz).length > 0 && <TableHead>Typing</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -193,6 +195,15 @@ export function QuizEditorPage() {
                       />
                     </TableCell>
                   )}
+                  {quiz.recordTyping && codingQuestionsOf(quiz).length > 0 && (
+                    <TableCell>
+                      <TypingReplayButton
+                        attemptId={result.attemptId}
+                        studentName={result.studentName}
+                        questions={codingQuestionsOf(quiz)}
+                      />
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -201,6 +212,13 @@ export function QuizEditorPage() {
       )}
     </div>
   )
+}
+
+/** The coding questions of a test, as the typing replay needs them. */
+function codingQuestionsOf(quiz: { questions: QuizQuestionWithKey[] | null }) {
+  return (quiz.questions ?? [])
+    .filter((q) => q.type === 'CODING')
+    .map((q) => ({ id: q.id, text: q.questionText, language: q.codeLanguage }))
 }
 
 /** How many times a student left the test window, and a way to see every event the browser reported. */

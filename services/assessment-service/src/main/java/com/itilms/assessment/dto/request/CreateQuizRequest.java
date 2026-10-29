@@ -69,6 +69,9 @@ public record CreateQuizRequest(
 
         @Schema(description = "Camera tests: which checks run - FACE, PEOPLE, IDENTITY, PHONE. Omitted = all of them "
                 + "on a new test and unchanged on an update; an empty list = only that the camera stays on.")
-        java.util.Set<com.itilms.assessment.entity.CameraCheck> cameraChecks
+        java.util.Set<com.itilms.assessment.entity.CameraCheck> cameraChecks,
+
+        @Schema(description = "Coding answers are recorded as they are typed, for the trainer to replay. Default false.")
+        Boolean recordTyping
 ) {
 }

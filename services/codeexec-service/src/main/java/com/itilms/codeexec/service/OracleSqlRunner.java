@@ -89,7 +89,7 @@ public class OracleSqlRunner {
             sweepLeftovers(admin);
             try {
                 try (Statement st = admin.createStatement()) {
-                    st.execute("CREATE USER " + user + " IDENTIFIED BY \"" + password + "\" DEFAULT TABLESPACE USERS QUOTA 50M ON USERS");
+                    st.execute("CREATE USER " + user + " IDENTIFIED BY \"" + password + "\" DEFAULT TABLESPACE " + tablespace(oracle) + " QUOTA 50M ON " + tablespace(oracle));
                     st.execute("GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE SEQUENCE, CREATE PROCEDURE, "
                             + "CREATE TRIGGER, CREATE TYPE, CREATE SYNONYM TO " + user);
                 }
@@ -102,6 +102,15 @@ public class OracleSqlRunner {
             log.warn("Oracle is not usable for a run: {}", e.getMessage());
             throw new CodeRunnerUnavailableException("The SQL database is not reachable. Try again in a moment.");
         }
+    }
+
+    /** Only letters, digits and underscores reach the CREATE USER statement. */
+    private static String tablespace(CodeExecProperties.Oracle oracle) {
+        String name = oracle.getTablespace();
+        if (name == null || !name.matches("[A-Za-z][A-Za-z0-9_]*")) {
+            throw new CodeRunnerUnavailableException("The SQL database is set up wrongly (tablespace name).");
+        }
+        return name;
     }
 
     /** Is the Oracle server there and does the admin account work? */

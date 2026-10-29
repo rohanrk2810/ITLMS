@@ -117,6 +117,13 @@ public class Quiz extends AuditableEntity {
     @Column(name = "require_microphone", nullable = false)
     private boolean requireMicrophone;
 
+    /**
+     * The student's browser records how each coding answer is typed (every edit with its time), so the trainer can
+     * replay it. See {@link com.itilms.assessment.service.TypingService}.
+     */
+    @Column(name = "record_typing", nullable = false)
+    private boolean recordTyping;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

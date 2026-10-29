@@ -40,6 +40,8 @@ public record QuizResponse(
         boolean requireMicrophone,
         @Schema(description = "Camera tests: the checks that run (FACE, PEOPLE, IDENTITY, PHONE)")
         List<String> cameraChecks,
+        @Schema(description = "Coding answers are recorded as typed, for the trainer to replay")
+        boolean recordTyping,
         String status,
         Long trainerId,
         Instant publishedAt,
@@ -97,7 +99,7 @@ public record QuizResponse(
                 q.getAvailableFrom(), q.getAvailableUntil(), q.isShuffleQuestions(),
                 q.isShowResultImmediately(), q.isMandatory(), q.isSecureMode(), q.getMaxViolations(),
                 q.isRequireCamera(), q.isRequireMicrophone(),
-                com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.getStatus().name(), q.getTrainerId(),
+                com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.isRecordTyping(), q.getStatus().name(), q.getTrainerId(),
                 q.getPublishedAt(), questionCount, questions);
     }
 }

@@ -10,6 +10,7 @@ import { LanguageSelect } from '@/components/language-select'
 import { FULLSCREEN_PANEL_CLASS, FullscreenToggle, useFullscreenPanel } from '@/components/fullscreen-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useTypingRecorder } from '@/lib/typing-recorder'
 import { CLIPBOARD_OK_ATTRIBUTE } from '@/lib/use-test-guard'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +34,8 @@ interface CodingQuestionProps {
   onTested: (questionId: number, passed: number, total: number) => void
   /** Shown in full screen, where the test's own header (with the clock) is covered. */
   clock?: ReactNode
+  /** The test records how this answer is typed, for the trainer to replay. */
+  recordTyping?: boolean
 }
 
 /**
@@ -52,6 +55,7 @@ export function CodingQuestion({
   savedTotal,
   onTested,
   clock,
+  recordTyping = false,
 }: CodingQuestionProps) {
   const [full, setFull] = useState(false)
   useFullscreenPanel(full, () => setFull(false))
@@ -64,6 +68,7 @@ export function CodingQuestion({
   const across = useSplit(42, 25, 70, 'x')
   const down = useSplit(62, 25, 80, 'y')
   const language = question.allowLanguageChoice && chosenLanguage ? chosenLanguage : question.codeLanguage
+  const typing = useTypingRecorder({ enabled: recordTyping, attemptId, questionId: question.id, initialCode: code })
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -215,6 +220,8 @@ export function CodingQuestion({
                 value={code}
                 onChange={onChange}
                 onRun={run}
+                onEdits={recordTyping ? typing.record : undefined}
+                onPaste={recordTyping ? typing.markPaste : undefined}
                 suggestions={question.allowSuggestions}
                 ariaLabel={`${codeLanguageLabel(language)} answer`}
               />

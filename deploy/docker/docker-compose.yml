@@ -566,6 +566,7 @@ services:
       ORACLE_URL: ${ORACLE_URL:-jdbc:oracle:thin:@//oracle:1521/FREEPDB1}
       ORACLE_ADMIN_USER: ${ORACLE_ADMIN_USER:-system}
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-itilms_oracle_dev}
+      ORACLE_TABLESPACE: ${ORACLE_TABLESPACE:-USERS}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

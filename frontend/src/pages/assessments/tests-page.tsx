@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { examTiming, formatDateTime } from '@/lib/exam-timing'
 import { formatDate } from '@/lib/format'
 
 export function TestsPage() {
@@ -60,6 +61,7 @@ function TestsList() {
                 <CardDescription>
                   {quiz.durationMinutes} min &middot; {quiz.totalMarks} marks &middot; {quiz.passPercentage}% to pass
                 </CardDescription>
+                <TimingLine quiz={quiz} />
               </div>
               <div className="flex items-center gap-2">
                 {quiz.secureMode && <Badge variant="outline">Secure test</Badge>}
@@ -105,13 +107,37 @@ function TestsList() {
               </Button>
             ) : (
               <Button size="sm" variant="outline" disabled>
-                {quiz.openNow ? 'Not open to you' : 'Not open yet'}
+                {quiz.openNow
+                  ? 'Not open to you'
+                  : examTiming(quiz.availableFrom, quiz.availableUntil).kind === 'expired'
+                    ? 'Expired'
+                    : 'Not open yet'}
               </Button>
             )}
           </CardContent>
         </Card>
       ))}
     </div>
+  )
+}
+
+/** When the test opens and closes, and that it has expired if it was not taken in time. */
+function TimingLine({ quiz }: { quiz: { availableFrom: string | null; availableUntil: string | null; attemptsUsed: number } }) {
+  const timing = examTiming(quiz.availableFrom, quiz.availableUntil)
+  if (timing.kind === 'anytime') return null
+  if (timing.kind === 'upcoming') {
+    return <p className="mt-1 text-xs text-muted-foreground">Opens {formatDateTime(timing.opens)}</p>
+  }
+  if (timing.kind === 'open') {
+    return timing.closes ? (
+      <p className="mt-1 text-xs font-medium text-amber-600">Start before {formatDateTime(timing.closes)}, or it expires</p>
+    ) : null
+  }
+  return (
+    <p className="mt-1 text-xs text-muted-foreground">
+      Closed {formatDateTime(timing.closed)}
+      {quiz.attemptsUsed === 0 && <span className="font-medium text-destructive"> &middot; expired, you did not take it</span>}
+    </p>
   )
 }
 

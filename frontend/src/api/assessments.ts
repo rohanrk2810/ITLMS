@@ -24,6 +24,8 @@ export interface StudentQuizResponse {
   requireCamera: boolean
   requireMicrophone: boolean
   cameraChecks: CameraCheckName[]
+  /** Coding answers are recorded as typed, for the trainer to replay. */
+  recordTyping: boolean
   openNow: boolean
   canStart: boolean
   inProgressAttemptId: number | null
@@ -100,6 +102,8 @@ export interface AttemptViewResponse {
   requireCamera: boolean
   requireMicrophone: boolean
   cameraChecks: CameraCheckName[]
+  /** Coding answers are recorded as typed, for the trainer to replay. */
+  recordTyping: boolean
   /** Violations that have counted so far in this attempt. */
   violationCount: number
   questions: AttemptQuestion[]
@@ -232,6 +236,32 @@ export async function reportViolation(
 }
 
 /** Everything the browser reported for one attempt - trainers of the test and staff. */
+/** One edit of a coding answer: [time in ms, offset, characters removed, text inserted, 1 when pasted]. */
+export type TypingEdit = [number, number, number, string, number]
+
+/** A batch of edits, numbered from 0 for each question. Best effort: a lost batch only leaves a gap in the replay. */
+export async function sendTypingChunk(
+  attemptId: number | string,
+  questionId: number | string,
+  seq: number,
+  edits: TypingEdit[],
+): Promise<void> {
+  await apiClient.post(`/api/quiz-attempts/${attemptId}/questions/${questionId}/typing`, { seq, events: JSON.stringify(edits) })
+}
+
+export interface TypingReplay {
+  questionId: number
+  questionText: string
+  starterCode: string
+  finalCode: string | null
+  chunks: { seq: number; events: string }[]
+}
+
+export async function getTypingReplay(attemptId: number | string, questionId: number | string): Promise<TypingReplay> {
+  const { data } = await apiClient.get<TypingReplay>(`/api/quiz-attempts/${attemptId}/questions/${questionId}/typing`)
+  return data
+}
+
 export async function listViolations(attemptId: number | string): Promise<ViolationEntry[]> {
   const { data } = await apiClient.get<ViolationEntry[]>(`/api/quiz-attempts/${attemptId}/violations`)
   return data
@@ -410,6 +440,8 @@ export interface QuizResponse {
   requireCamera: boolean
   requireMicrophone: boolean
   cameraChecks: CameraCheckName[]
+  /** Coding answers are recorded as typed, for the trainer to replay. */
+  recordTyping: boolean
   status: string
   trainerId: number | null
   publishedAt: string | null
@@ -437,6 +469,7 @@ export interface QuizInput {
   requireMicrophone?: boolean
   /** Camera tests: which checks run. Leave out for all of them on a new test. */
   cameraChecks?: CameraCheckName[]
+  recordTyping?: boolean
 }
 
 export interface QuestionOptionInput {

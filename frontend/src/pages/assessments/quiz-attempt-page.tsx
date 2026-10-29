@@ -194,7 +194,7 @@ export function QuizAttemptPage() {
       .then((list) => {
         if (!mounted.current) return
         const quiz = list.find((q) => String(q.id) === quizId)
-        if ((quiz?.secureMode || quiz?.requireCamera || quiz?.requireMicrophone) && (quiz.canStart || quiz.inProgressAttemptId)) {
+        if ((quiz?.secureMode || quiz?.requireCamera || quiz?.requireMicrophone || quiz?.recordTyping) && (quiz.canStart || quiz.inProgressAttemptId)) {
           setIntro(quiz)
           setView('intro')
         } else {
@@ -355,7 +355,7 @@ export function QuizAttemptPage() {
               {intro.title}
             </CardTitle>
             <CardDescription>
-              {intro.secureMode ? 'This is a secure test.' : 'This test uses your camera.'} {intro.durationMinutes}{' '}
+              {intro.secureMode ? 'This is a secure test.' : intro.requireCamera ? 'This test uses your camera.' : 'Read this before you begin.'} {intro.durationMinutes}{' '}
               minutes &middot; {intro.totalMarks} marks
             </CardDescription>
           </CardHeader>
@@ -385,6 +385,12 @@ export function QuizAttemptPage() {
                 <li>
                   Your camera must stay on with your face visible. You are warned if it is not; nothing is failed
                   automatically for this, but it is recorded for your trainer.
+                </li>
+              )}
+              {intro.recordTyping && (
+                <li>
+                  How you type your code answers is recorded, edit by edit with the time, so your trainer can replay
+                  it. Write your own solution in the editor; a block that appears all at once is visible in the replay.
                 </li>
               )}
               <li>Everything above is recorded, with the time, for your trainer to review.</li>
@@ -600,6 +606,7 @@ export function QuizAttemptPage() {
         <CodingQuestion
           key={question.id}
           number={qIndex + 1}
+          recordTyping={paper.recordTyping}
           clock={
             <Badge variant={secondsRemaining < 60 ? 'destructive' : 'secondary'} className="font-mono text-sm">
               {formatClock(secondsRemaining)}
