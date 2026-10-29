@@ -20,6 +20,37 @@ export async function getCaptchaConfig(): Promise<CaptchaConfig> {
   return data
 }
 
+/** Which sign-in methods besides a password are switched on. */
+export interface SocialConfig {
+  googleClientId: string
+  whatsappEnabled: boolean
+}
+
+export async function getSocialConfig(): Promise<SocialConfig> {
+  const { data } = await apiClient.get<SocialConfig>('/api/auth/social-config')
+  return data
+}
+
+export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/api/auth/google', { idToken })
+  applySession(data)
+  return data
+}
+
+export async function requestWhatsAppCode(phone: string, captchaToken?: string | null): Promise<ApiMessage> {
+  const { data } = await apiClient.post<ApiMessage>('/api/auth/whatsapp/request-code', {
+    phone,
+    captchaToken: captchaToken ?? undefined,
+  })
+  return data
+}
+
+export async function loginWithWhatsAppCode(phone: string, code: string): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/api/auth/whatsapp/verify', { phone, code })
+  applySession(data)
+  return data
+}
+
 export async function login(identifier: string, password: string, captchaToken?: string | null): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/api/auth/login', {
     identifier,

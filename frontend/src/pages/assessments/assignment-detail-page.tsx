@@ -1,13 +1,14 @@
 import { type ChangeEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, ChevronLeft, Download, Paperclip, Upload } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { CheckCircle2, ChevronLeft, Download, Paperclip, Trash2, Upload } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import {
   type AssignmentResponse,
   type EvaluateSubmissionInput,
   type SubmitAssignmentInput,
+  deleteAssignment,
   evaluateSubmission,
   getAssignment,
   getSubmissions,
@@ -37,6 +38,29 @@ export function AssignmentDetailPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
   const role = useAuthStore((state) => state.user?.role)
   const isAcademic = hasRole(role, ['ADMIN', 'COORDINATOR', 'TRAINER'])
+  const isAdmin = role === 'ADMIN'
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteAssignment(assignmentId!),
+    onSuccess: () => {
+      toast.success('Assignment deleted')
+      void queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      void navigate('/app/assessments', { replace: true })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not delete the assignment.')),
+  })
+
+  function handleDelete(title: string) {
+    if (
+      window.confirm(
+        `Delete "${title}"? Every submission to it, with marks and feedback, is removed too. This cannot be undone.`,
+      )
+    ) {
+      deleteMutation.mutate()
+    }
+  }
 
   const query = useQuery({
     queryKey: ['assignments', assignmentId],
@@ -63,7 +87,21 @@ export function AssignmentDetailPage() {
             {assignment.overdue && ' · Overdue'}
           </p>
         </div>
-        <Badge>{assignment.status}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge>{assignment.status}</Badge>
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => handleDelete(assignment.title)}
+            >
+              <Trash2 className="size-3.5" />
+              Delete
+            </Button>
+          )}
+        </div>
       </div>
 
       {assignment.instructions && (

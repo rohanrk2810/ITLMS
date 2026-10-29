@@ -48,6 +48,9 @@ public class IdentityBeans {
                 "/api/auth/forgot-password",
                 "/api/auth/reset-password",
                 "/api/auth/captcha-config",
+                "/api/auth/social-config",
+                "/api/auth/google",
+                "/api/auth/whatsapp/**",
                 "/api/public/branding/**"
         };
     }

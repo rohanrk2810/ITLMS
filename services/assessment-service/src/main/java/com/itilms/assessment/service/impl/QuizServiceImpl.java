@@ -468,6 +468,19 @@ public class QuizServiceImpl implements QuizService {
         return QuizResponse.detail(quiz, questionRepository.findWithOptions(quiz.getId()));
     }
 
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        Quiz quiz = requireQuiz(id);
+        long attempts = attemptRepository.countByQuizId(id);
+        // Questions, attempts, answers and their records go with it (the database cascades).
+        quizRepository.delete(quiz);
+        events.audit(SERVICE_NAME, "QUIZ_DELETED", "Quiz", id, null,
+                java.util.Map.of("title", quiz.getTitle(), "status", quiz.getStatus().name(),
+                        "attemptsRemoved", attempts));
+        log.info("Test {} deleted with {} attempt(s)", id, attempts);
+    }
+
     private Quiz requireQuiz(Long id) {
         return quizRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Test", id));
     }

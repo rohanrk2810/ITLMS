@@ -129,6 +129,27 @@ public class AuthServiceImpl implements AuthService {
         return issueTokens(user, metadata);
     }
 
+    @Override
+    @Transactional(noRollbackFor = {BadCredentialsException.class, ForbiddenOperationException.class})
+    public AuthResponse signInVerified(User user, ClientMetadata metadata) {
+        if (user.isLocked()) {
+            long minutes = Math.max(1, java.time.Duration.between(
+                    Instant.now(), user.getLockedUntil()).toMinutes());
+            throw new ForbiddenOperationException(
+                    "Too many failed attempts. Try again in about %d minute(s).".formatted(minutes));
+        }
+        if (!user.getStatus().canSignIn()) {
+            throw new ForbiddenOperationException(
+                    "This account is %s. Please contact the institute administrator."
+                            .formatted(user.getStatus().name().toLowerCase()));
+        }
+        enforceSingleSession(user);
+        user.recordSuccessfulLogin();
+        userRepository.save(user);
+        log.info("User {} ({}) signed in without a password", user.getId(), user.getRole());
+        return issueTokens(user, metadata);
+    }
+
     // -----------------------------------------------------------------
     // Self-registration
     // -----------------------------------------------------------------

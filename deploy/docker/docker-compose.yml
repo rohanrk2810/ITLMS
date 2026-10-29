@@ -364,6 +364,15 @@ services:
       CAPTCHA_SITE_KEY: ${CAPTCHA_SITE_KEY:-}
       CAPTCHA_SECRET: ${CAPTCHA_SECRET:-}
       CAPTCHA_DESKTOP_KEY: ${CAPTCHA_DESKTOP_KEY:-}
+      # "Continue with Google" and sign-in by a WhatsApp code. Both off until their values are set; see .env.example.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-false}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_TEMPLATE_NAME: ${WHATSAPP_TEMPLATE_NAME:-}
+      WHATSAPP_LANGUAGE: ${WHATSAPP_LANGUAGE:-en}
+      WHATSAPP_DEFAULT_COUNTRY_CODE: ${WHATSAPP_DEFAULT_COUNTRY_CODE:-91}
+      WHATSAPP_DEV_LOG_CODES: ${WHATSAPP_DEV_LOG_CODES:-false}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1"]

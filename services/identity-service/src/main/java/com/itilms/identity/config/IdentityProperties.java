@@ -16,6 +16,50 @@ public class IdentityProperties {
     private Bootstrap bootstrap = new Bootstrap();
     private Security security = new Security();
     private Captcha captcha = new Captcha();
+    private Google google = new Google();
+    private WhatsApp whatsapp = new WhatsApp();
+
+    /**
+     * "Continue with Google". The browser gets an ID token from Google; the server checks it with Google and that it was
+     * issued for this client id. Switched on by setting the client id (public; it is also shown to the browser).
+     */
+    @Getter
+    @Setter
+    public static class Google {
+        private String clientId = "";
+        private String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo";
+        private Duration timeout = Duration.ofSeconds(5);
+
+        public boolean isEnabled() {
+            return clientId != null && !clientId.isBlank();
+        }
+    }
+
+    /**
+     * Sign-in with a one-time code sent on WhatsApp (Meta WhatsApp Cloud API, an approved authentication template).
+     * Switched on by {@code enabled}; with {@code enabled} and no access token the service starts in log-only mode
+     * only when {@code devLogCodes} is also true, so a half-set production never prints codes.
+     */
+    @Getter
+    @Setter
+    public static class WhatsApp {
+        private boolean enabled = false;
+        private String apiBase = "https://graph.facebook.com/v21.0";
+        private String phoneNumberId = "";
+        private String accessToken = "";
+        /** Name of the approved AUTHENTICATION template (one body variable: the code, plus the copy-code button). */
+        private String templateName = "";
+        private String languageCode = "en";
+        /** Country code put in front of a 10-digit number. */
+        private String defaultCountryCode = "91";
+        private Duration codeTtl = Duration.ofMinutes(5);
+        private int maxAttempts = 5;
+        private Duration resendCooldown = Duration.ofSeconds(60);
+        private int maxRequestsPerHour = 5;
+        private Duration timeout = Duration.ofSeconds(8);
+        /** Development only: print the code to the log instead of sending it. */
+        private boolean devLogCodes = false;
+    }
 
     /**
      * The "verify you are human" check (Cloudflare Turnstile) on sign-in, registration and forgot-password.

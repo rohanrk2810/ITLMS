@@ -63,6 +63,11 @@ export async function myAssignments(): Promise<AssignmentResponse[]> {
   return data
 }
 
+/** Administrator only: removes an assignment made by mistake, with every submission to it. */
+export async function deleteAssignment(id: number | string): Promise<void> {
+  await apiClient.delete(`/api/assignments/${id}`)
+}
+
 export async function getAssignment(id: number | string): Promise<AssignmentResponse> {
   const { data } = await apiClient.get<AssignmentResponse>(`/api/assignments/${id}`)
   return data

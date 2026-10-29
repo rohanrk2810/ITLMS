@@ -24,6 +24,9 @@ public interface QuizService {
 
     QuizResponse deleteQuestion(Long questionId);
 
+    /** Removes a test made or run by mistake, with its questions, every attempt and the answers. Administrator only. */
+    void delete(Long id);
+
     QuizResponse publish(Long id);
 
     /**

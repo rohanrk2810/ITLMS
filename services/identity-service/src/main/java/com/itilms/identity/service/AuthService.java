@@ -18,6 +18,12 @@ public interface AuthService {
 
     AuthResponse register(RegisterRequest request, ClientMetadata metadata);
 
+    /**
+     * Signs in a user whose identity was already proven some other way (Google, a WhatsApp code): the account status,
+     * the lock-out and the one-active-login rule apply as for a password sign-in.
+     */
+    AuthResponse signInVerified(com.itilms.identity.entity.User user, ClientMetadata metadata);
+
     /** Exchanges a refresh token for a new pair, rotating the refresh token. */
     AuthResponse refresh(String refreshToken, ClientMetadata metadata);
 

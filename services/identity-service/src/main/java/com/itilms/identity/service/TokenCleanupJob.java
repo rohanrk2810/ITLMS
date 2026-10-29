@@ -34,6 +34,7 @@ public class TokenCleanupJob {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final com.itilms.identity.repository.LoginOtpRepository loginOtpRepository;
 
     /** Nightly, at a quiet hour for an institute. */
     @Scheduled(cron = "${itilms.security.token-cleanup-cron:0 15 3 * * *}")
@@ -43,6 +44,7 @@ public class TokenCleanupJob {
 
         int refreshDeleted = refreshTokenRepository.deleteExpiredBefore(cutoff);
         int resetDeleted = passwordResetTokenRepository.deleteExpiredBefore(cutoff);
+        loginOtpRepository.deleteExpiredBefore(cutoff);
 
         if (refreshDeleted > 0 || resetDeleted > 0) {
             log.info("Token cleanup removed {} refresh token(s) and {} reset token(s) older than {}",

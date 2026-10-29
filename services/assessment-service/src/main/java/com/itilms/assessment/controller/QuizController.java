@@ -94,6 +94,16 @@ public class QuizController {
         return quizService.updateQuestion(questionId, request);
     }
 
+    @Operation(summary = "Delete a test",
+            description = "For a test made or run by mistake. Removes the test with its questions, every attempt and the "
+                    + "answers; cannot be undone. Administrator only.")
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        quizService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Remove a question")
     @PreAuthorize(Roles.ACADEMIC)
     @DeleteMapping("/questions/{questionId}")
