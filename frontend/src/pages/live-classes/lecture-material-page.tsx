@@ -1,8 +1,16 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Download, FileSpreadsheet, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
-import { type AskQuestionInput, type LiveMaterial, saveMaterial } from '@/api/live-classes'
+import {
+  type AskQuestionInput,
+  type LiveMaterial,
+  type MaterialImportResult,
+  downloadMaterialTemplate,
+  importMaterials,
+  saveMaterial,
+} from '@/api/live-classes'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,6 +24,25 @@ export function LectureMaterialPage() {
   const [title, setTitle] = useState('')
   const [meta, setMeta] = useState<MetaDraft>(EMPTY_META)
   const [savedKey, setSavedKey] = useState(0)
+  const [importing, setImporting] = useState(false)
+  const [report, setReport] = useState<MaterialImportResult | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+
+  async function upload(file: File) {
+    setImporting(true)
+    setReport(null)
+    try {
+      const result = await importMaterials(file)
+      setReport(result)
+      setSavedKey((k) => k + 1)
+      if (result.imported > 0) toast.success(`${result.imported} question${result.imported === 1 ? '' : 's'} added to your bank`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not read that file.'))
+    } finally {
+      setImporting(false)
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
 
   function startEdit(item: LiveMaterial) {
     setEditing(item)
@@ -56,6 +83,36 @@ export function LectureMaterialPage() {
           Prepare questions, code and database tables now. In the live class, open Questions &rarr; Question bank and press Send.
           In a test, use Import from bank.
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => void downloadMaterialTemplate().catch((err) => toast.error(apiErrorMessage(err, 'Could not download the template.')))}>
+            <Download className="size-4" /> Excel template
+          </Button>
+          <Button size="sm" disabled={importing} onClick={() => fileInput.current?.click()}>
+            {importing ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />} Upload filled Excel
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])}
+          />
+        </div>
+        {report && (
+          <div className="mt-3 rounded-md border p-3 text-sm">
+            <p className="font-medium">
+              {report.imported} question{report.imported === 1 ? '' : 's'} added
+              {report.errors.length > 0 && `, ${report.errors.length} row${report.errors.length === 1 ? '' : 's'} skipped`}
+            </p>
+            {report.errors.length > 0 && (
+              <ul className="mt-1 list-disc pl-5 text-destructive">
+                {report.errors.map((e) => (
+                  <li key={e.row}>Row {e.row}: {e.message}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

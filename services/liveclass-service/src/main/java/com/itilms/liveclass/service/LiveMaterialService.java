@@ -17,6 +17,7 @@ import com.itilms.common.security.SecurityUtils;
 import com.itilms.liveclass.dto.request.AskQuestionRequest;
 import com.itilms.liveclass.dto.request.MaterialRequest;
 import com.itilms.liveclass.dto.response.LiveQuestionResponse;
+import com.itilms.liveclass.dto.response.MaterialImportResponse;
 import com.itilms.liveclass.dto.response.MaterialResponse;
 import com.itilms.liveclass.entity.LiveMaterial;
 import com.itilms.liveclass.repository.LiveMaterialRepository;
@@ -84,6 +85,21 @@ public class LiveMaterialService {
             throw new ForbiddenOperationException("This material belongs to another trainer.");
         }
         materials.delete(material);
+    }
+
+    /** Saves every usable row of an Excel sheet to the caller's bank; unusable rows are reported, not fatal. */
+    @Transactional
+    public MaterialImportResponse importSheet(java.io.InputStream sheet) {
+        MaterialSheet.Result parsed;
+        try {
+            parsed = MaterialSheet.parse(sheet);
+        } catch (java.io.IOException | RuntimeException ex) {
+            throw new com.itilms.common.exception.BusinessRuleException(
+                    "That file could not be read. Upload an .xlsx file made from the template.");
+        }
+        parsed.items().forEach(this::create);
+        return new MaterialImportResponse(parsed.items().size(),
+                parsed.errors().stream().map(e -> new MaterialImportResponse.RowError(e.row(), e.message())).toList());
     }
 
     /** Puts a copy of a visible item into the caller's own bank, private until they share it. */

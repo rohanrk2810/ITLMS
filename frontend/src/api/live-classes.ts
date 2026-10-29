@@ -334,6 +334,30 @@ export async function saveMaterial(
   return data
 }
 
+export interface MaterialImportResult {
+  imported: number
+  errors: { row: number; message: string }[]
+}
+
+/** Saves every usable row of a filled-in template to the bank; rows with a mistake come back in errors. */
+export async function importMaterials(file: File): Promise<MaterialImportResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post<MaterialImportResult>('/api/liveclass/materials/import', form)
+  return data
+}
+
+/** The Excel template, saved through the browser. */
+export async function downloadMaterialTemplate(): Promise<void> {
+  const { data } = await apiClient.get<Blob>('/api/liveclass/materials/import/template', { responseType: 'blob' })
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'question-bank-template.xlsx'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function copyMaterial(id: number): Promise<LiveMaterial> {
   const { data } = await apiClient.post<LiveMaterial>(`/api/liveclass/materials/${id}/copy`)
   return data
