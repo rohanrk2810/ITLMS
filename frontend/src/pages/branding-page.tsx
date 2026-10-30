@@ -1,7 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import {
@@ -103,16 +101,9 @@ export function BrandingPage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <Link to="/app" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="size-4" />
-        Dashboard
-      </Link>
-      <div>
-        <h1 className="text-2xl font-semibold">Branding</h1>
-        <p className="text-muted-foreground">
-          The name and look of this institute. Changes appear on the sign-in page, the header, emails and certificates.
-        </p>
-      </div>
+      <p className="text-muted-foreground">
+        The name and look of this institute. Changes appear on the sign-in page, the header, emails and certificates.
+      </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Card>

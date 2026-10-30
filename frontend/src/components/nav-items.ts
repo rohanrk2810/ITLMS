@@ -8,7 +8,6 @@ import {
   FileText,
   Inbox,
   LayoutDashboard,
-  Palette,
   SlidersHorizontal,
   ScanFace,
   Megaphone,
@@ -86,7 +85,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // List/get is Roles.STAFF; create, status and password-reset are ADMIN only (enforced in the page itself).
     roles: ['ADMIN', 'COORDINATOR'],
   },
-  { label: 'Branding', to: '/app/branding', icon: Palette, roles: ['ADMIN'] },
   { label: 'Customize', to: '/app/customize', icon: SlidersHorizontal, roles: ['ADMIN'] },
   { label: 'Monitoring', to: '/app/monitoring', icon: ScanFace, roles: ['ADMIN'] },
 ]
