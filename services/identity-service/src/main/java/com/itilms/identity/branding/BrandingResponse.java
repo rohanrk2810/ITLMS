@@ -17,6 +17,7 @@ public record BrandingResponse(
         String logoUrl,
         String faviconUrl,
         String loginBackgroundUrl,
+        String appBackgroundUrl,
         List<String> studentHiddenMenu,
         String uiConfig,
         long version) {
@@ -28,6 +29,7 @@ public record BrandingResponse(
                 s.getLogo() == null ? null : "/api/public/branding/logo" + v,
                 s.getFavicon() == null ? null : "/api/public/branding/favicon" + v,
                 s.getLoginBackground() == null ? null : "/api/public/branding/login-background" + v,
+                s.getAppBackground() == null ? null : "/api/public/branding/app-background" + v,
                 Arrays.stream(s.getStudentHiddenMenu().split(",")).filter(p -> !p.isBlank()).toList(),
                 s.getUiConfig(),
                 s.getVersion());

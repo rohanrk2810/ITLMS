@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ChevronLeft, Plus, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { updateUiConfig } from '@/api/branding'
+import { assetUrl, removeBrandingImage, updateUiConfig, uploadBrandingImage } from '@/api/branding'
 import { apiErrorMessage } from '@/api/client'
 import type { Role } from '@/api/types'
 import { NAV_ITEMS } from '@/components/nav-items'
@@ -74,6 +74,16 @@ export function CustomizePage() {
       setLoaded(true)
     }
   }, [branding, loaded])
+
+  const image = useMutation({
+    mutationFn: ({ file }: { file: File | null }) =>
+      file ? uploadBrandingImage('app-background', file) : removeBrandingImage('app-background'),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(BRANDING_KEY, updated)
+      toast.success('Background picture updated.')
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not update the picture.')),
+  })
 
   const save = useMutation({
     mutationFn: (next: UiConfig) => updateUiConfig(JSON.stringify(next)),
@@ -169,6 +179,43 @@ export function CustomizePage() {
                 </Button>
               )}
             </div>
+          </div>
+          <div className="flex flex-col gap-2 sm:col-span-3">
+            <Label htmlFor="bgimage">Background picture (all pages)</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              {branding?.appBackgroundUrl && (
+                <img src={assetUrl(branding.appBackgroundUrl) ?? ''} alt="" className="h-14 w-24 rounded-md border object-cover" />
+              )}
+              <input
+                id="bgimage"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) image.mutate({ file })
+                  e.target.value = ''
+                }}
+              />
+              {branding?.appBackgroundUrl && (
+                <Button type="button" size="sm" variant="ghost" onClick={() => image.mutate({ file: null })}>
+                  Remove picture
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The picture is saved as soon as you choose it. The colour above and the looks below stay over it; make it lighter or
+              heavier here so text stays easy to read. Cards and menus keep their solid colour.
+            </p>
+            <Label htmlFor="bgstrength">Colour over the picture: {cfg.theme.bgStrength}%</Label>
+            <input
+              id="bgstrength"
+              type="range"
+              min={40}
+              max={100}
+              step={5}
+              value={cfg.theme.bgStrength}
+              onChange={(e) => setCfg({ ...cfg, theme: { ...cfg.theme, bgStrength: Number(e.target.value) } })}
+            />
           </div>
           <LookPicker
             label="Dark mode look"

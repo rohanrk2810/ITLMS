@@ -57,6 +57,24 @@ public class BrandingController {
         return image(service.loginBackground());
     }
 
+    @GetMapping("/api/public/branding/app-background")
+    public ResponseEntity<byte[]> appBackground() {
+        return image(service.appBackground());
+    }
+
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @PostMapping("/api/branding/app-background")
+    public BrandingResponse uploadAppBackground(@RequestPart("file") MultipartFile file,
+                                                @AuthenticationPrincipal AppPrincipal admin) throws IOException {
+        return service.setAppBackground(file.getBytes(), admin.userId());
+    }
+
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @DeleteMapping("/api/branding/app-background")
+    public BrandingResponse removeAppBackground(@AuthenticationPrincipal AppPrincipal admin) {
+        return service.clearAppBackground(admin.userId());
+    }
+
     @PreAuthorize(Roles.ADMIN_ONLY)
     @PostMapping("/api/branding/login-background")
     public BrandingResponse uploadLoginBackground(@RequestPart("file") MultipartFile file,
