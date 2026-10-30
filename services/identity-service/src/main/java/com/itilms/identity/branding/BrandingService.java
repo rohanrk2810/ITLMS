@@ -108,6 +108,28 @@ public class BrandingService {
     }
 
     @Transactional
+    public BrandingResponse setAppBackground(byte[] bytes, Long adminId) {
+        InstituteSettings s = load();
+        s.setAppBackgroundType(ImageSniffer.detect(bytes, MAX_BACKGROUND_BYTES));
+        s.setAppBackground(bytes);
+        return save(s, adminId, "BRANDING_APP_BACKGROUND_CHANGED");
+    }
+
+    @Transactional
+    public BrandingResponse clearAppBackground(Long adminId) {
+        InstituteSettings s = load();
+        s.setAppBackground(null);
+        s.setAppBackgroundType(null);
+        return save(s, adminId, "BRANDING_APP_BACKGROUND_REMOVED");
+    }
+
+    @Transactional(readOnly = true)
+    public Image appBackground() {
+        InstituteSettings s = load();
+        return s.getAppBackground() == null ? null : new Image(s.getAppBackground(), s.getAppBackgroundType());
+    }
+
+    @Transactional
     public BrandingResponse clearLogo(Long adminId) {
         InstituteSettings s = load();
         s.setLogo(null);

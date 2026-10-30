@@ -25,6 +25,15 @@ export function BrandingEffect() {
   const termsKey = JSON.stringify(ui.terms)
   const css = themeCss(ui.theme)
 
+  const background = assetUrl(branding?.appBackgroundUrl ?? null)
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('ui-has-bg', background != null)
+    if (background) root.style.setProperty('--ui-bg-image', `url("${background}")`)
+    else root.style.removeProperty('--ui-bg-image')
+    root.style.setProperty('--ui-bg-strength', `${ui.theme.bgStrength}%`)
+  }, [background, ui.theme.bgStrength])
+
   useEffect(() => {
     let style = document.getElementById('ui-theme') as HTMLStyleElement | null
     if (!style) {

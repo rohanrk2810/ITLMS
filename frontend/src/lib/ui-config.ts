@@ -24,6 +24,8 @@ export interface UiConfig {
     fontScale: number
     /** Main colour (buttons, highlights) as #rrggbb; empty uses the Branding colour or the original orange. */
     primary: string
+    /** How much of the normal page colour stays over the background picture, in percent (the rest lets it show). */
+    bgStrength: number
     /** Dark mode look, by id from DARK_STYLES. */
     dark: string
     /** Light mode look, by id from LIGHT_STYLES. */
@@ -38,7 +40,7 @@ export interface UiConfig {
 }
 
 export const DEFAULT_UI_CONFIG: UiConfig = {
-  theme: { defaultMode: 'system', radius: 0.625, fontScale: 100, primary: '', dark: 'default', light: 'default' },
+  theme: { defaultMode: 'system', radius: 0.625, fontScale: 100, primary: '', bgStrength: 85, dark: 'default', light: 'default' },
   menus: {},
   dashboard: { hidden: [] },
   login: { welcome: '', footer: '' },
@@ -153,6 +155,7 @@ export function parseUiConfig(text: string | null | undefined): UiConfig {
       defaultMode: mode === 'light' || mode === 'dark' ? mode : 'system',
       radius: typeof theme.radius === 'number' ? Math.min(1.5, Math.max(0, theme.radius)) : DEFAULT_UI_CONFIG.theme.radius,
       fontScale: typeof theme.fontScale === 'number' ? Math.min(125, Math.max(85, theme.fontScale)) : 100,
+      bgStrength: typeof theme.bgStrength === 'number' ? Math.min(100, Math.max(40, theme.bgStrength)) : 85,
       primary: typeof theme.primary === 'string' && /^#[0-9a-fA-F]{6}$/.test(theme.primary) ? theme.primary : '',
       dark: typeof theme.dark === 'string' && theme.dark in DARK_STYLES ? theme.dark : 'default',
       light: typeof theme.light === 'string' && theme.light in LIGHT_STYLES ? theme.light : 'default',

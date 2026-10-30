@@ -113,3 +113,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * A background picture set on the Customize page. It sits behind everything; the page colour stays over it at the
+ * chosen strength so text remains readable. Cards and menus keep their own solid colours.
+ */
+.ui-has-bg body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--ui-bg-image) center / cover no-repeat;
+}
+.ui-has-bg .bg-background {
+  background-color: color-mix(in oklab, var(--background) var(--ui-bg-strength, 85%), transparent);
+}

@@ -72,6 +72,14 @@ public class InstituteSettings {
     @Column(name = "login_background_type")
     private String loginBackgroundType;
 
+    /** A picture behind every page of the portal. */
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(name = "app_background", columnDefinition = "bytea")
+    private byte[] appBackground;
+
+    @Column(name = "app_background_type")
+    private String appBackgroundType;
+
     /** Sidebar items hidden from students: comma-separated app paths. Empty shows everything. */
     @Column(name = "student_hidden_menu", nullable = false)
     private String studentHiddenMenu = "";

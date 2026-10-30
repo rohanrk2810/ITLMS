@@ -16,6 +16,7 @@ export interface Branding {
   logoUrl: string | null
   faviconUrl: string | null
   loginBackgroundUrl: string | null
+  appBackgroundUrl: string | null
   /** Sidebar paths students do not see (e.g. "/app/finance"). Empty: everything their role allows. */
   studentHiddenMenu: string[]
   /** JSON text of the portal customization; read it with parseUiConfig. */
@@ -23,9 +24,9 @@ export interface Branding {
   version: number
 }
 
-export type BrandingImageKind = 'logo' | 'favicon' | 'login-background'
+export type BrandingImageKind = 'logo' | 'favicon' | 'login-background' | 'app-background'
 
-export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'loginBackgroundUrl' | 'studentHiddenMenu' | 'uiConfig' | 'version'>
+export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'loginBackgroundUrl' | 'appBackgroundUrl' | 'studentHiddenMenu' | 'uiConfig' | 'version'>
 
 /** Anonymous: the login page reads this before anyone is signed in. */
 export async function getBranding(): Promise<Branding> {
