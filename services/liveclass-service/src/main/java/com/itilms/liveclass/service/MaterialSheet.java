@@ -266,7 +266,7 @@ public final class MaterialSheet {
         return byRow;
     }
 
-    private static QuestionType typeOf(String raw) {
+    static QuestionType typeOf(String raw) {
         String t = raw.trim().toUpperCase(Locale.ROOT).replace(' ', '_');
         return switch (t) {
             case "", "MCQ", "SINGLE_CHOICE" -> QuestionType.MCQ;
