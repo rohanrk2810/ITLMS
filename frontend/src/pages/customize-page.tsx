@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, ChevronLeft, Plus, Trash2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { assetUrl, removeBrandingImage, updateUiConfig, uploadBrandingImage } from '@/api/branding'
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { BrandingPage } from '@/pages/branding-page'
 import { BRANDING_KEY, useBranding } from '@/lib/use-branding'
 import {
   ALWAYS_SHOWN,
@@ -60,7 +61,45 @@ function LookPicker({ label, styles, value, onChange }: { label: string; styles:
 
 const selectClass = 'h-9 rounded-md border bg-transparent px-3 text-sm'
 
+const TABS = [
+  { id: 'institute', label: 'Institute' },
+  { id: 'portal', label: 'Portal' },
+] as const
+
+/** ADMIN: the institute's identity (name, logo, signatory) and the portal's look, in one place. */
 export function CustomizePage() {
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') === 'portal' ? 'portal' : 'institute'
+  return (
+    <div className="flex max-w-3xl flex-col gap-6">
+      <div>
+        <Link to="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="size-4" /> Dashboard
+        </Link>
+        <h1 className="text-2xl font-semibold">Customize</h1>
+      </div>
+      <div role="tablist" className="flex gap-1 border-b">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setParams(t.id === 'institute' ? {} : { tab: t.id }, { replace: true })}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+              tab === t.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'institute' ? <BrandingPage /> : <PortalTab />}
+    </div>
+  )
+}
+
+function PortalTab() {
   const { branding } = useBranding()
   const queryClient = useQueryClient()
   const [cfg, setCfg] = useState<UiConfig>(DEFAULT_UI_CONFIG)
@@ -142,19 +181,9 @@ export function CustomizePage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <Link to="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="size-4" /> Dashboard
-        </Link>
-        <h1 className="text-2xl font-semibold">Customize the portal</h1>
-        <p className="text-muted-foreground">
-          Look, menus, dashboard, login page and wording. Colours, logo and the login background are on the{' '}
-          <Link to="/app/branding" className="underline">
-            Branding
-          </Link>{' '}
-          page.
-        </p>
-      </div>
+      <p className="text-muted-foreground">
+        Look, menus, dashboard, login page and wording. The logo and the login background are in the Institute tab.
+      </p>
 
       <Card>
         <CardHeader>
