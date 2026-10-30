@@ -90,6 +90,16 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | POST | /api/users/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many user ids at once |
 | GET | /api/users/internal/by-role | **internal only, 404 via gateway** | *cross-service:* every active user holding a role |
 
+### `BrandingController` — `/api/public/branding`, `/api/branding`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/public/branding | public | Institute name, tagline, colour, contact, signatory, image URLs, `studentHiddenMenu` and `uiConfig` (the portal customization as JSON text) |
+| GET | /api/public/branding/logo, /favicon, /login-background | public | The image bytes |
+| PUT | /api/branding | ADMIN_ONLY | Name, tagline, colour, contact and signatory |
+| POST / DELETE | /api/branding/logo, /favicon, /login-background | ADMIN_ONLY | Upload or remove an image |
+| PUT | /api/branding/student-menu | ADMIN_ONLY | Sidebar paths students do not see |
+| PUT | /api/branding/ui-config | ADMIN_ONLY | Portal customization: body `{ "config": "<JSON object as text>" }`, at most 20,000 characters, `400`-class error `INVALID_UI_CONFIG` if it is not a JSON object. Holds the theme (main colour, dark/light look, corners, text size, default mode), menus per role (hidden, order, names), hidden dashboard blocks, login welcome/footer text and renamed words. Audited `BRANDING_UI_CONFIG_UPDATED` |
+
 ---
 
 ## admission-service
@@ -309,7 +319,7 @@ actually costs, and what it fails as when no Egress worker is running.
 | PUT | /api/quizzes/{id} | ACADEMIC | Change a draft's settings |
 | GET | /api/quizzes/{id} | ACADEMIC | A test **with its answer key** — never served to a student |
 | GET | /api/quizzes | ACADEMIC | List tests |
-| POST | /api/quizzes | ACADEMIC | Create a test (draft). `secureMode` (default false) turns on the secure-test rules; `maxViolations` (1-10, default 2: one warning, then termination) is the counted violation that ends an attempt. `requireCamera` (default false) makes students allow their camera before starting and be watched for a visible face; independent of `secureMode`. `recordTyping` (default false) records how coding answers are typed, for the trainer's replay. `availableFrom` / `availableUntil` set when it can be taken (both omitted = any time; with times, a student can start it only between them). `cameraChecks` (a set of `FACE`, `PEOPLE`, `IDENTITY`, `PHONE`) says which detections a camera test runs: omitted = all four on a new test and unchanged on an update, `[]` = only that the camera stays on. Every test view (`QuizResponse`, the student's test list and the attempt paper) returns `cameraChecks` |
+| POST | /api/quizzes | ACADEMIC | Create a test (draft). `secureMode` (default false) turns on the secure-test rules; `maxViolations` (1-10, default 1: the first counted violation ends the attempt; 2 gives one warning first) is the counted violation that ends an attempt. An attempt ended this way does not count against `attemptsAllowed`, so the student can retake the test. `requireCamera` (default false) makes students allow their camera before starting and be watched for a visible face; independent of `secureMode`. `recordTyping` (default false) records how coding answers are typed, for the trainer's replay. `availableFrom` / `availableUntil` set when it can be taken (both omitted = any time; with times, a student can start it only between them). `cameraChecks` (a set of `FACE`, `PEOPLE`, `IDENTITY`, `PHONE`) says which detections a camera test runs: omitted = all four on a new test and unchanged on an update, `[]` = only that the camera stays on. Every test view (`QuizResponse`, the student's test list and the attempt paper) returns `cameraChecks` |
 | POST | /api/quizzes/{id}/questions | ACADEMIC | Add a question. `type` is SINGLE_CHOICE, MULTI_CHOICE, TRUE_FALSE (options), SHORT_ANSWER (`acceptedAnswers`, matched ignoring case and extra spaces) or CODING (`codeLanguage`, `starterCode`, 1-10 `testCases` with input, expected output, weight, hidden). A field that does not belong to the type is refused |
 | PUT | /api/quizzes/questions/{questionId} | ACADEMIC | Edit a question |
 | DELETE | /api/quizzes/questions/{questionId} | ACADEMIC | Remove a question |
