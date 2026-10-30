@@ -104,15 +104,37 @@ public class LiveMaterialService {
         materials.delete(material);
     }
 
-    /** Saves every usable row of an Excel sheet to the caller's bank; unusable rows are reported, not fatal. */
+    /**
+     * Saves every usable row of an upload to the caller's bank. One .xlsx, or the CSV files of the template (questions,
+     * and optionally test cases and tables). Unusable rows are reported, not fatal.
+     */
     @Transactional
-    public MaterialImportResponse importSheet(java.io.InputStream sheet) {
+    public MaterialImportResponse importFiles(List<MaterialCsv.NamedFile> files) {
+        if (files.isEmpty()) {
+            throw new BusinessRuleException("Choose a file to upload.");
+        }
         MaterialSheet.Result parsed;
         try {
-            parsed = MaterialSheet.parse(sheet);
+            if (files.size() == 1 && MaterialJson.looksLikeJson(files.get(0).bytes())) {
+                MaterialSheet.Result fromJson = MaterialJson.parse(files.get(0).bytes());
+                fromJson.items().forEach(this::create);
+                return new MaterialImportResponse(fromJson.items().size(), fromJson.errors().stream()
+                        .map(e -> new MaterialImportResponse.RowError(e.row(), e.message())).toList());
+            }
+            byte[] workbook;
+            if (files.size() == 1 && MaterialCsv.isWorkbook(files.get(0).bytes())) {
+                workbook = files.get(0).bytes();
+            } else if (files.stream().anyMatch(f -> MaterialCsv.isWorkbook(f.bytes()))) {
+                throw new BusinessRuleException("Upload one Excel file on its own, or CSV files together, not both.");
+            } else {
+                workbook = MaterialCsv.toWorkbook(files);
+            }
+            parsed = MaterialSheet.parse(new java.io.ByteArrayInputStream(workbook));
+        } catch (BusinessRuleException ex) {
+            throw ex;
         } catch (java.io.IOException | RuntimeException ex) {
-            throw new com.itilms.common.exception.BusinessRuleException(
-                    "That file could not be read. Upload an .xlsx file made from the template.");
+            throw new BusinessRuleException(
+                    "That file could not be read. Upload an .xlsx file, or the CSV files, made from the templates.");
         }
         parsed.items().forEach(this::create);
         return new MaterialImportResponse(parsed.items().size(),

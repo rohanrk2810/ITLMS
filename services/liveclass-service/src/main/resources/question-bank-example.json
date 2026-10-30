@@ -1,0 +1,93 @@
+{
+  "questions": [
+    {
+      "type": "MCQ",
+      "title": "Loop output",
+      "question": "What does this print?",
+      "code": "for i in range(3):\n    print(i * 2)",
+      "options": ["0 1 2", "1 2 3", "0 2 4", "Error"],
+      "correct": "C",
+      "marks": 1,
+      "explanation": "range(3) gives 0, 1, 2 and each is doubled.",
+      "folder": "Python/Loops/MCQ",
+      "topic": "Loops",
+      "tags": ["python", "loops"],
+      "difficulty": "EASY"
+    },
+    {
+      "type": "MULTIPLE_SELECT",
+      "question": "Which of these are Java access modifiers?",
+      "options": ["public", "private", "internal", "protected"],
+      "correct": ["A", "B", "D"],
+      "marks": 2,
+      "folder": "Java/OOPs/MSQ",
+      "difficulty": "MEDIUM"
+    },
+    {
+      "type": "TRUE_FALSE",
+      "question": "Java is a statically typed language.",
+      "correct": true,
+      "folder": "Java/Basics/True-False"
+    },
+    {
+      "type": "SHORT_ANSWER",
+      "question": "What does 3 * 2 print?",
+      "code": "print(3 * 2)",
+      "correct": ["6", "six"],
+      "folder": "Python/Basics/Short answer"
+    },
+    {
+      "type": "CODING",
+      "title": "Sum of three numbers",
+      "question": "Read three numbers from one line and print their sum.",
+      "language": "python",
+      "allowAnyLanguage": true,
+      "starterCode": "numbers = input().split()\n# print the sum",
+      "testCases": [
+        { "input": "1 2 3", "expectedOutput": "6", "hidden": false, "weight": 1 },
+        { "input": "10 20 30", "expectedOutput": "60", "hidden": true, "weight": 2 }
+      ],
+      "marks": 5,
+      "folder": "Python/Basics/Coding",
+      "tags": ["input", "python"],
+      "difficulty": "EASY"
+    },
+    {
+      "type": "CODING",
+      "title": "Employees above 45000",
+      "question": "Write a query that lists the names of employees earning more than 45000, with their department name, ordered by name.",
+      "language": "sql",
+      "tables": [
+        {
+          "name": "employees",
+          "columns": ["id", "name", "salary", "dept_id"],
+          "rows": [
+            [1, "Asha", 50000, 1],
+            [2, "Ravi", 42000, 2],
+            [3, "Meera", 47000, 1]
+          ]
+        },
+        {
+          "name": "departments",
+          "columns": ["id", "name"],
+          "rows": [
+            [1, "Sales"],
+            [2, "Support"]
+          ]
+        }
+      ],
+      "setupSql": "CREATE TABLE departments (id NUMBER, name VARCHAR2(50));\nINSERT INTO departments VALUES (1, 'Sales');\nINSERT INTO departments VALUES (2, 'Support');\nCREATE TABLE employees (id NUMBER, name VARCHAR2(50), salary NUMBER, dept_id NUMBER);\nINSERT INTO employees VALUES (1, 'Asha', 50000, 1);\nINSERT INTO employees VALUES (2, 'Ravi', 42000, 2);\nINSERT INTO employees VALUES (3, 'Meera', 47000, 1);",
+      "testCases": [
+        { "input": "", "expectedOutput": "Asha|Sales\nMeera|Sales", "hidden": false, "weight": 1 }
+      ],
+      "marks": 5,
+      "folder": "SQL/Joins/Coding",
+      "difficulty": "MEDIUM"
+    },
+    {
+      "type": "OTHER",
+      "question": "In your own words, explain the difference between an abstract class and an interface.",
+      "folder": "Java/OOPs/Open"
+    }
+  ]
+}

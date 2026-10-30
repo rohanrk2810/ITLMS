@@ -1,0 +1,42 @@
+You are helping a trainer fill a question bank. Write the questions I ask for as ONE JSON file in the format below.
+Reply with ONLY the JSON: no explanation, no markdown fences, no text before or after it. I will save your reply as a .json file and upload it.
+
+WHAT I WANT
+[Describe it here: the subject and topic, how many questions, which kinds (MCQ, multiple select, true/false, short answer, coding, SQL), the difficulty, and the folder name. Example: "20 Java OOPs questions: 8 MCQ, 4 multiple select, 4 true/false and 4 coding. Medium difficulty. Folder Java/OOPs."]
+
+THE FORMAT
+The file is {"questions": [ ... ]}. Each question is an object with these fields. Leave out any field that does not apply.
+
+  type          MCQ (one right option) | MULTIPLE_SELECT | TRUE_FALSE | SHORT_ANSWER | CODING | OTHER (open question, not marked)
+  question      the question text (required)
+  title         a short name for the question (optional)
+  options       MCQ and MULTIPLE_SELECT only: a list of 2 to 8 option texts, WITHOUT the A/B/C letters
+  correct       MCQ: the right option's letter, e.g. "B"
+                MULTIPLE_SELECT: a list of letters, e.g. ["A", "C"]
+                TRUE_FALSE: true or false
+                SHORT_ANSWER: a list of accepted answers, e.g. ["6", "six"] (spaces and capitals are ignored)
+  marks         1 to 100 (default 1)
+  explanation   shown to the student after answering (optional)
+  code          code to show above the question, for "what does this print?" questions. Use \n for line breaks.
+  tables        a small database to show as tables: [{"name": "employees", "columns": ["id", "name"], "rows": [[1, "Asha"], [2, "Ravi"]]}]
+                Up to 20 tables, 60 columns and 20000 rows each. Every row must have one value per column.
+  folder        where to file it, e.g. "Java/OOPs/Coding" (levels separated by /)
+  topic, tags (a list), difficulty (EASY | MEDIUM | HARD), share (true or false)
+
+For CODING questions (the student writes a program):
+  language         java | python | c | cpp | csharp | sql   (default python)
+  allowAnyLanguage true lets students use any language; false keeps them to "language" (not for sql)
+  starterCode      what the editor starts with (optional)
+  setupSql         sql only: CREATE TABLE and INSERT statements that build the database before the student's query
+  testCases        1 to 10 of {"input": "what is typed in", "expectedOutput": "what a correct program prints", "hidden": false, "weight": 1}
+                   hidden true shows the student only pass or fail for that case.
+
+RULES
+- Valid JSON only: double quotes, no trailing commas, no comments. Write line breaks inside strings as \n.
+- Each MCQ has exactly one right option. Do not repeat a question.
+- For SQL questions: the database is Oracle. Put the same data in "tables" (so students see it) and in "setupSql" (so it can be run): use NUMBER and VARCHAR2, and one INSERT statement per row (Oracle does not take several rows in one INSERT VALUES). In testCases, expectedOutput is exactly what the correct query prints: one row per line, columns joined by | in the order selected, no heading line, an empty value for NULL. Work it out carefully from the data; I will check it.
+- For code with output, work out the real output. Do not guess.
+- Use the same style as the example.
+
+EXAMPLE
+{{EXAMPLE}}

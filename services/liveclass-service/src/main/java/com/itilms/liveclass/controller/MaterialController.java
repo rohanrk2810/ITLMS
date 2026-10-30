@@ -83,25 +83,49 @@ public class MaterialController {
         return materialService.deleteFolder(path);
     }
 
-    @Operation(summary = "The Excel template for bulk upload",
-            description = "Headings, three example rows and a page of instructions.")
+    @Operation(summary = "The template for bulk upload",
+            description = "Excel by default (headings, example rows and instructions). format=csv gives a zip of the "
+                    + "same thing as questions.csv, test-cases.csv and tables.csv.")
     @PreAuthorize(Roles.ACADEMIC)
     @GetMapping("/import/template")
-    public ResponseEntity<byte[]> template() throws java.io.IOException {
+    public ResponseEntity<byte[]> template(@RequestParam(required = false) String format) throws java.io.IOException {
+        if ("json".equalsIgnoreCase(format)) {
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"question-bank-example.json\"")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(com.itilms.liveclass.service.MaterialJson.example().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        boolean csv = "csv".equalsIgnoreCase(format);
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=\"question-bank-template.xlsx\"")
-                .contentType(org.springframework.http.MediaType.parseMediaType(
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(com.itilms.liveclass.service.MaterialSheet.template());
+                .header("Content-Disposition", "attachment; filename=\""
+                        + (csv ? "question-bank-csv-templates.zip" : "question-bank-template.xlsx") + "\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType(csv ? "application/zip"
+                        : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(csv ? com.itilms.liveclass.service.MaterialCsv.templateZip()
+                        : com.itilms.liveclass.service.MaterialSheet.template());
     }
 
-    @Operation(summary = "Upload an Excel sheet of questions",
-            description = "Every usable row is saved to my bank. Rows with a mistake are skipped and reported.")
+    @Operation(summary = "The text to give an AI assistant",
+            description = "Explains the all-in-one JSON format with an example, so the assistant can write the "
+                    + "questions, test cases and tables in a file that can be uploaded as it is.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @GetMapping(value = "/import/ai-prompt", produces = "text/plain;charset=UTF-8")
+    public String aiPrompt() {
+        return com.itilms.liveclass.service.MaterialJson.aiPrompt();
+    }
+
+    @Operation(summary = "Upload questions",
+            description = "One JSON file (the all-in-one format), one Excel file, or the CSV files together (questions, and test cases and tables if used). "
+                    + "Every usable row is saved to my bank; rows with a mistake are skipped and reported.")
     @PreAuthorize(Roles.ACADEMIC)
     @PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public MaterialImportResponse importSheet(@RequestParam("file") org.springframework.web.multipart.MultipartFile file)
-            throws java.io.IOException {
-        return materialService.importSheet(file.getInputStream());
+    public MaterialImportResponse importFiles(
+            @RequestParam("file") List<org.springframework.web.multipart.MultipartFile> files) throws java.io.IOException {
+        List<com.itilms.liveclass.service.MaterialCsv.NamedFile> named = new java.util.ArrayList<>();
+        for (org.springframework.web.multipart.MultipartFile file : files) {
+            named.add(new com.itilms.liveclass.service.MaterialCsv.NamedFile(file.getOriginalFilename(), file.getBytes()));
+        }
+        return materialService.importFiles(named);
     }
 
     @Operation(summary = "Copy a shared item into my bank")

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Download, FileSpreadsheet, Loader2 } from 'lucide-react'
+import { Bot, Copy, Download, FileSpreadsheet, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
@@ -8,6 +8,7 @@ import {
   type LiveMaterial,
   type MaterialImportResult,
   downloadMaterialTemplate,
+  fetchAiPrompt,
   importMaterials,
   saveMaterial,
 } from '@/api/live-classes'
@@ -35,17 +36,42 @@ export function LectureMaterialPage() {
   const [importing, setImporting] = useState(false)
   const [report, setReport] = useState<MaterialImportResult | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const [pasted, setPasted] = useState('')
 
-  async function upload(file: File) {
+  /** Puts the instructions for ChatGPT on the clipboard; if the browser refuses, saves them as a text file instead. */
+  async function copyPrompt() {
+    try {
+      const prompt = await fetchAiPrompt()
+      try {
+        await navigator.clipboard.writeText(prompt)
+        toast.success('Copied. Paste it into ChatGPT, then write what you want where it says WHAT I WANT.')
+      } catch {
+        const url = URL.createObjectURL(new Blob([prompt], { type: 'text/plain' }))
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'chatgpt-prompt.txt'
+        link.click()
+        URL.revokeObjectURL(url)
+        toast.success('Saved as chatgpt-prompt.txt. Open it, copy everything and paste it into ChatGPT.')
+      }
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not get the text.'))
+    }
+  }
+
+  /** Resolves true when at least one question was added, so a pasted box is only cleared when it worked. */
+  async function upload(files: File[]): Promise<boolean> {
     setImporting(true)
     setReport(null)
     try {
-      const result = await importMaterials(file)
+      const result = await importMaterials(files)
       setReport(result)
       setSavedKey((k) => k + 1)
       if (result.imported > 0) toast.success(`${result.imported} question${result.imported === 1 ? '' : 's'} added to your bank`)
+      return result.imported > 0
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Could not read that file.'))
+      return false
     } finally {
       setImporting(false)
       if (fileInput.current) fileInput.current.value = ''
@@ -92,19 +118,59 @@ export function LectureMaterialPage() {
           Prepare questions, code and database tables now. In the live class, open Questions &rarr; Question bank and press Send.
           In a test, use Import from bank.
         </p>
+        <div className="mt-3 flex flex-col gap-3 rounded-md border bg-muted/30 p-3">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <Bot className="size-4" /> Make questions with ChatGPT - one file with everything
+          </p>
+          <ol className="list-decimal pl-5 text-sm text-muted-foreground">
+            <li>Press <b>Copy ChatGPT prompt</b> and paste it into ChatGPT.</li>
+            <li>Write what you want where it says WHAT I WANT (topic, how many, which kinds, folder).</li>
+            <li>Copy ChatGPT&apos;s reply and paste it in the box below (or save it as a .json file and upload it).</li>
+          </ol>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => void copyPrompt()}>
+              <Copy className="size-4" /> Copy ChatGPT prompt
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => void downloadMaterialTemplate('json').catch((err) => toast.error(apiErrorMessage(err, 'Could not download the example.')))}>
+              <Download className="size-4" /> Example file (.json)
+            </Button>
+          </div>
+          <textarea
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            rows={4}
+            spellCheck={false}
+            placeholder="Paste ChatGPT's reply here"
+            className="rounded-md border bg-background px-3 py-2 font-mono text-xs"
+          />
+          <Button
+            size="sm"
+            className="self-start"
+            disabled={importing || pasted.trim() === ''}
+            onClick={() => {
+              void upload([new File([pasted], 'pasted.json', { type: 'application/json' })]).then((ok) => ok && setPasted(''))
+            }}
+          >
+            {importing ? <Loader2 className="size-4 animate-spin" /> : null} Add these questions to my bank
+          </Button>
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => void downloadMaterialTemplate().catch((err) => toast.error(apiErrorMessage(err, 'Could not download the template.')))}>
             <Download className="size-4" /> Excel template
           </Button>
+          <Button size="sm" variant="outline" onClick={() => void downloadMaterialTemplate('csv').catch((err) => toast.error(apiErrorMessage(err, 'Could not download the templates.')))}>
+            <Download className="size-4" /> CSV templates
+          </Button>
           <Button size="sm" disabled={importing} onClick={() => fileInput.current?.click()}>
-            {importing ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />} Upload filled Excel
+            {importing ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />} Upload filled file
           </Button>
           <input
             ref={fileInput}
             type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            multiple
+            accept=".xlsx,.csv,.json,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])}
+            onChange={(e) => e.target.files?.length && void upload(Array.from(e.target.files))}
           />
         </div>
         {report && (
@@ -115,8 +181,8 @@ export function LectureMaterialPage() {
             </p>
             {report.errors.length > 0 && (
               <ul className="mt-1 list-disc pl-5 text-destructive">
-                {report.errors.map((e) => (
-                  <li key={e.row}>Row {e.row}: {e.message}</li>
+                {report.errors.map((e, i) => (
+                  <li key={i}>{e.row > 0 ? `Row ${e.row}: ` : ''}{e.message}</li>
                 ))}
               </ul>
             )}

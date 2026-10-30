@@ -392,21 +392,38 @@ export interface MaterialImportResult {
   errors: { row: number; message: string }[]
 }
 
-/** Saves every usable row of a filled-in template to the bank; rows with a mistake come back in errors. */
-export async function importMaterials(file: File): Promise<MaterialImportResult> {
+/**
+ * Saves every usable row of a filled-in template to the bank; rows with a mistake come back in errors. One Excel
+ * file, or the CSV files together (questions, and test cases and tables when used).
+ */
+export async function importMaterials(files: File[]): Promise<MaterialImportResult> {
   const form = new FormData()
-  form.append('file', file)
+  files.forEach((file) => form.append('file', file))
   const { data } = await apiClient.post<MaterialImportResult>('/api/liveclass/materials/import', form)
   return data
 }
 
-/** The Excel template, saved through the browser. */
-export async function downloadMaterialTemplate(): Promise<void> {
-  const { data } = await apiClient.get<Blob>('/api/liveclass/materials/import/template', { responseType: 'blob' })
+/** The text to give ChatGPT (or another assistant) so it writes questions in the all-in-one JSON format. */
+export async function fetchAiPrompt(): Promise<string> {
+  const { data } = await apiClient.get<string>('/api/liveclass/materials/import/ai-prompt', { responseType: 'text' })
+  return data
+}
+
+/** The Excel template, or a zip of the three CSV templates, saved through the browser. */
+export async function downloadMaterialTemplate(format: 'xlsx' | 'csv' | 'json' = 'xlsx'): Promise<void> {
+  const { data } = await apiClient.get<Blob>('/api/liveclass/materials/import/template', {
+    params: { format },
+    responseType: 'blob',
+  })
   const url = URL.createObjectURL(data)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'question-bank-template.xlsx'
+  link.download =
+    format === 'csv'
+      ? 'question-bank-csv-templates.zip'
+      : format === 'json'
+        ? 'question-bank-example.json'
+        : 'question-bank-template.xlsx'
   link.click()
   URL.revokeObjectURL(url)
 }
