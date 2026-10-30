@@ -128,3 +128,7 @@
 .ui-has-bg .bg-background {
   background-color: color-mix(in oklab, var(--background) var(--ui-bg-strength, 85%), transparent);
 }
+.ui-has-bg .bg-sidebar {
+  background-color: color-mix(in oklab, var(--sidebar) var(--ui-bg-strength, 85%), transparent);
+  backdrop-filter: blur(8px);
+}
