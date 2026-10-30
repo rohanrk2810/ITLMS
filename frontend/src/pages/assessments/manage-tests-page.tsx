@@ -4,10 +4,11 @@ import { Camera, Clock, Keyboard, Mic, Plus, ShieldCheck, Trash2 } from 'lucide-
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { parseTestJson, type TestJson } from '@/lib/test-json'
 import { useAsk } from '@/components/ask-dialog'
 
 import { apiErrorMessage } from '@/api/client'
-import { CAMERA_CHECKS, type CameraCheckName, createQuiz, deleteQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
+import { CAMERA_CHECKS, type CameraCheckName, addQuestion, createQuiz, deleteQuiz, listQuizzes, type QuizInput } from '@/api/assessments'
 import { searchCourses } from '@/api/courses'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -160,18 +161,49 @@ function NewQuizDialog() {
   const [timing, setTiming] = useState<'anytime' | 'scheduled'>('anytime')
   const [opensAt, setOpensAt] = useState('')
   const [closesAt, setClosesAt] = useState('')
+  const [pasted, setPasted] = useState('')
+  const [fromFile, setFromFile] = useState<{ name: string; data: TestJson } | null>(null)
   const queryClient = useQueryClient()
   const coursesQuery = useQuery({ queryKey: ['courses', 'search', 'new-test'], queryFn: () => searchCourses({}), enabled: open })
 
   const mutation = useMutation({
-    mutationFn: (payload: Partial<QuizInput>) => createQuiz(payload as QuizInput),
-    onSuccess: () => {
-      toast.success('Test created as a draft')
+    mutationFn: async (payload: Partial<QuizInput>) => {
+      const quiz = await createQuiz(payload as QuizInput)
+      let added = 0
+      for (const question of fromFile?.data.questions ?? []) {
+        await addQuestion(quiz.id, question)
+        added += 1
+      }
+      return added
+    },
+    onSuccess: (added) => {
+      toast.success(added > 0 ? `Test created as a draft with ${added} questions` : 'Test created as a draft')
       setOpen(false)
+      setFromFile(null)
+      setPasted('')
       void queryClient.invalidateQueries({ queryKey: ['quizzes'] })
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not create the test.')),
   })
+
+  async function handleFile(file: File | undefined) {
+    if (file) loadJson(await file.text(), file.name)
+  }
+
+  function loadJson(text: string, name: string) {
+    try {
+      // ChatGPT often wraps its reply in a ```json fence; keep only the JSON.
+      const start = text.search(/[\[{]/)
+      const end = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'))
+      const data = parseTestJson(start >= 0 && end > start ? text.slice(start, end + 1) : text)
+      setFromFile({ name, data })
+      setForm((current) => ({ ...current, ...Object.fromEntries(Object.entries(data.settings).filter(([, v]) => v !== undefined)) }))
+      if (data.skipped.length) toast.warning(`${data.skipped.length} left out: ${data.skipped.slice(0, 3).join('; ')}`)
+    } catch (error) {
+      setFromFile(null)
+      toast.error(error instanceof Error ? error.message : 'Could not read the file.')
+    }
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -205,6 +237,27 @@ function NewQuizDialog() {
           <DialogTitle>New test</DialogTitle>
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-2 rounded-md border border-dashed p-3">
+            <Label htmlFor="testJson">Create from a JSON file (optional)</Label>
+            <Input id="testJson" type="file" accept=".json,application/json" onChange={(e) => void handleFile(e.target.files?.[0])} />
+            <Label htmlFor="testPaste">or paste ChatGPT's reply here</Label>
+            <textarea
+              id="testPaste"
+              rows={4}
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              placeholder='{"questions": [ ... ]}'
+              className="rounded-md border bg-transparent p-2 font-mono text-xs"
+            />
+            <Button type="button" variant="outline" size="sm" className="self-start" disabled={!pasted.trim()} onClick={() => loadJson(pasted, 'pasted text')}>
+              Use pasted text
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              {fromFile
+                ? `${fromFile.name}: ${fromFile.data.questions.length} questions will be added.`
+                : 'Same format as the question bank JSON. Title, duration, pass % and attempts may be set in the file too.'}
+            </p>
+          </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="courseId">Course</Label>
             <select
@@ -229,6 +282,7 @@ function NewQuizDialog() {
             <Input
               id="title"
               required
+              value={form.title ?? ''}
               onChange={(event) => setForm({ ...form, title: event.target.value })}
             />
           </div>
@@ -307,7 +361,7 @@ function NewQuizDialog() {
             </label>
             <p className="text-xs text-muted-foreground">
               The test runs in fullscreen. Leaving the test window (another tab or window) is warned about, and too
-              many times ends the attempt as failed. Copying is blocked. Everything is recorded for you to review.
+              many times ends the attempt as failed (the student must then take it again). Copying is blocked. Everything is recorded for you to review.
             </p>
             {form.secureMode && (
               <div className="flex flex-col gap-2">
@@ -318,11 +372,11 @@ function NewQuizDialog() {
                   min={1}
                   max={10}
                   className="w-24"
-                  value={form.maxViolations ?? 2}
+                  value={form.maxViolations ?? 1}
                   onChange={(event) => setForm({ ...form, maxViolations: Number(event.target.value) })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  2 means the first time is a warning and the second ends the test. 1 ends it at once.
+                  1 fails the test at once. 2 means the first time is a warning and the second ends the test.
                 </p>
               </div>
             )}

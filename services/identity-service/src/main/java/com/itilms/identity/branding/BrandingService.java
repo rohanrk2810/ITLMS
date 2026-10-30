@@ -41,6 +41,20 @@ public class BrandingService {
     }
 
     @Transactional
+    public BrandingResponse setUiConfig(String json, Long adminId) {
+        try {
+            if (!new com.fasterxml.jackson.databind.ObjectMapper().readTree(json).isObject()) {
+                throw new IllegalArgumentException();
+            }
+        } catch (Exception e) {
+            throw new com.itilms.common.exception.BusinessRuleException("INVALID_UI_CONFIG", "The customization is not valid JSON.");
+        }
+        InstituteSettings s = load();
+        s.setUiConfig(json);
+        return save(s, adminId, "BRANDING_UI_CONFIG_UPDATED");
+    }
+
+    @Transactional
     public BrandingResponse update(UpdateBrandingRequest r, Long adminId) {
         InstituteSettings s = load();
         s.setName(r.name().trim());

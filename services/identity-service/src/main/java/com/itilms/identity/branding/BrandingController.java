@@ -71,6 +71,13 @@ public class BrandingController {
     }
 
     @PreAuthorize(Roles.ADMIN_ONLY)
+    @PutMapping("/api/branding/ui-config")
+    public BrandingResponse uiConfig(@Valid @RequestBody UiConfigRequest request,
+                                     @AuthenticationPrincipal AppPrincipal admin) {
+        return service.setUiConfig(request.config(), admin.userId());
+    }
+
+    @PreAuthorize(Roles.ADMIN_ONLY)
     @PutMapping("/api/branding/student-menu")
     public BrandingResponse studentMenu(@Valid @RequestBody StudentMenuRequest request,
                                         @AuthenticationPrincipal AppPrincipal admin) {

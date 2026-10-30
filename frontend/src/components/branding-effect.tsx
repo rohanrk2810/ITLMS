@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 
 import { assetUrl } from '@/api/branding'
 import { useBranding } from '@/lib/use-branding'
+import { applyTerms, useUiConfig } from '@/lib/ui-config'
 
 /** White text on a dark brand colour, black on a light one (WCAG relative-luminance test). */
 function readableOn(hex: string): string {
@@ -20,6 +21,16 @@ function readableOn(hex: string): string {
  */
 export function BrandingEffect() {
   const { branding, name } = useBranding()
+  const ui = useUiConfig()
+  const termsKey = JSON.stringify(ui.terms)
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--radius', `${ui.theme.radius}rem`)
+    root.style.fontSize = ui.theme.fontScale === 100 ? '' : `${ui.theme.fontScale}%`
+  }, [ui.theme.radius, ui.theme.fontScale])
+
+  useEffect(() => applyTerms(JSON.parse(termsKey) as Record<string, string>), [termsKey])
 
   useEffect(() => {
     document.title = name

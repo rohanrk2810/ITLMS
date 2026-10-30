@@ -1,8 +1,14 @@
 import { useState } from 'react'
+import { Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
-import { getFinanceDashboard, getOverdueInstallments, searchFeePlans } from '@/api/finance'
+import { apiErrorMessage } from '@/api/client'
+import { searchStudents, type StudentSummaryResponse } from '@/api/students'
+import { Button } from '@/components/ui/button'
+import { downloadCsv } from '@/lib/download-csv'
+import { type FeePlanResponse, getFinanceDashboard, getOverdueInstallments, searchFeePlans } from '@/api/finance'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -25,11 +31,54 @@ export function FinanceDeskPage() {
     queryFn: () => searchFeePlans({ status: status || undefined }),
   })
 
+  const [downloading, setDownloading] = useState(false)
+
+  /** Every student with their contact details and fee position, one row per fee plan (a student without a plan still gets a row). */
+  async function downloadAll() {
+    setDownloading(true)
+    try {
+      const students: StudentSummaryResponse[] = []
+      const plans: FeePlanResponse[] = []
+      for (let page = 0, last = false; !last; page += 1) {
+        const result = await searchStudents({ page })
+        students.push(...result.content)
+        last = result.last || result.content.length === 0
+      }
+      for (let page = 0, last = false; !last; page += 1) {
+        const result = await searchFeePlans({ page })
+        plans.push(...result.content)
+        last = result.last || result.content.length === 0
+      }
+      const rows = students.flatMap((student) => {
+        const mine = plans.filter((plan) => plan.studentId === student.id)
+        const who = [student.studentCode, student.fullName, student.email, student.phone, student.status]
+        return mine.length === 0
+          ? [[...who, '', '', '', '', '', '', '']]
+          : mine.map((plan) => [...who, plan.status, plan.currency, plan.netFee, plan.paid, plan.outstanding, plan.overdue, plan.nextDueDate])
+      })
+      downloadCsv(
+        `students-fees-${new Date().toISOString().slice(0, 10)}.csv`,
+        ['Student code', 'Name', 'Email', 'Phone', 'Student status', 'Plan status', 'Currency', 'Net fee', 'Paid', 'Outstanding', 'Overdue', 'Next due'],
+        rows,
+      )
+      toast.success(`Downloaded ${students.length} students`)
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not download the data.'))
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Finance</h1>
-        <p className="text-muted-foreground">Fee position across the institute (Doc S15).</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">Finance</h1>
+          <p className="text-muted-foreground">Fee position across the institute (Doc S15).</p>
+        </div>
+        <Button variant="outline" onClick={() => void downloadAll()} disabled={downloading}>
+          <Download className="size-4" /> {downloading ? 'Preparing...' : 'Download all students (CSV)'}
+        </Button>
       </div>
 
       {dashboardQuery.isLoading && <Skeleton className="h-32" />}

@@ -81,7 +81,7 @@ public class QuizServiceImpl implements QuizService {
                 .showResultImmediately(request.showResultImmediately() == null || request.showResultImmediately())
                 .mandatory(request.mandatory() == null || request.mandatory())
                 .secureMode(Boolean.TRUE.equals(request.secureMode()))
-                .maxViolations(request.maxViolations() == null ? 2 : request.maxViolations())
+                .maxViolations(request.maxViolations() == null ? 1 : request.maxViolations())
                 .requireCamera(Boolean.TRUE.equals(request.requireCamera()))
                 .requireMicrophone(Boolean.TRUE.equals(request.requireMicrophone()))
                 .cameraChecks(CameraCheck.join(request.cameraChecks() == null ? CameraCheck.all() : request.cameraChecks()))
@@ -343,7 +343,8 @@ public class QuizServiceImpl implements QuizService {
                     .filter(a -> a.getStatus() == AttemptStatus.IN_PROGRESS && !a.hasExpired(now))
                     .map(QuizAttempt::getId).findFirst().orElse(null);
             boolean visible = q.isShowResultImmediately() || q.getStatus() == QuizStatus.CLOSED;
-            return StudentQuizResponse.of(q, mine.size(), running, best.get(q.getId()), visible, now);
+            return StudentQuizResponse.of(q,
+                    (int) mine.stream().filter(a -> a.getStatus() != AttemptStatus.TERMINATED).count(), running, best.get(q.getId()), visible, now);
         }).toList();
     }
 

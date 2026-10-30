@@ -18,6 +18,7 @@ public record BrandingResponse(
         String faviconUrl,
         String loginBackgroundUrl,
         List<String> studentHiddenMenu,
+        String uiConfig,
         long version) {
 
     static BrandingResponse from(InstituteSettings s) {
@@ -28,6 +29,7 @@ public record BrandingResponse(
                 s.getFavicon() == null ? null : "/api/public/branding/favicon" + v,
                 s.getLoginBackground() == null ? null : "/api/public/branding/login-background" + v,
                 Arrays.stream(s.getStudentHiddenMenu().split(",")).filter(p -> !p.isBlank()).toList(),
+                s.getUiConfig(),
                 s.getVersion());
     }
 }

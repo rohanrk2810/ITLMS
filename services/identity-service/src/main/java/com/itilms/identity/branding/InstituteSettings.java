@@ -76,6 +76,10 @@ public class InstituteSettings {
     @Column(name = "student_hidden_menu", nullable = false)
     private String studentHiddenMenu = "";
 
+    /** The portal customization: a JSON document the browser applies. */
+    @Column(name = "ui_config", nullable = false)
+    private String uiConfig = "{}";
+
     /** Bumped on every change; part of the image URLs so browsers refetch after an edit. */
     private long version = 1;
 

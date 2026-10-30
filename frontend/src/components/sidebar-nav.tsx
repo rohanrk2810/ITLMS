@@ -5,6 +5,7 @@ import { fetchCurrentUser } from '@/api/auth'
 
 import { NAV_ITEMS } from '@/components/nav-items'
 import { useBranding } from '@/lib/use-branding'
+import { ALWAYS_SHOWN, useUiConfig } from '@/lib/ui-config'
 import { useUnplacedStudent } from '@/lib/use-placement'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
@@ -26,12 +27,20 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   // approves a request the whole menu appears, minus whatever the administrator hid.
   const unplaced = useUnplacedStudent()
   // The administrator chooses which pages a student's menu shows; the dashboard is always there.
-  const items = NAV_ITEMS.filter(
+  const menu = useUiConfig().menus[role ?? 'STUDENT'] ?? {}
+  const filtered = NAV_ITEMS.filter(
     (item) =>
       (!role || item.roles.includes(role)) &&
       (!unplaced || item.to === '/app' || item.to === '/app/courses') &&
-      !(role === 'STUDENT' && item.to !== '/app' && hiddenForStudents.includes(item.to)),
+      !(role === 'STUDENT' && item.to !== '/app' && hiddenForStudents.includes(item.to)) &&
+      !(menu.hidden?.includes(item.to) && !ALWAYS_SHOWN.includes(item.to)),
   )
+  // The administrator's order first (as far as it applies to this person), the rest in the usual order.
+  const rank = (to: string) => {
+    const i = menu.order?.indexOf(to) ?? -1
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i
+  }
+  const items = [...filtered].sort((a, b) => rank(a.to) - rank(b.to))
 
   return (
     <nav className="flex flex-col gap-1 p-3">
@@ -51,7 +60,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           }
         >
           <item.icon className="size-4" />
-          {item.label}
+          {menu.labels?.[item.to] || item.label}
         </NavLink>
       ))}
     </nav>

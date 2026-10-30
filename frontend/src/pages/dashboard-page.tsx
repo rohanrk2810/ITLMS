@@ -7,6 +7,7 @@ import { InstituteCharts, StudentCharts } from '@/components/dashboard-charts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney } from '@/lib/format'
+import { useUiConfig } from '@/lib/ui-config'
 import { useUnplacedStudent } from '@/lib/use-placement'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
@@ -23,6 +24,8 @@ export function DashboardPage() {
   const user = useAuthStore((state) => state.user)
   const showInstituteSummary = hasRole(user?.role, ['ADMIN', 'COORDINATOR'])
   const unplaced = useUnplacedStudent()
+  const hidden = useUiConfig().dashboard.hidden
+  const shows = (id: string) => !hidden.includes(id)
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,9 +35,9 @@ export function DashboardPage() {
       </div>
 
       {unplaced && <WelcomeNewStudent />}
-      {!unplaced && (showInstituteSummary ? <InstituteSummary /> : <RoleQuickLinks role={user?.role} />)}
-      {user?.role === 'STUDENT' && !unplaced && <StudentCharts />}
-      {!showInstituteSummary && <AnnouncementsPanel />}
+      {!unplaced && (showInstituteSummary ? <InstituteSummary /> : shows('quick-links') && <RoleQuickLinks role={user?.role} />)}
+      {user?.role === 'STUDENT' && !unplaced && shows('student-charts') && <StudentCharts />}
+      {!showInstituteSummary && shows('announcements') && <AnnouncementsPanel />}
     </div>
   )
 }
@@ -61,6 +64,7 @@ function WelcomeNewStudent() {
 
 function InstituteSummary() {
   const query = useQuery({ queryKey: ['dashboard', 'summary'], queryFn: getDashboardSummary })
+  const hidden = useUiConfig().dashboard.hidden
 
   if (query.isLoading) {
     return (
@@ -73,28 +77,31 @@ function InstituteSummary() {
   }
   const s = query.data
   if (!s) return null
+  const shows = (id: string) => !hidden.includes(id)
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label="Students admitted" value={s.studentsAdmittedTotal} hint={`+${s.studentsAdmittedLast30Days} in 30 days`} />
-        <Stat label="Enrollments" value={s.enrollmentsTotal} hint={`+${s.enrollmentsLast30Days} in 30 days`} />
-        <Stat label="Revenue collected" value={formatMoney(s.revenueCollectedTotal)} hint={`${formatMoney(s.revenueCollectedLast30Days)} in 30 days`} />
-        <Stat
+        {shows('stat-students') && <Stat label="Students admitted" value={s.studentsAdmittedTotal} hint={`+${s.studentsAdmittedLast30Days} in 30 days`} />}
+        {shows('stat-enrollments') && <Stat label="Enrollments" value={s.enrollmentsTotal} hint={`+${s.enrollmentsLast30Days} in 30 days`} />}
+        {shows('stat-revenue') && <Stat label="Revenue collected" value={formatMoney(s.revenueCollectedTotal)} hint={`${formatMoney(s.revenueCollectedLast30Days)} in 30 days`} />}
+        {shows('stat-overdue') && <Stat
           label="Overdue"
           value={formatMoney(s.overdueAmountTotal)}
           hint={`${s.installmentsOverdueTotal} installments`}
           tone={s.installmentsOverdueTotal > 0 ? 'destructive' : undefined}
-        />
-        <Stat label="Certificates issued" value={s.certificatesIssuedTotal} />
-        <Stat label="Quiz attempts" value={s.quizAttemptsTotal} hint={`${s.quizAttemptsPassed} passed`} />
-        <Stat label="Attendance" value={`${s.attendance.percent}%`} hint={`${s.attendance.present} present, ${s.attendance.absent} absent`} />
-        <Stat label="Placements" value={s.placementsSelectedTotal} hint={`${s.jobsPostedTotal} jobs posted`} />
+        />}
+        {shows('stat-certificates') && <Stat label="Certificates issued" value={s.certificatesIssuedTotal} />}
+        {shows('stat-quizzes') && <Stat label="Quiz attempts" value={s.quizAttemptsTotal} hint={`${s.quizAttemptsPassed} passed`} />}
+        {shows('stat-attendance') && <Stat label="Attendance" value={`${s.attendance.percent}%`} hint={`${s.attendance.present} present, ${s.attendance.absent} absent`} />}
+        {shows('stat-placements') && <Stat label="Placements" value={s.placementsSelectedTotal} hint={`${s.jobsPostedTotal} jobs posted`} />}
       </div>
-      <InstituteCharts s={s} />
-      <Link to="/app/audit-logs" className="text-sm font-medium text-foreground hover:underline">
-        View the audit trail &rarr;
-      </Link>
+      {shows('charts') && <InstituteCharts s={s} />}
+      {shows('audit-link') && (
+        <Link to="/app/audit-logs" className="text-sm font-medium text-foreground hover:underline">
+          View the audit trail &rarr;
+        </Link>
+      )}
     </div>
   )
 }
