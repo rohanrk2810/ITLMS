@@ -204,7 +204,7 @@ export function CustomizePage() {
             </div>
             <p className="text-xs text-muted-foreground">
               The picture is saved as soon as you choose it. The colour above and the looks below stay over it; make it lighter or
-              heavier here so text stays easy to read. Cards and menus keep their solid colour.
+              heavier here so text stays easy to read. Cards keep their solid colour; the side menu follows the same setting.
             </p>
             <Label htmlFor="bgstrength">Colour over the picture: {cfg.theme.bgStrength}%</Label>
             <input
