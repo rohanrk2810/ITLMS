@@ -16,9 +16,12 @@ import { Label } from '@/components/ui/label'
 import { BRANDING_KEY, useBranding } from '@/lib/use-branding'
 import {
   ALWAYS_SHOWN,
+  DARK_STYLES,
   DASHBOARD_BLOCKS,
   DEFAULT_UI_CONFIG,
+  LIGHT_STYLES,
   type DefaultMode,
+  type LookStyle,
   type RoleMenu,
   type UiConfig,
   parseUiConfig,
@@ -33,6 +36,27 @@ const RADII = [
   { label: 'Very round', value: 1.4 },
 ]
 const WORD_SUGGESTIONS = ['Student', 'Batch', 'Course', 'Trainer', 'Admission', 'Fees']
+
+function LookPicker({ label, styles, value, onChange }: { label: string; styles: Record<string, LookStyle>; value: string; onChange: (id: string) => void }) {
+  return (
+    <div className="flex flex-col gap-2 sm:col-span-3">
+      <Label>{label}</Label>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(styles).map(([id, style]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${value === id ? 'border-primary ring-2 ring-primary/40' : ''}`}
+          >
+            <span className="size-4 rounded-full border" style={{ background: style.swatch }} />
+            {style.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 const selectClass = 'h-9 rounded-md border bg-transparent px-3 text-sm'
 
@@ -128,6 +152,36 @@ export function CustomizePage() {
           <CardDescription>A person who picks light or dark with the toggle keeps their own choice.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
+          <div className="flex flex-col gap-2 sm:col-span-3">
+            <Label htmlFor="primary">Main colour (buttons, highlights)</Label>
+            <div className="flex items-center gap-2">
+              <input
+                id="primary"
+                type="color"
+                className="h-9 w-14 cursor-pointer rounded-md border bg-transparent p-1"
+                value={cfg.theme.primary || '#f2661a'}
+                onChange={(e) => setCfg({ ...cfg, theme: { ...cfg.theme, primary: e.target.value } })}
+              />
+              <span className="text-sm text-muted-foreground">{cfg.theme.primary || 'Original orange'}</span>
+              {cfg.theme.primary && (
+                <Button type="button" size="sm" variant="ghost" onClick={() => setCfg({ ...cfg, theme: { ...cfg.theme, primary: '' } })}>
+                  Back to original
+                </Button>
+              )}
+            </div>
+          </div>
+          <LookPicker
+            label="Dark mode look"
+            styles={DARK_STYLES}
+            value={cfg.theme.dark}
+            onChange={(dark) => setCfg({ ...cfg, theme: { ...cfg.theme, dark } })}
+          />
+          <LookPicker
+            label="Light mode look"
+            styles={LIGHT_STYLES}
+            value={cfg.theme.light}
+            onChange={(light) => setCfg({ ...cfg, theme: { ...cfg.theme, light } })}
+          />
           <div className="flex flex-col gap-2">
             <Label htmlFor="mode">Default mode</Label>
             <select
