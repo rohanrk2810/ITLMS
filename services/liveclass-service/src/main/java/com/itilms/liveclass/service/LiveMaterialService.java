@@ -246,6 +246,7 @@ public class LiveMaterialService {
 
     private void apply(LiveMaterial material, MaterialRequest r) {
         material.setTitle(r.title().trim());
+        DatasetRules.validate(r.question().dataset());
         material.setPayload(write(r.question()));
         material.setCourseId(r.courseId());
         material.setTopic(blankToNull(r.topic()));

@@ -340,6 +340,12 @@ export interface BankFolder {
   count: number
 }
 
+/** The tables of a question whose database is too big to travel with it. */
+export async function questionDataset(questionId: number): Promise<DataTable[]> {
+  const { data } = await apiClient.get<DataTable[]>(`/api/liveclass/questions/${questionId}/dataset`)
+  return data
+}
+
 export async function listFolders(): Promise<BankFolder[]> {
   const { data } = await apiClient.get<BankFolder[]>('/api/liveclass/materials/folders')
   return data
@@ -462,6 +468,8 @@ export interface LiveQuestion {
   snippet: string | null
   snippetLanguage: string | null
   dataset: DataTable[] | null
+  /** The tables were too big to include; load them with questionDataset(). */
+  datasetLarge: boolean
 }
 
 export interface LiveAnswer {

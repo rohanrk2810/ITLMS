@@ -31,7 +31,9 @@ public record LiveQuestionResponse(
         MyAnswer myAnswer,
         String snippet,
         String snippetLanguage,
-        List<com.itilms.liveclass.dto.request.DataTable> dataset) {
+        List<com.itilms.liveclass.dto.request.DataTable> dataset,
+        /** True when the tables were too big to include; fetch them from /questions/{id}/dataset. */
+        boolean datasetLarge) {
 
     public record MyAnswer(List<Integer> selected, String text, String code, String language, Boolean correct,
                            Integer awardedMarks, boolean viaRecording, Instant submittedAt) {

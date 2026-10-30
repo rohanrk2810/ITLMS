@@ -302,6 +302,16 @@ public class LiveClassController {
         return open == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(open);
     }
 
+    @Operation(summary = "The tables of a question",
+            description = "For a database too big to come with the question. Hosts and the batch's students only.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/questions/{questionId}/dataset")
+    public ResponseEntity<List<com.itilms.liveclass.dto.request.DataTable>> dataset(@PathVariable Long questionId) {
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofHours(1)).cachePrivate())
+                .body(questionService.datasetOf(questionId));
+    }
+
     @Operation(summary = "Answer a question", description = "Students only, once per question. After a question has "
             + "closed this is the recorded-class answer.")
     @PreAuthorize("hasRole('STUDENT')")
