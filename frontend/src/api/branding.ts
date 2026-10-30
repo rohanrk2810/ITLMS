@@ -18,12 +18,14 @@ export interface Branding {
   loginBackgroundUrl: string | null
   /** Sidebar paths students do not see (e.g. "/app/finance"). Empty: everything their role allows. */
   studentHiddenMenu: string[]
+  /** JSON text of the portal customization; read it with parseUiConfig. */
+  uiConfig: string
   version: number
 }
 
 export type BrandingImageKind = 'logo' | 'favicon' | 'login-background'
 
-export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'loginBackgroundUrl' | 'studentHiddenMenu' | 'version'>
+export type UpdateBrandingInput = Omit<Branding, 'logoUrl' | 'faviconUrl' | 'loginBackgroundUrl' | 'studentHiddenMenu' | 'uiConfig' | 'version'>
 
 /** Anonymous: the login page reads this before anyone is signed in. */
 export async function getBranding(): Promise<Branding> {
@@ -33,6 +35,11 @@ export async function getBranding(): Promise<Branding> {
 
 export async function updateBranding(input: UpdateBrandingInput): Promise<Branding> {
   const { data } = await apiClient.put<Branding>('/api/branding', input)
+  return data
+}
+
+export async function updateUiConfig(config: string): Promise<Branding> {
+  const { data } = await apiClient.put<Branding>('/api/branding/ui-config', { config })
   return data
 }
 

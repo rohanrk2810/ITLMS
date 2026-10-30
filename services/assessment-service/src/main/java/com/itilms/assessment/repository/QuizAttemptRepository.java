@@ -18,6 +18,9 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> 
 
     long countByQuizIdAndStudentId(Long quizId, Long studentId);
 
+    /** Attempts that count against the limit: one ended for leaving the window does not, so it can be retaken. */
+    long countByQuizIdAndStudentIdAndStatusNot(Long quizId, Long studentId, com.itilms.assessment.entity.AttemptStatus status);
+
     /** The sitting a student is in the middle of, if any. */
     Optional<QuizAttempt> findFirstByQuizIdAndStudentIdAndStatusOrderByAttemptNoDesc(
             Long quizId, Long studentId, AttemptStatus status);

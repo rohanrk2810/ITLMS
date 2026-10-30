@@ -3,12 +3,14 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { assetUrl } from '@/api/branding'
 import { BrandMark } from '@/components/brand-mark'
 import { useBranding } from '@/lib/use-branding'
+import { useUiConfig } from '@/lib/ui-config'
 import { useAuthStore } from '@/stores/auth-store'
 
 /** The centred-card shell every unauthenticated page (sign in, register, reset) shares. */
 export function AuthLayout() {
   const { status } = useAuthStore()
   const { branding } = useBranding()
+  const { login } = useUiConfig()
 
   if (status === 'authenticated') {
     return <Navigate to="/app" replace />
@@ -31,9 +33,11 @@ export function AuthLayout() {
         <div className="flex items-center gap-2 text-lg font-semibold">
           <BrandMark className="size-8" />
         </div>
+        {login.welcome && <p className="text-center text-sm text-muted-foreground">{login.welcome}</p>}
         <div className="w-full">
           <Outlet />
         </div>
+        {login.footer && <p className="text-center text-xs text-muted-foreground">{login.footer}</p>}
       </div>
     </div>
   )

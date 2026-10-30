@@ -115,7 +115,8 @@ public class AttemptServiceImpl implements AttemptService {
             scorer.finish(attempt, quiz, true);
         }
 
-        long used = attemptRepository.countByQuizIdAndStudentId(quizId, student.profileId());
+        long used = attemptRepository.countByQuizIdAndStudentIdAndStatusNot(
+                quizId, student.profileId(), AttemptStatus.TERMINATED);
         if (used >= quiz.getAttemptsAllowed()) {
             throw new BusinessRuleException("NO_ATTEMPTS_LEFT",
                     "You have used all %d attempt(s) for this test.".formatted(quiz.getAttemptsAllowed()));
@@ -240,7 +241,7 @@ public class AttemptServiceImpl implements AttemptService {
         int warningsLeft = Math.max(0, quiz.getMaxViolations() - 1 - attempt.getViolationCount());
         String message = null;
         if (terminated) {
-            message = "Your test has been ended because you left the test window too many times.";
+            message = "Your test has been ended and marked failed because you left the test window. You must take it again.";
         } else if (counted) {
             message = warningsLeft == 0
                     ? "Warning: Please do not leave the test window. This is your last warning."

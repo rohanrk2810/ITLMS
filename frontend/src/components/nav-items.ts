@@ -9,6 +9,7 @@ import {
   Inbox,
   LayoutDashboard,
   Palette,
+  SlidersHorizontal,
   ScanFace,
   Megaphone,
   ShieldCheck,
@@ -86,5 +87,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ['ADMIN', 'COORDINATOR'],
   },
   { label: 'Branding', to: '/app/branding', icon: Palette, roles: ['ADMIN'] },
+  { label: 'Customize', to: '/app/customize', icon: SlidersHorizontal, roles: ['ADMIN'] },
   { label: 'Monitoring', to: '/app/monitoring', icon: ScanFace, roles: ['ADMIN'] },
 ]

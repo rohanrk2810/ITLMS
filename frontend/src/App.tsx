@@ -125,6 +125,7 @@ const CourseRequestsIndexPage = lazy(() =>
 const MonitoringSettingsPage = lazy(() =>
   import('@/pages/monitoring-settings-page').then((m) => ({ default: m.MonitoringSettingsPage })),
 )
+const CustomizePage = lazy(() => import('@/pages/customize-page').then((m) => ({ default: m.CustomizePage })))
 const BrandingPage = lazy(() => import('@/pages/branding-page').then((m) => ({ default: m.BrandingPage })))
 
 const AnnouncementsPage = lazy(() =>
@@ -292,6 +293,7 @@ export default function App() {
                   <Route element={<ProtectedRoute roles={['ADMIN']} />}>
                     <Route path="/app/audit-logs" element={<AuditLogsPage />} />
                     <Route path="/app/branding" element={<BrandingPage />} />
+                    <Route path="/app/customize" element={<CustomizePage />} />
                     <Route path="/app/monitoring" element={<MonitoringSettingsPage />} />
                   </Route>
 

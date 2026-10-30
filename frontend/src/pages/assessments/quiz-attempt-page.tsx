@@ -368,8 +368,8 @@ export function QuizAttemptPage() {
                   <li>
                     Do not switch to another tab or window.{' '}
                     {intro.maxViolations <= 1
-                      ? 'Doing so ends your test at once.'
-                      : `The first time you get a warning; the ${ordinal(intro.maxViolations)} time ends your test and it is marked failed.`}
+                      ? 'Doing so fails your test at once, and you must take it again.'
+                      : `The first time you get a warning; the ${ordinal(intro.maxViolations)} time ends your test and it is marked failed (you must take it again).`}
                   </li>
                   <li>Copying, right-click and shortcuts such as print and developer tools are blocked.</li>
                 </>
