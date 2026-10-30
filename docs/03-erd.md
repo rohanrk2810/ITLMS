@@ -45,6 +45,22 @@ Owns accounts, credentials, sessions. Does **not** own student/trainer profiles 
 | expires_at, used_at | | `used_at` makes the token single-use |
 | requested_ip, created_at | | |
 
+### `institute_settings` (V3, V4, V7, V10)
+One row only (`id` = 1): each institute runs its own deployment and database.
+| Column | Type | Notes |
+|---|---|---|
+| id | SMALLINT | **PK**, always 1 |
+| name, tagline | | Institute name (seeded default) and tagline |
+| primary_color | | Brand colour, `#rrggbb` |
+| contact_email, contact_phone, website, address | | |
+| signatory_name, signatory_title | | Printed on certificates |
+| logo, favicon, login_background | BYTEA | Images live here because the login page needs them before any token exists |
+| logo_type, favicon_type, login_background_type | | Content type, decided from the file's bytes |
+| student_hidden_menu | TEXT | Comma-separated app paths students do not see (V7) |
+| ui_config | TEXT | **V10.** JSON document of the portal customization: theme, menus per role, hidden dashboard blocks, login text, renamed words. Default `{}`; stored as text, read and applied by the browser |
+| version | BIGINT | Bumped on every change; part of the image URLs |
+| updated_at, updated_by | | |
+
 ---
 
 ## admission-service — `itilms_admission`
