@@ -132,3 +132,29 @@
   background-color: color-mix(in oklab, var(--sidebar) var(--ui-bg-strength, 85%), transparent);
   backdrop-filter: blur(8px);
 }
+
+/* Smoothness: colours ease when the theme, look or background changes, and anchors scroll gently. Off for people who
+   ask their system for less motion. */
+html {
+  scroll-behavior: smooth;
+}
+body,
+.bg-background,
+.bg-card,
+.bg-sidebar,
+.bg-muted,
+.bg-secondary {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

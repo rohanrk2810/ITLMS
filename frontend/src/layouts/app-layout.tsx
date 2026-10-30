@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Menu } from 'lucide-react'
+import { Outlet, useLocation } from 'react-router-dom'
+import { ChevronLeft, Menu } from 'lucide-react'
 
 import { BrandMark } from '@/components/brand-mark'
 import { NotificationBell } from '@/components/notification-bell'
@@ -23,6 +23,7 @@ function storedCollapsed(): boolean {
 /** The signed-in shell: a role-filtered sidebar (desktop) or drawer (mobile), a topbar, and the page content. */
 export function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const { pathname } = useLocation()
   // The desktop sidebar can be hidden with the arrow on its edge; the choice is remembered in this browser.
   const [collapsed, setCollapsed] = useState(storedCollapsed)
 
@@ -39,34 +40,28 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-svh bg-background">
+      {/* The width slides to nothing instead of the menu vanishing; the inner box keeps its size so nothing reflows. */}
       <aside
-        className={`relative hidden w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground ${collapsed ? '' : 'md:flex md:flex-col'}`}
+        className={`relative hidden shrink-0 bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-in-out md:block ${collapsed ? 'w-0' : 'w-64 border-r'}`}
       >
-        <div className="flex h-14 items-center gap-2 border-b px-4 font-semibold">
-          <BrandMark />
+        <div
+          className={`flex h-full w-64 flex-col overflow-hidden transition-opacity duration-200 ${collapsed ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
+        >
+          <div className="flex h-14 items-center gap-2 border-b px-4 font-semibold">
+            <BrandMark />
+          </div>
+          <SidebarNav />
         </div>
-        <SidebarNav />
         <button
           type="button"
-          aria-label="Hide the menu"
-          title="Hide the menu"
+          aria-label={collapsed ? 'Show the menu' : 'Hide the menu'}
+          title={collapsed ? 'Show the menu' : 'Hide the menu'}
           onClick={toggleCollapsed}
-          className="absolute top-16 -right-3 z-20 flex size-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow hover:text-foreground"
+          className={`absolute top-16 z-20 flex size-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow transition-all duration-300 hover:text-foreground ${collapsed ? '-right-7' : '-right-3'}`}
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className={`size-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
         </button>
       </aside>
-      {collapsed && (
-        <button
-          type="button"
-          aria-label="Show the menu"
-          title="Show the menu"
-          onClick={toggleCollapsed}
-          className="fixed top-16 left-0 z-20 hidden h-8 w-5 items-center justify-center rounded-r-md border border-l-0 bg-background text-muted-foreground shadow hover:text-foreground md:flex"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      )}
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-64 p-0">
@@ -96,7 +91,10 @@ export function AppLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          {/* A new page eases in instead of snapping. */}
+          <div key={pathname} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
