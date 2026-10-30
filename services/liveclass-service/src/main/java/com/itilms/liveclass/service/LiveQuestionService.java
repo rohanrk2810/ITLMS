@@ -46,6 +46,8 @@ import lombok.RequiredArgsConstructor;
 public class LiveQuestionService {
 
     private static final String SERVICE_NAME = "liveclass-service";
+    /** Longer than this and the tables are fetched separately instead of riding along with the question. */
+    private static final int DATASET_INLINE_CHARS = 60_000;
     private static final String TOPIC_ASKED = "live-question";
     private static final String TOPIC_CLOSED = "live-question-closed";
     private static final TypeReference<List<Integer>> INTS = new TypeReference<>() { };
@@ -217,25 +219,23 @@ public class LiveQuestionService {
                 .build();
     }
 
-    /** Keeps the tables small enough to read on a student's screen; a ragged row would misalign the grid. */
+    /** Refuses a database that is ragged or beyond {@link DatasetRules}; a ragged row would misalign the grid. */
     private String datasetJson(List<DataTable> tables) {
         if (tables == null || tables.isEmpty()) {
             return null;
         }
-        if (tables.size() > 5) {
-            throw new BusinessRuleException("Show at most 5 tables with a question.");
-        }
-        for (DataTable t : tables) {
-            if (t.name() == null || t.name().isBlank() || t.columns() == null || t.columns().isEmpty()
-                    || t.columns().size() > 12 || t.columns().stream().anyMatch(c -> c == null || c.isBlank())) {
-                throw new BusinessRuleException("Every table needs a name and 1 to 12 named columns.");
-            }
-            List<List<String>> rows = t.rows() == null ? List.of() : t.rows();
-            if (rows.size() > 50 || rows.stream().anyMatch(row -> row == null || row.size() != t.columns().size())) {
-                throw new BusinessRuleException("Table " + t.name() + ": up to 50 rows, each with a value per column.");
-            }
-        }
+        DatasetRules.validate(tables);
         return write(tables);
+    }
+
+    /**
+     * The tables of a question, for a database too big to travel with the question itself. Open to the same people as
+     * the question: its hosts and the students of its batch.
+     */
+    public List<DataTable> datasetOf(Long questionId) {
+        LiveQuestion question = requireQuestion(questionId);
+        isHost(requireSession(question.getLiveSessionId()));
+        return readDataset(question.getDataset());
     }
 
     private List<DataTable> readDataset(String value) {
@@ -324,6 +324,8 @@ public class LiveQuestionService {
     private LiveQuestionResponse toResponse(LiveQuestion q, boolean host, LiveQuestionAnswer mine,
                                             Integer answered, Integer correctCount) {
         boolean reveal = host || !q.isOpen() || mine != null;
+        // A big database is not sent with every poll; the page asks for it once, by question id.
+        boolean large = q.getDataset() != null && q.getDataset().length() > DATASET_INLINE_CHARS;
         MyAnswer my = mine == null ? null : new MyAnswer(read(mine.getSelected(), INTS), mine.getAnswerText(),
                 mine.getCode(), mine.getLanguage(), mine.getCorrect(), mine.getAwardedMarks(), mine.isViaRecording(),
                 mine.getSubmittedAt());
@@ -334,7 +336,7 @@ public class LiveQuestionService {
                 reveal ? read(q.getAcceptedAnswers(), STRINGS) : null,
                 reveal ? q.getExplanation() : null,
                 host ? answered : null, host ? correctCount : null, my,
-                q.getSnippet(), q.getSnippetLanguage(), readDataset(q.getDataset()));
+                q.getSnippet(), q.getSnippetLanguage(), large ? null : readDataset(q.getDataset()), large);
     }
 
     private LiveAnswerResponse toAnswer(LiveQuestionAnswer a) {

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -115,10 +115,22 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
     }
   }
 
-  const preview = (() => {
-    const parsed = tables.map((t) => parseTable(t.name, t.text)).filter((t) => t !== null)
-    return <QuestionMaterial snippet={showSnippet ? snippet : null} dataset={parsed} />
-  })()
+  // Parsed once per edit of the tables, not per keystroke elsewhere: a database of thousands of rows is slow to re-split.
+  const parsedTables = useMemo(
+    () => tables.map((t) => parseTable(t.name, t.text)).filter((t) => t !== null),
+    [tables],
+  )
+  const preview = <QuestionMaterial snippet={showSnippet ? snippet : null} dataset={parsedTables} />
+
+  /** Reads a .csv exported from Excel or a database straight into the table, however many rows it has. */
+  async function loadFile(index: number, file: File) {
+    const text = await file.text()
+    setTables((all) =>
+      all.map((t, idx) =>
+        idx === index ? { name: t.name || file.name.replace(/\.[^.]+$/, ''), text } : t,
+      ),
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -193,7 +205,22 @@ export function QuestionForm({ initial, submitLabel, onSubmit, extraActions }: {
             placeholder={'id,name,salary\n1,Asha,50000\n2,Ravi,42000'}
             className="rounded-md border bg-transparent px-2 py-1 font-mono text-xs whitespace-pre"
           />
-          <p className="text-xs text-muted-foreground">First line is the column names, then one row per line. Paste from Excel works.</p>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span>First line is the column names, then one row per line. Paste from Excel works.</span>
+            <label className="cursor-pointer font-medium text-foreground underline">
+              Load a CSV file (any size)
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void loadFile(i, file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          </div>
         </div>
       ))}
 

@@ -67,6 +67,7 @@ public final class MaterialSheet {
         try (Workbook book = new XSSFWorkbook(in)) {
             Sheet sheet = book.getSheetAt(0);
             java.util.Map<Integer, List<CodeTestCase>> cases = testCases(book, format, errors);
+            java.util.Map<Integer, List<DataTable>> bigTables = tablesSheet(book, format, errors);
             java.util.Set<Integer> codingRows = new java.util.HashSet<>();
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
@@ -78,7 +79,8 @@ public final class MaterialSheet {
                     break;
                 }
                 try {
-                    MaterialRequest item = toItem(row, format, cases.getOrDefault(r + 1, List.of()));
+                    MaterialRequest item = toItem(row, format, cases.getOrDefault(r + 1, List.of()),
+                            bigTables.getOrDefault(r + 1, List.of()));
                     if (item.question().type() == QuestionType.CODING) {
                         codingRows.add(r + 1);
                     }
@@ -96,7 +98,7 @@ public final class MaterialSheet {
         return new Result(items, errors);
     }
 
-    private static MaterialRequest toItem(Row row, DataFormatter f, List<CodeTestCase> cases) {
+    private static MaterialRequest toItem(Row row, DataFormatter f, List<CodeTestCase> cases, List<DataTable> sheetTables) {
         String prompt = text(row, QUESTION, f);
         if (prompt.isEmpty()) {
             throw new IllegalArgumentException("The question is empty.");
@@ -156,6 +158,12 @@ public final class MaterialSheet {
         for (int[] pair : new int[][]{{TABLE_NAME, TABLE_DATA}, {TABLE_2_NAME, TABLE_2_DATA}, {TABLE_3_NAME, TABLE_3_DATA}}) {
             dataset.addAll(tableOf(text(row, pair[0], f), text(row, pair[1], f)));
         }
+        dataset.addAll(sheetTables);
+        try {
+            DatasetRules.validate(dataset);
+        } catch (com.itilms.common.exception.BusinessRuleException ex) {
+            throw new IllegalArgumentException(ex.getMessage());
+        }
         String language = text(row, LANGUAGE, f).toLowerCase(Locale.ROOT);
         String starter = text(row, STARTER, f);
         String setup = text(row, SQL_SETUP, f);
@@ -209,10 +217,15 @@ public final class MaterialSheet {
     /** The "Test cases" sheet: each row belongs to the CODING question on the Questions row it names. */
     private static java.util.Map<Integer, List<CodeTestCase>> testCases(Workbook book, DataFormatter f, List<RowError> errors) {
         java.util.Map<Integer, List<CodeTestCase>> byRow = new java.util.LinkedHashMap<>();
-        if (book.getNumberOfSheets() < 2 || !"Test cases".equalsIgnoreCase(book.getSheetName(1))) {
+        Sheet sheet = null;
+        for (int i = 0; i < book.getNumberOfSheets(); i++) {
+            if ("Test cases".equalsIgnoreCase(book.getSheetName(i))) {
+                sheet = book.getSheetAt(i);
+            }
+        }
+        if (sheet == null) {
             return byRow;
         }
-        Sheet sheet = book.getSheetAt(1);
         for (int r = 1; r <= sheet.getLastRowNum(); r++) {
             Row row = sheet.getRow(r);
             if (row == null) {
@@ -297,6 +310,78 @@ public final class MaterialSheet {
         return picked.stream().sorted().toList();
     }
 
+    /**
+     * The "Tables" sheet, for databases too big for one cell (a cell holds about 32,000 characters). Columns: Question
+     * row, Table name, then the values. The first row of a table is its column names and the rows after it are its
+     * data; a new table starts when the question row or the name changes.
+     */
+    private static java.util.Map<Integer, List<DataTable>> tablesSheet(Workbook book, DataFormatter f, List<RowError> errors) {
+        java.util.Map<Integer, List<DataTable>> byRow = new java.util.LinkedHashMap<>();
+        Sheet sheet = null;
+        for (int i = 0; i < book.getNumberOfSheets(); i++) {
+            if ("Tables".equalsIgnoreCase(book.getSheetName(i))) {
+                sheet = book.getSheetAt(i);
+            }
+        }
+        if (sheet == null) {
+            return byRow;
+        }
+        int currentRow = -1;
+        String currentName = null;
+        List<String> columns = null;
+        List<List<String>> rows = null;
+        for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) {
+                continue;
+            }
+            String ref = text(row, 0, f);
+            String name = text(row, 1, f);
+            if (ref.isEmpty() && name.isEmpty()) {
+                continue;
+            }
+            int questionRow;
+            try {
+                questionRow = (int) Math.round(Double.parseDouble(ref));
+                if (questionRow < 2 || name.isEmpty()) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException ex) {
+                errors.add(new RowError(r + 1, "Tables sheet, row " + (r + 1)
+                        + ": needs the Question row number and the Table name."));
+                continue;
+            }
+            if (questionRow != currentRow || !name.equals(currentName)) {
+                int width = lastFilled(row);
+                columns = new ArrayList<>();
+                for (int c = 2; c < width; c++) {
+                    columns.add(text(row, c, f));
+                }
+                rows = new ArrayList<>();
+                byRow.computeIfAbsent(questionRow, k -> new ArrayList<>()).add(new DataTable(name, columns, rows));
+                currentRow = questionRow;
+                currentName = name;
+                continue;
+            }
+            List<String> values = new ArrayList<>();
+            for (int c = 0; c < columns.size(); c++) {
+                values.add(text(row, c + 2, f));
+            }
+            rows.add(values);
+        }
+        return byRow;
+    }
+
+    /** One past the last non-empty cell of the row. */
+    private static int lastFilled(Row row) {
+        int last = row.getLastCellNum();
+        DataFormatter f = new DataFormatter(Locale.ROOT);
+        while (last > 2 && text(row, last - 1, f).isEmpty()) {
+            last--;
+        }
+        return last;
+    }
+
     /** First line of the cell is the column names; each line after is a row. Commas or tabs between values. */
     private static List<DataTable> tableOf(String name, String data) {
         if (name.isEmpty() && data.isEmpty()) {
@@ -316,14 +401,38 @@ public final class MaterialSheet {
             }
             rows.add(padded);
         }
-        if (columns.size() > 12 || rows.size() > 50) {
-            throw new IllegalArgumentException("A table can have up to 12 columns and 50 rows.");
-        }
         return List.of(new DataTable(name, columns, rows));
     }
 
-    private static List<String> split(String line) {
-        return List.of(line.split(line.contains("\t") ? "\t" : ",", -1)).stream().map(String::trim).toList();
+    /** Splits a line on tabs (pasted from a spreadsheet) or commas, honouring "quoted, values" as CSV files do. */
+    static List<String> split(String line) {
+        char sep = line.indexOf('\t') >= 0 ? '\t' : ',';
+        List<String> out = new ArrayList<>();
+        StringBuilder cell = new StringBuilder();
+        boolean quoted = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (quoted) {
+                if (c == '"' && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    cell.append('"');
+                    i++;
+                } else if (c == '"') {
+                    quoted = false;
+                } else {
+                    cell.append(c);
+                }
+            } else if (c == '"' && cell.toString().isBlank()) {
+                quoted = true;
+                cell.setLength(0);
+            } else if (c == sep) {
+                out.add(cell.toString().trim());
+                cell.setLength(0);
+            } else {
+                cell.append(c);
+            }
+        }
+        out.add(cell.toString().trim());
+        return out;
     }
 
     private static String text(Row row, int column, DataFormatter f) {
@@ -385,6 +494,21 @@ public final class MaterialSheet {
             folder(sheet, 3, "Java/Basics/True-False");
             folder(sheet, 4, "Python/Basics/Coding");
 
+            // A second table for the SQL example (Questions row 3), on the sheet meant for big databases.
+            Sheet tables = book.createSheet("Tables");
+            String[] tableHeader = {"Question row", "Table name", "Values (first row = column names)"};
+            Row tablesHead = tables.createRow(0);
+            for (int i = 0; i < tableHeader.length; i++) {
+                Cell cell = tablesHead.createCell(i);
+                cell.setCellValue(tableHeader[i]);
+                cell.setCellStyle(bold);
+                tables.setColumnWidth(i, i == 2 ? 9000 : 4800);
+            }
+            tables.createFreezePane(0, 1);
+            tableRow(tables, 1, "3", "departments", "id", "name");
+            tableRow(tables, 2, "3", "departments", "1", "Sales");
+            tableRow(tables, 3, "3", "departments", "2", "Support");
+
             // Row 5 of the Questions sheet is the coding example above; its test cases name that row.
             Sheet tests = book.createSheet("Test cases");
             Row testHeader = tests.createRow(0);
@@ -417,6 +541,9 @@ public final class MaterialSheet {
                     "   then Input (what is typed in), Expected output (what a right program prints), Hidden (Yes = student sees only pass/fail) and Weight (1 to 100).",
                     "   Up to 10 per question. A test uses them to mark the code; without them the trainer reads the code.",
                     "Folder: where the question is filed, e.g. Java/OOPs/Coding. Folders are made for you. Blank = the top level.",
+                    "Big databases: one cell holds only about 32,000 characters, so put large tables on the Tables sheet instead.",
+                    "   One row per line of the table: Question row, Table name, then the values across. The first row of a table is its column names;",
+                    "   the rows after it are the data. Up to 20 tables, 60 columns and 20,000 rows each. Put the Question row number on every line.",
                     "Title is optional; the start of the question is used when it is blank.",
                     "Rows with a mistake are skipped and listed with the reason; the other rows are still saved."};
             for (int i = 0; i < lines.length; i++) {
@@ -426,6 +553,15 @@ public final class MaterialSheet {
 
             book.write(out);
             return out.toByteArray();
+        }
+    }
+
+    private static void tableRow(Sheet sheet, int rowIndex, String questionRow, String name, String... values) {
+        Row row = sheet.createRow(rowIndex);
+        row.createCell(0).setCellValue(questionRow);
+        row.createCell(1).setCellValue(name);
+        for (int i = 0; i < values.length; i++) {
+            row.createCell(2 + i).setCellValue(values[i]);
         }
     }
 

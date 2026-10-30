@@ -33,7 +33,8 @@ class MaterialSheetTest {
 
         var sql = result.items().get(1);
         assertThat(sql.shared()).isTrue();
-        assertThat(sql.question().dataset()).hasSize(1);
+        assertThat(sql.question().dataset()).extracting(d -> d.name()).containsExactly("employees", "departments");
+        assertThat(sql.question().dataset().get(1).rows()).hasSize(2);
         assertThat(sql.question().dataset().get(0).columns()).containsExactly("id", "name", "salary");
         assertThat(sql.question().dataset().get(0).rows()).hasSize(3);
 
@@ -135,6 +136,48 @@ class MaterialSheetTest {
         String[] row = new String[length];
         java.util.Arrays.fill(row, "");
         return row;
+    }
+
+    @Test
+    void quotedCsvValuesKeepTheirCommas() {
+        assertThat(MaterialSheet.split("1,\"Pune, MH\",\"say \"\"hi\"\"\",x"))
+                .containsExactly("1", "Pune, MH", "say \"hi\"", "x");
+        assertThat(MaterialSheet.split("a	b c	d")).containsExactly("a", "b c", "d");
+    }
+
+    @Test
+    void aBigTableComesThroughTheTablesSheetBeyondTheOldLimits() throws IOException {
+        try (XSSFWorkbook book = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet questions = book.createSheet("Questions");
+            questions.createRow(0).createCell(0).setCellValue("Title");
+            Row q = questions.createRow(1);
+            q.createCell(1).setCellValue("OTHER");
+            q.createCell(2).setCellValue("Study the data");
+            Sheet tables = book.createSheet("Tables");
+            tables.createRow(0).createCell(0).setCellValue("Question row");
+            Row head = tables.createRow(1);
+            head.createCell(0).setCellValue("2");
+            head.createCell(1).setCellValue("orders");
+            for (int c = 0; c < 20; c++) {
+                head.createCell(2 + c).setCellValue("col" + c);
+            }
+            for (int r = 0; r < 5000; r++) {
+                Row row = tables.createRow(2 + r);
+                row.createCell(0).setCellValue("2");
+                row.createCell(1).setCellValue("orders");
+                for (int c = 0; c < 20; c++) {
+                    row.createCell(2 + c).setCellValue("v" + r);
+                }
+            }
+            book.write(out);
+
+            MaterialSheet.Result result = MaterialSheet.parse(new ByteArrayInputStream(out.toByteArray()));
+
+            assertThat(result.errors()).isEmpty();
+            var table = result.items().get(0).question().dataset().get(0);
+            assertThat(table.columns()).hasSize(20);
+            assertThat(table.rows()).hasSize(5000);
+        }
     }
 
     @Test

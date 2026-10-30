@@ -43,7 +43,7 @@ export function LiveQuestionPanel({ classSessionId }: { classSessionId: number }
       {/* Tables and code need room to be read, so the box widens for them and scrolls when it is still too tall. */}
       <div
         className={`max-h-[80vh] w-full overflow-y-auto rounded-lg border bg-background p-4 shadow-lg ${
-          question.snippet || question.dataset?.length ? 'max-w-4xl' : 'max-w-xl'
+          question.snippet || question.dataset?.length || question.datasetLarge ? 'max-w-4xl' : 'max-w-xl'
         }`}
       >
         <AnswerForm
@@ -129,7 +129,11 @@ function AnswerForm({ question, onAnswered, onSkip }: {
         <button type="button" className="text-xs text-muted-foreground hover:underline" onClick={onSkip}>Hide</button>
       </div>
 
-      <QuestionMaterial snippet={question.snippet} dataset={question.dataset} />
+      <QuestionMaterial
+        snippet={question.snippet}
+        dataset={question.dataset}
+        datasetQuestionId={question.datasetLarge ? question.id : undefined}
+      />
 
       {(question.type === 'MCQ' || question.type === 'TRUE_FALSE') && (
         <RadioGroup value={String(selected[0] ?? '')} onValueChange={(v) => setSelected([Number(v)])}>
@@ -151,7 +155,7 @@ function AnswerForm({ question, onAnswered, onSkip }: {
         </div>
       )}
 
-      {question.type === 'SHORT_ANSWER' && (question.snippet || question.dataset?.length ? (
+      {question.type === 'SHORT_ANSWER' && (question.snippet || question.dataset?.length || question.datasetLarge ? (
         // A code-output or SQL answer is often several lines (a result table), so it gets a box, not a line.
         <textarea
           value={text}
