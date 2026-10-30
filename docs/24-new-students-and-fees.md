@@ -22,3 +22,6 @@ A course carries one list price, `fee` (INR). Before this change there was no fi
 
 ### Not covered
 The course has only a total. Instalments (how many, when) are decided per student when finance raises the fee plan, so they cannot be shown before the student is placed. Showing a standard schedule up front would need a course-level instalment setting.
+
+## Finance download (2026-10-30)
+The finance desk has **Download all students (CSV)**. One row per fee plan with student code, name, email, **phone**, student status, plan status, currency, net fee, paid, outstanding, overdue and next due date; a student without a plan still gets a row. It is built in the browser from `GET /api/students` and `GET /api/fee-plans` (both allow FINANCE), read page by page, and saved with a UTF-8 BOM so Excel shows non-English names correctly.

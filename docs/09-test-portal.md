@@ -16,7 +16,9 @@ How a test is set, taken and reviewed. The endpoints are in `04-api-reference.md
 
 Per test. The student sees the rules and clicks to begin (browsers only allow fullscreen from a click); the test then runs fullscreen with copy, cut, paste, right-click, print, save, view-source and developer-tool shortcuts blocked. The code editor keeps its clipboard, because writing code needs it; pasting is recorded.
 
-Leaving the test window (another tab, another window, minimising) is a **counted violation**. Below `maxViolations` the student gets *"Warning: Please do not leave the test window."*; the violation that reaches the limit **terminates** the attempt: it ends at once, is scored on what was answered for the record, and is marked **failed** whatever the score, so progress and certificates never see it as a pass. `maxViolations` 2 (default) means one warning, then termination; 1 terminates at once.
+Leaving the test window (another tab, another window, minimising) is a **counted violation**. Below `maxViolations` the student gets *"Warning: Please do not leave the test window."*; the violation that reaches the limit **terminates** the attempt: it ends at once, is scored on what was answered for the record, and is marked **failed** whatever the score, so progress and certificates never see it as a pass. `maxViolations` is set per test on the *New test* form and now **defaults to 1**: the first leaving fails the test at once. A value of 2 gives one warning, then termination.
+
+**A terminated attempt can be retaken.** It does not count against `attemptsAllowed` (`AttemptServiceImpl.start` counts attempts that are not `TERMINATED`; the student's test list does the same), so the student must be able to sit the test again. It stays on record as failed.
 
 Recorded but never counted: leaving fullscreen (an accidental Esc must not fail anyone; the student is asked to go back), copy and paste attempts, right-clicks, blocked shortcuts. The same leaving reported twice (tab hidden, then window blurred) is counted once.
 
@@ -112,3 +114,7 @@ In the test's results, each attempt of a secure or camera test has a **Monitorin
 2. As an enrolled student, open it: read the rules, allow the camera, wait for "Your face is visible", start.
 3. Switch to another tab: the warning. Do it again: the attempt ends as failed.
 4. Cover the camera for a few seconds: the face warning; look at the trainer's review for the events.
+
+## Creating a test from a JSON file or a pasted ChatGPT reply
+
+The *New test* dialog has **Create from a JSON file** and a box to paste ChatGPT's reply. Both read the question-bank JSON format (`{"questions": [...]}`, see `question-bank-example.json` in liveclass-service); `title`, `instructions`, `durationMinutes`, `passPercentage` and `attemptsAllowed` may sit beside `questions` and fill the form. Text around the JSON, such as a markdown code fence, is cut away. When the test is created, the questions are added to the draft one by one. Supported types: MCQ, MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER and CODING (with test cases); open questions cannot be marked and are left out with a warning. The reader is `frontend/src/lib/test-json.ts`. Dialogs now scroll when taller than the screen.
