@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 
 import { assetUrl } from '@/api/branding'
 import { useBranding } from '@/lib/use-branding'
-import { applyTerms, useUiConfig } from '@/lib/ui-config'
+import { applyTerms, themeCss, useUiConfig } from '@/lib/ui-config'
 
 /** White text on a dark brand colour, black on a light one (WCAG relative-luminance test). */
 function readableOn(hex: string): string {
@@ -23,6 +23,17 @@ export function BrandingEffect() {
   const { branding, name } = useBranding()
   const ui = useUiConfig()
   const termsKey = JSON.stringify(ui.terms)
+  const css = themeCss(ui.theme)
+
+  useEffect(() => {
+    let style = document.getElementById('ui-theme') as HTMLStyleElement | null
+    if (!style) {
+      style = document.createElement('style')
+      style.id = 'ui-theme'
+      document.head.appendChild(style)
+    }
+    style.textContent = css
+  }, [css])
 
   useEffect(() => {
     const root = document.documentElement
@@ -54,7 +65,7 @@ export function BrandingEffect() {
   useEffect(() => {
     const root = document.documentElement
     const vars = ['--primary', '--primary-foreground', '--ring', '--sidebar-primary', '--sidebar-primary-foreground']
-    const color = branding?.primaryColor
+    const color = ui.theme.primary || branding?.primaryColor
     if (!color) {
       vars.forEach((v) => root.style.removeProperty(v))
       return
@@ -65,7 +76,7 @@ export function BrandingEffect() {
     root.style.setProperty('--sidebar-primary', color)
     root.style.setProperty('--primary-foreground', on)
     root.style.setProperty('--sidebar-primary-foreground', on)
-  }, [branding?.primaryColor])
+  }, [branding?.primaryColor, ui.theme.primary])
 
   return null
 }

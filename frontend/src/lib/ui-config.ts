@@ -22,6 +22,12 @@ export interface UiConfig {
     radius: number
     /** Text size in percent of the normal size. */
     fontScale: number
+    /** Main colour (buttons, highlights) as #rrggbb; empty uses the Branding colour or the original orange. */
+    primary: string
+    /** Dark mode look, by id from DARK_STYLES. */
+    dark: string
+    /** Light mode look, by id from LIGHT_STYLES. */
+    light: string
   }
   menus: Partial<Record<Role, RoleMenu>>
   /** Dashboard blocks to hide, by id (see {@link DASHBOARD_BLOCKS}). */
@@ -32,11 +38,74 @@ export interface UiConfig {
 }
 
 export const DEFAULT_UI_CONFIG: UiConfig = {
-  theme: { defaultMode: 'system', radius: 0.625, fontScale: 100 },
+  theme: { defaultMode: 'system', radius: 0.625, fontScale: 100, primary: '', dark: 'default', light: 'default' },
   menus: {},
   dashboard: { hidden: [] },
   login: { welcome: '', footer: '' },
   terms: {},
+}
+
+export interface LookStyle {
+  label: string
+  /** Page background, shown as the swatch in the picker. */
+  swatch: string
+  /** CSS variables this look sets; empty keeps the original. */
+  vars: Record<string, string>
+}
+
+function look(label: string, background: string, card: string, sidebar: string, soft: string, line: string): LookStyle {
+  return {
+    label,
+    swatch: background,
+    vars: {
+      '--background': background,
+      '--card': card,
+      '--popover': card,
+      '--sidebar': sidebar,
+      '--secondary': soft,
+      '--muted': soft,
+      '--sidebar-accent': soft,
+      '--border': line,
+      '--input': line,
+      '--sidebar-border': line,
+    },
+  }
+}
+
+export const DARK_STYLES: Record<string, LookStyle> = {
+  default: { label: 'Warm black (original)', swatch: '#1f1b18', vars: {} },
+  black: look('Pure black', '#000000', '#0a0a0a', '#050505', '#1a1a1a', 'rgba(255,255,255,0.14)'),
+  charcoal: look('Charcoal', '#1c1c1e', '#262628', '#18181a', '#333336', 'rgba(255,255,255,0.12)'),
+  navy: look('Navy', '#0b1220', '#121b2e', '#0a101c', '#1b2740', 'rgba(255,255,255,0.12)'),
+  forest: look('Forest', '#0c1511', '#132019', '#0a110e', '#1c2e25', 'rgba(255,255,255,0.12)'),
+}
+
+export const LIGHT_STYLES: Record<string, LookStyle> = {
+  default: { label: 'Cream (original)', swatch: '#fdf8f1', vars: {} },
+  white: look('White', '#ffffff', '#ffffff', '#fafafa', '#f4f4f5', '#e4e4e7'),
+  grey: look('Light grey', '#f4f4f5', '#ffffff', '#ffffff', '#e8e8ea', '#dcdcdf'),
+  sky: look('Sky', '#f0f6ff', '#ffffff', '#ffffff', '#e2edfb', '#d3e1f3'),
+  mint: look('Mint', '#f1f9f4', '#ffffff', '#ffffff', '#e0f0e6', '#cfe5d7'),
+}
+
+/** The stylesheet that applies the chosen looks and main colour. Empty when everything is original. */
+export function themeCss(theme: UiConfig['theme']): string {
+  const block = (selector: string, vars: Record<string, string>) =>
+    Object.keys(vars).length ? `${selector}{${Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';')}}` : ''
+  // The orange-tinted soft surfaces follow a custom main colour instead of staying orange.
+  const tint: Record<string, string> = theme.primary
+    ? {
+        '--accent': 'color-mix(in oklab, var(--primary) 14%, var(--background))',
+        '--accent-foreground': 'var(--foreground)',
+        '--secondary-foreground': 'var(--foreground)',
+        '--sidebar-accent-foreground': 'var(--foreground)',
+      }
+    : {}
+  return [
+    block(':root', LIGHT_STYLES[theme.light]?.vars ?? {}),
+    block('.dark', DARK_STYLES[theme.dark]?.vars ?? {}),
+    block(':root,.dark', tint),
+  ].join('\n')
 }
 
 /** Every block of the dashboard an administrator may hide. */
@@ -84,6 +153,9 @@ export function parseUiConfig(text: string | null | undefined): UiConfig {
       defaultMode: mode === 'light' || mode === 'dark' ? mode : 'system',
       radius: typeof theme.radius === 'number' ? Math.min(1.5, Math.max(0, theme.radius)) : DEFAULT_UI_CONFIG.theme.radius,
       fontScale: typeof theme.fontScale === 'number' ? Math.min(125, Math.max(85, theme.fontScale)) : 100,
+      primary: typeof theme.primary === 'string' && /^#[0-9a-fA-F]{6}$/.test(theme.primary) ? theme.primary : '',
+      dark: typeof theme.dark === 'string' && theme.dark in DARK_STYLES ? theme.dark : 'default',
+      light: typeof theme.light === 'string' && theme.light in LIGHT_STYLES ? theme.light : 'default',
     },
     menus,
     dashboard: { hidden: strings((raw.dashboard as Record<string, unknown> | undefined)?.hidden) },
