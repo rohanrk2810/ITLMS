@@ -43,7 +43,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const items = [...filtered].sort((a, b) => rank(a.to) - rank(b.to))
 
   return (
-    <nav className="flex flex-col gap-1 p-3">
+    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
       {items.map((item) => (
         <NavLink
           key={item.to}

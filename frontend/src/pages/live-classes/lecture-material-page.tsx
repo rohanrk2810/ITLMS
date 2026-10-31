@@ -228,7 +228,8 @@ export function LectureMaterialPage() {
           </div>
         )}
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* items-start so the bank can stay in view while the form beside it scrolls; the bank then scrolls inside itself. */}
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">{editing ? `Editing: ${editing.title}` : 'New question'}</CardTitle>
@@ -246,11 +247,11 @@ export function LectureMaterialPage() {
             />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="lg:sticky lg:top-0 lg:flex lg:max-h-[calc(100svh-6.5rem)] lg:flex-col">
           <CardHeader>
             <CardTitle className="text-base">Bank</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="max-h-[70svh] min-h-0 overflow-y-auto lg:max-h-none">
             <div className="flex flex-col gap-4 sm:flex-row">
               <FolderTree selected={folder} onSelect={pickFolder} refreshKey={savedKey} onChanged={() => setSavedKey((k) => k + 1)} />
               <div className="min-w-0 flex-1">
