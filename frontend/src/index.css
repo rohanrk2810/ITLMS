@@ -158,3 +158,20 @@ body,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* A field that is required but empty, or out of range, turns red - after the person has touched it or tried to send the
+   form (:user-invalid), so a fresh form is not red from the start. Fields the server refuses get .field-invalid with a
+   reason under them (components/field-error-highlighter.tsx). */
+input:user-invalid,
+select:user-invalid,
+textarea:user-invalid,
+.field-invalid {
+  border-color: var(--destructive) !important;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--destructive) 30%, transparent);
+}
+
+.field-error-text {
+  color: var(--destructive);
+  font-size: 0.75rem;
+  line-height: 1.1rem;
+}

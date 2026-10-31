@@ -270,7 +270,7 @@ function NewQuizDialog() {
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="courseId">Course</Label>
+            <Label htmlFor="courseId">Course *</Label>
             <select
               id="courseId"
               required
@@ -289,7 +289,7 @@ function NewQuizDialog() {
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
               required
@@ -299,12 +299,14 @@ function NewQuizDialog() {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="durationMinutes">Duration (min)</Label>
+              <Label htmlFor="durationMinutes">Duration (min) *</Label>
               <Input
                 id="durationMinutes"
                 type="number"
-                value={form.durationMinutes}
-                onChange={(event) => setForm({ ...form, durationMinutes: Number(event.target.value) })}
+                required
+                min={1}
+                value={form.durationMinutes ?? ''}
+                onChange={(event) => setForm({ ...form, durationMinutes: event.target.value === '' ? undefined : Number(event.target.value) })}
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -312,8 +314,11 @@ function NewQuizDialog() {
               <Input
                 id="passPercentage"
                 type="number"
-                value={form.passPercentage}
-                onChange={(event) => setForm({ ...form, passPercentage: Number(event.target.value) })}
+                required
+                min={0}
+                max={100}
+                value={form.passPercentage ?? ''}
+                onChange={(event) => setForm({ ...form, passPercentage: event.target.value === '' ? undefined : Number(event.target.value) })}
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -321,8 +326,11 @@ function NewQuizDialog() {
               <Input
                 id="attemptsAllowed"
                 type="number"
-                value={form.attemptsAllowed}
-                onChange={(event) => setForm({ ...form, attemptsAllowed: Number(event.target.value) })}
+                required
+                min={1}
+                max={20}
+                value={form.attemptsAllowed ?? ''}
+                onChange={(event) => setForm({ ...form, attemptsAllowed: event.target.value === '' ? undefined : Number(event.target.value) })}
               />
             </div>
           </div>

@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import type { Role } from '@/api/types'
 import { bootstrapSession } from '@/api/auth'
 import { BrandingEffect } from '@/components/branding-effect'
+import { FieldErrorHighlighter } from '@/components/field-error-highlighter'
 import { NAV_ITEMS } from '@/components/nav-items'
 import { Toaster } from '@/components/ui/sonner'
 import { AppLayout } from '@/layouts/app-layout'
@@ -203,6 +204,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrandingEffect />
+      <FieldErrorHighlighter />
       <SessionBootstrap>
         <BrowserRouter>
           <Suspense fallback={<PageFallback />}>

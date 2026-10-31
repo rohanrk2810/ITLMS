@@ -127,6 +127,12 @@ apiClient.interceptors.response.use(
     const config = error.config as RetryableConfig
     const isAuthEndpoint = config.url?.includes('/api/auth/login') || config.url?.includes('/api/auth/refresh')
 
+    // The server says which fields it refused: let the page turn them red (components/field-error-highlighter.tsx).
+    const refused = error.response?.data?.fieldErrors
+    if (error.response?.status === 400 && refused && Object.keys(refused).length > 0) {
+      window.dispatchEvent(new CustomEvent(API_FIELD_ERRORS_EVENT, { detail: refused }))
+    }
+
     if (error.response?.status === 401 && !config._retried && !isAuthEndpoint) {
       config._retried = true
       const newToken = await refreshAccessToken()
@@ -139,10 +145,28 @@ apiClient.interceptors.response.use(
   },
 )
 
+/** Sent on `window` when a request is refused for particular fields: `detail` maps field name to the reason. */
+export const API_FIELD_ERRORS_EVENT = 'itilms:field-errors'
+
+/** "durationMinutes" or "answers[0].questionText" as words a person reads: "Duration minutes", "Question text". */
+export function fieldLabel(field: string): string {
+  const last = (field.split('.').pop() ?? field).replace(/\[\d+\]/g, '')
+  const words = last.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase()
+  return words === '' ? field : words.charAt(0).toUpperCase() + words.slice(1)
+}
+
 /** The message worth showing a user, from any error this client can throw. */
 export function apiErrorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
-    return error.response?.data?.message ?? fallback
+    const data = error.response?.data
+    const fields = Object.entries(data?.fieldErrors ?? {})
+    if (fields.length > 0) {
+      // Not "one or more fields are invalid" but which ones, so nobody has to hunt for them.
+      const shown = fields.slice(0, 4).map(([field, why]) => `${fieldLabel(field)}: ${why}`)
+      const more = fields.length > 4 ? ` (and ${fields.length - 4} more)` : ''
+      return `Please complete or correct: ${shown.join('; ')}${more}`
+    }
+    return data?.message ?? fallback
   }
   return fallback
 }
