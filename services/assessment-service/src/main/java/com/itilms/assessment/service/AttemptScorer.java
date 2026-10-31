@@ -87,7 +87,7 @@ public class AttemptScorer {
         answerRepository.saveAll(answers);
 
         Instant now = Instant.now();
-        attempt.complete(score, quiz.getTotalMarks(), quiz.getPassPercentage(), now, expired);
+        attempt.complete(score, attempt.maxMarksOr(quiz.getTotalMarks()), quiz.getPassPercentage(), now, expired);
         if (terminatedReason != null) {
             attempt.terminate(terminatedReason);
         }
@@ -102,7 +102,7 @@ public class AttemptScorer {
 
         log.info("Attempt {} on test {} {}: {}/{} ({}%)", attempt.getId(), quiz.getId(),
                 terminatedReason != null ? "terminated" : expired ? "expired" : "submitted",
-                attempt.getScore(), quiz.getTotalMarks(),
+                attempt.getScore(), attempt.maxMarksOr(quiz.getTotalMarks()),
                 attempt.getPercentage());
         return attempt;
     }

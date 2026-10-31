@@ -104,7 +104,7 @@ public record AttemptViewResponse(
 
         return new AttemptViewResponse(
                 attempt.getId(), quiz.getId(), quiz.getTitle(), quiz.getInstructions(),
-                attempt.getAttemptNo(), quiz.getAttemptsAllowed(), quiz.getTotalMarks(),
+                attempt.getAttemptNo(), quiz.getAttemptsAllowed(), attempt.maxMarksOr(quiz.getTotalMarks()),
                 quiz.getPassPercentage(), attempt.getStartedAt(), attempt.getExpiresAt(),
                 attempt.secondsRemaining(now), quiz.isSecureMode(), quiz.getMaxViolations(),
                 quiz.isRequireCamera(), quiz.isRequireMicrophone(),

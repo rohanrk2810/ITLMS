@@ -96,5 +96,6 @@ await api('POST', `/api/quizzes/${quiz.id}/publish`, trainerTok);
 
 writeFileSync(join(here, 'loadtest-data.json'), JSON.stringify({
   gateway: GW, password: PASSWORD, quizId: quiz.id, emails: students.map((s) => s.email),
+  trainer: trainer.email, courseId, batchId: batch.id,
 }, null, 2));
 console.log(`Ready: ${students.length} students, quiz ${quiz.id}. Data in deploy/loadtest/loadtest-data.json`);

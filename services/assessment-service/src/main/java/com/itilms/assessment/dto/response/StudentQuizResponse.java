@@ -65,7 +65,7 @@ public record StudentQuizResponse(
         Integer best = resultVisible ? bestPercentage : null;
         return new StudentQuizResponse(
                 q.getId(), q.getCourseId(), q.getBatchId(), q.getTitle(), q.getInstructions(),
-                q.getDurationMinutes(), q.getTotalMarks(), q.getPassPercentage(), q.getAttemptsAllowed(),
+                q.getDurationMinutes(), q.displayedMarks(), q.getPassPercentage(), q.getAttemptsAllowed(),
                 attemptsUsed, q.getAvailableFrom(), q.getAvailableUntil(), q.isMandatory(),
                 q.isSecureMode(), q.getMaxViolations(), q.isRequireCamera(), q.isRequireMicrophone(),
                 com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.isRecordTyping(),

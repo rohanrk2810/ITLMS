@@ -124,6 +124,22 @@ public class Quiz extends AuditableEntity {
     @Column(name = "record_typing", nullable = false)
     private boolean recordTyping;
 
+    /**
+     * Question pool: how many of the test's questions each student gets, drawn at random per attempt. Null means every
+     * question. Fixed once the test is published (a published test cannot be edited).
+     */
+    @Column(name = "questions_per_attempt")
+    private Integer questionsPerAttempt;
+
+    /** What one attempt is worth when a pool is used (set on publish); null otherwise. */
+    @Column(name = "attempt_marks")
+    private Integer attemptMarks;
+
+    /** The marks a student is told the test is worth: one attempt's share when a pool is used, else the whole. */
+    public int displayedMarks() {
+        return attemptMarks != null ? attemptMarks : totalMarks;
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

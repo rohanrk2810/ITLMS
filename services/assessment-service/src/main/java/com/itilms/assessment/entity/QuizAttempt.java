@@ -87,6 +87,38 @@ public class QuizAttempt extends AuditableEntity {
     @Column(name = "terminated_reason", length = 200)
     private String terminatedReason;
 
+    /** Question pool: the ids of the questions this attempt drew, comma separated. Null means every question. */
+    @Column(name = "question_ids", columnDefinition = "TEXT")
+    private String questionIds;
+
+    /** Question pool: what the drawn questions are worth together. Null means the test's own total. */
+    @Column(name = "max_marks")
+    private Integer maxMarks;
+
+    /** Draws this attempt's questions from the test's, at random, and fixes them for the attempt. */
+    public void drawPaper(java.util.List<QuizQuestion> all, int count) {
+        java.util.List<QuizQuestion> shuffled = new java.util.ArrayList<>(all);
+        java.util.Collections.shuffle(shuffled);
+        java.util.List<QuizQuestion> drawn = shuffled.subList(0, Math.min(count, shuffled.size()));
+        this.questionIds = drawn.stream().map(q -> String.valueOf(q.getId())).collect(java.util.stream.Collectors.joining(","));
+        this.maxMarks = drawn.stream().mapToInt(QuizQuestion::getMarks).sum();
+    }
+
+    /** The questions this attempt is about: the drawn ones, or all of them when the test has no pool. */
+    public java.util.List<QuizQuestion> paperFrom(java.util.List<QuizQuestion> all) {
+        if (questionIds == null || questionIds.isBlank()) {
+            return all;
+        }
+        java.util.Set<Long> ids = java.util.Arrays.stream(questionIds.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).map(Long::valueOf).collect(java.util.stream.Collectors.toSet());
+        return all.stream().filter(q -> ids.contains(q.getId())).toList();
+    }
+
+    /** What this attempt is worth: its own total when a pool was drawn, else the given one (the test's). */
+    public int maxMarksOr(int testTotal) {
+        return maxMarks != null ? maxMarks : testTotal;
+    }
+
     public static Instant deadline(Instant startedAt, int durationMinutes) {
         return startedAt.plus(Duration.ofMinutes(durationMinutes));
     }

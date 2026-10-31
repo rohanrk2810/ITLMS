@@ -46,6 +46,7 @@ public class TypingService {
     private final QuizQuestionRepository questionRepository;
     private final QuizAnswerRepository answerRepository;
     private final QuizTypingChunkRepository chunks;
+    private final TypingStatsStore stats;
     private final AssessmentAccess access;
     private final ObjectMapper json = new ObjectMapper();
 
@@ -75,6 +76,7 @@ public class TypingService {
         }
         chunks.save(QuizTypingChunk.builder().attemptId(attemptId).questionId(questionId)
                 .seq(request.seq()).events(request.events()).build());
+        stats.add(attemptId, questionId, stats.count(request.events()));
     }
 
     /** The trainer's view of one coding answer: the starting code, every edit in order, and where it ended. */

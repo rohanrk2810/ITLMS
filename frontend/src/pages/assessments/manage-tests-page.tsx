@@ -111,6 +111,11 @@ export function ManageTestsPage() {
                       Typing replay
                     </Badge>
                   )}
+                  {quiz.questionsPerAttempt != null && (
+                    <Badge variant="outline" className="ml-2 gap-1">
+                      {quiz.questionsPerAttempt} of {quiz.questionCount} questions each
+                    </Badge>
+                  )}
                   {quiz.requireMicrophone && (
                     <Badge variant="outline" className="ml-2 gap-1">
                       <Mic className="size-3" />
@@ -438,6 +443,27 @@ function NewQuizDialog() {
               off or when sustained sound is picked up, and each is recorded with its time for you to review. Only the
               loudness is measured against the room&apos;s own background level: nothing is recorded or stored, it cannot
               tell speech from other noise, and nothing is failed automatically.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-md border p-3">
+            <Label htmlFor="questionsPerAttempt">Questions for each student (question pool)</Label>
+            <Input
+              id="questionsPerAttempt"
+              type="number"
+              min={0}
+              max={500}
+              className="w-32"
+              placeholder="All"
+              value={form.questionsPerAttempt ?? ''}
+              onChange={(event) =>
+                setForm({ ...form, questionsPerAttempt: event.target.value === '' ? undefined : Number(event.target.value) })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Add more questions than a student should get and set how many each one receives. Every attempt draws its own
+              questions at random, so neighbours do not sit the same paper; a student who reloads sees the same ones, and
+              marks are counted against the questions that student drew. Leave empty for every question. It must not be
+              more than the questions in the test when you publish it.
             </p>
           </div>
           <div className="flex flex-col gap-2 rounded-md border p-3">
