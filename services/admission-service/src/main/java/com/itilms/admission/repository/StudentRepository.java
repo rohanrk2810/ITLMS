@@ -39,6 +39,15 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
     @Query("SELECT COUNT(s) + 1 FROM Student s WHERE YEAR(s.admissionDate) = :year")
     long nextCodeSequence(@Param("year") int year);
 
+    /**
+     * Makes admissions take their turn at choosing a code, until the surrounding transaction ends. Without it, ten
+     * admissions at once all count the same rows and pick the same code; the retry cannot help, because the session
+     * that hit the unique constraint is no longer usable. The "select 1" wrapper is only there because a query cannot
+     * return the void this function returns.
+     */
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(73010001)) AS locked", nativeQuery = true)
+    int lockCodeSequence();
+
     /** Applied when identity-service reports a name or contact change. */
     @Modifying
     @Query("""
