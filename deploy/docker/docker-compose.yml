@@ -362,6 +362,8 @@ services:
           memory: 768M
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${IDENTITY_DB_POOL_MAX:-15}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@itinstitute.local}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in deploy/docker/.env}
       # Public sign-up on the register page. Closed by default: students are normally admitted by staff.
@@ -443,6 +445,8 @@ services:
           memory: 768M
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${ASSESSMENT_DB_POOL_MAX:-20}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8085/actuator/health || exit 1"]
@@ -455,6 +459,8 @@ services:
     image: itilms/finance-service:dev
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${FINANCE_DB_POOL_MAX:-5}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8086/actuator/health || exit 1"]
@@ -467,6 +473,8 @@ services:
     image: itilms/certificate-service:dev
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${CERTIFICATE_DB_POOL_MAX:-5}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8087/actuator/health || exit 1"]
@@ -479,6 +487,8 @@ services:
     image: itilms/placement-service:dev
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${PLACEMENT_DB_POOL_MAX:-5}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8088/actuator/health || exit 1"]
@@ -497,6 +507,8 @@ services:
           memory: 640M
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${NOTIFICATION_DB_POOL_MAX:-5}
       # Mailpit catches everything locally; point these at a real SMTP
       # server in production.
       MAIL_ENABLED: ${MAIL_ENABLED:-true}
@@ -522,6 +534,8 @@ services:
     image: itilms/file-service:dev
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${FILE_DB_POOL_MAX:-5}
       # "local" writes to the volume below - fine for this dev stack. MinIO
       # (the production choice, Doc S17) is wired in code but not part of
       # this compose file; set these to switch a deployment over to it.
@@ -570,6 +584,8 @@ services:
     image: itilms/reporting-service:dev
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${REPORTING_DB_POOL_MAX:-5}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8092/actuator/health || exit 1"]
@@ -589,6 +605,8 @@ services:
         condition: service_healthy
     environment:
       <<: *service-env
+      # Connections to the database: more where a whole class works at once, fewer where little happens.
+      DB_POOL_MAX: ${CODEEXEC_DB_POOL_MAX:-5}
       # Where Judge0 runs, as seen from inside this network. Blank switches code
       # execution off (the editor says so). host.docker.internal reaches a Judge0
       # running on this same computer.

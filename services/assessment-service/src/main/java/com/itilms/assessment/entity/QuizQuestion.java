@@ -97,7 +97,8 @@ public class QuizQuestion extends AuditableEntity {
     @Builder.Default
     private List<String> acceptedAnswers = new ArrayList<>();
 
-    /** CODING only. */
+    /** CODING only. Loaded for up to 50 questions in one query: a paper of 20 questions is not 20 queries. */
+    @org.hibernate.annotations.BatchSize(size = 50)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "question_id", nullable = false)
     @OrderBy("sequenceNo ASC")

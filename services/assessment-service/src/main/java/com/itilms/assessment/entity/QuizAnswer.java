@@ -49,6 +49,8 @@ public class QuizAnswer {
     @Column(name = "question_id", nullable = false)
     private Long questionId;
 
+    // Loading a paper's answers brings the chosen options of up to 50 of them in one query, not one query each.
+    @org.hibernate.annotations.BatchSize(size = 50)
     @ElementCollection
     @CollectionTable(name = "quiz_answer_options", joinColumns = @JoinColumn(name = "answer_id"))
     @Column(name = "option_id", nullable = false)
