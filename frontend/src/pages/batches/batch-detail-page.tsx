@@ -294,12 +294,12 @@ function AddSessionDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="startTime">Start time</Label>
-              <Input id="startTime" type="time" onChange={(event) => setForm({ ...form, startTime: event.target.value })} />
+              <Label htmlFor="startTime">Start time *</Label>
+              <Input id="startTime" type="time" required onChange={(event) => setForm({ ...form, startTime: event.target.value })} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="endTime">End time</Label>
-              <Input id="endTime" type="time" onChange={(event) => setForm({ ...form, endTime: event.target.value })} />
+              <Label htmlFor="endTime">End time *</Label>
+              <Input id="endTime" type="time" required onChange={(event) => setForm({ ...form, endTime: event.target.value })} />
             </div>
           </div>
           <div className="flex flex-col gap-2">
