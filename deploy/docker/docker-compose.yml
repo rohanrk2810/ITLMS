@@ -96,6 +96,8 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    # 12 services hold up to 10 connections each; the default of 100 would run out when they all get busy together.
+    command: ["postgres", "-c", "max_connections=200"]
     networks: [itilms]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-itilms}
@@ -334,7 +336,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 768M
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
@@ -353,6 +355,11 @@ services:
       context: ../../services/identity-service
       dockerfile: ../../deploy/docker/Dockerfile
     image: itilms/identity-service:dev
+    # Busy during a test (every student signs in, saves answers and submits at once), so it gets headroom over the shared 512M.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     environment:
       <<: *service-env
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@itinstitute.local}
@@ -395,6 +402,11 @@ services:
       context: ../../services/course-service
       dockerfile: ../../deploy/docker/Dockerfile
     image: itilms/course-service:dev
+    # Busy during a test (every student signs in, saves answers and submits at once), so it gets headroom over the shared 512M.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     environment:
       <<: *service-env
     healthcheck:
@@ -407,6 +419,11 @@ services:
       context: ../../services/batch-service
       dockerfile: ../../deploy/docker/Dockerfile
     image: itilms/batch-service:dev
+    # Busy during a test (every student signs in, saves answers and submits at once), so it gets headroom over the shared 512M.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     environment:
       <<: *service-env
     healthcheck:
@@ -419,6 +436,11 @@ services:
       context: ../../services/assessment-service
       dockerfile: ../../deploy/docker/Dockerfile
     image: itilms/assessment-service:dev
+    # Busy during a test (every student signs in, saves answers and submits at once), so it gets headroom over the shared 512M.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     environment:
       <<: *service-env
     healthcheck:
@@ -521,6 +543,11 @@ services:
       context: ../../services/liveclass-service
       dockerfile: ../../deploy/docker/Dockerfile
     image: itilms/liveclass-service:dev
+    # Busy during a test (every student signs in, saves answers and submits at once), so it gets headroom over the shared 512M.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     environment:
       <<: *service-env
       # Server to server, over the container network.
