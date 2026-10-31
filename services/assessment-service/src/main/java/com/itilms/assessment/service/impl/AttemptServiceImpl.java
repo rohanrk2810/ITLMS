@@ -37,6 +37,7 @@ import com.itilms.assessment.repository.QuizAttemptRepository;
 import com.itilms.assessment.repository.QuizQuestionRepository;
 import com.itilms.assessment.repository.QuizRepository;
 import com.itilms.assessment.repository.QuizViolationRepository;
+import com.itilms.assessment.service.ExtraAttemptStore;
 import com.itilms.assessment.service.TypingStatsStore;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
@@ -82,6 +83,7 @@ public class AttemptServiceImpl implements AttemptService {
     private final CodingJudge judge;
     private final QuizViolationRepository violations;
     private final TypingStatsStore typingStats;
+    private final ExtraAttemptStore extraAttempts;
 
     // -----------------------------------------------------------------
     // Sitting the test
@@ -119,9 +121,10 @@ public class AttemptServiceImpl implements AttemptService {
 
         long used = attemptRepository.countByQuizIdAndStudentIdAndStatusNot(
                 quizId, student.profileId(), AttemptStatus.TERMINATED);
-        if (used >= quiz.getAttemptsAllowed()) {
+        int allowed = quiz.getAttemptsAllowed() + extraAttempts.extraFor(quizId, student.profileId());
+        if (used >= allowed) {
             throw new BusinessRuleException("NO_ATTEMPTS_LEFT",
-                    "You have used all %d attempt(s) for this test.".formatted(quiz.getAttemptsAllowed()));
+                    "You have used all %d attempt(s) for this test.".formatted(allowed));
         }
 
         Instant deadline = QuizAttempt.deadline(now, quiz.getDurationMinutes());

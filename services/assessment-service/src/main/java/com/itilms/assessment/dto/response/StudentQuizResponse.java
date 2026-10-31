@@ -59,13 +59,14 @@ public record StudentQuizResponse(
 ) {
 
     public static StudentQuizResponse of(Quiz q, int attemptsUsed, Long inProgressAttemptId,
-                                         Integer bestPercentage, boolean resultVisible, Instant now) {
+                                         Integer bestPercentage, boolean resultVisible, Instant now, int extraAttempts) {
         boolean open = q.isOpenAt(now);
-        boolean canStart = open && inProgressAttemptId == null && attemptsUsed < q.getAttemptsAllowed();
+        int allowed = q.getAttemptsAllowed() + extraAttempts;
+        boolean canStart = open && inProgressAttemptId == null && attemptsUsed < allowed;
         Integer best = resultVisible ? bestPercentage : null;
         return new StudentQuizResponse(
                 q.getId(), q.getCourseId(), q.getBatchId(), q.getTitle(), q.getInstructions(),
-                q.getDurationMinutes(), q.displayedMarks(), q.getPassPercentage(), q.getAttemptsAllowed(),
+                q.getDurationMinutes(), q.displayedMarks(), q.getPassPercentage(), allowed,
                 attemptsUsed, q.getAvailableFrom(), q.getAvailableUntil(), q.isMandatory(),
                 q.isSecureMode(), q.getMaxViolations(), q.isRequireCamera(), q.isRequireMicrophone(),
                 com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.isRecordTyping(),

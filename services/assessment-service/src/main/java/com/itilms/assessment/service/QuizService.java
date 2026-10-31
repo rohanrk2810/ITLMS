@@ -35,6 +35,9 @@ public interface QuizService {
      */
     QuizResponse close(Long id);
 
+    /** Gives one student more attempts on a published test than the test allows everyone. */
+    com.itilms.assessment.dto.response.ExtraAttemptResponse giveExtraAttempts(Long quizId, Long studentId, int count);
+
     /** The full test with its answer key - trainers of the batch or course, and staff. */
     QuizResponse get(Long id);
 

@@ -56,6 +56,7 @@ public class QuizServiceImpl implements QuizService {
     private final AssessmentAccess access;
     private final AttemptScorer scorer;
     private final EventPublisher events;
+    private final com.itilms.assessment.service.ExtraAttemptStore extraAttempts;
 
     // -----------------------------------------------------------------
     // Authoring
@@ -257,6 +258,24 @@ public class QuizServiceImpl implements QuizService {
 
     @Override
     @Transactional
+    public com.itilms.assessment.dto.response.ExtraAttemptResponse giveExtraAttempts(Long quizId, Long studentId, int count) {
+        Quiz quiz = requireQuiz(quizId);
+        AppPrincipal caller = access.requireManagesQuiz(quiz);
+        if (quiz.getStatus() != QuizStatus.PUBLISHED) {
+            throw new BusinessRuleException("Extra attempts can be given on a test that is open. This one is "
+                    + (quiz.getStatus() == QuizStatus.CLOSED ? "closed." : "still a draft."));
+        }
+        if (attemptRepository.findByStudentIdAndQuizIdIn(studentId, List.of(quizId)).isEmpty()) {
+            throw new BusinessRuleException("That student has not taken this test, so there is nothing to repeat.");
+        }
+        int total = extraAttempts.grant(quizId, studentId, count, caller.userId());
+        events.audit(SERVICE_NAME, "QUIZ_EXTRA_ATTEMPT_GRANTED", "Quiz", quizId, caller.userId(),
+                Map.of("studentId", studentId, "added", count, "extraAttempts", total));
+        return new com.itilms.assessment.dto.response.ExtraAttemptResponse(studentId, total, quiz.getAttemptsAllowed() + total);
+    }
+
+    @Override
+    @Transactional
     public QuizResponse close(Long id) {
         Quiz quiz = requireQuiz(id);
         access.requireManagesQuiz(quiz);
@@ -359,6 +378,7 @@ public class QuizServiceImpl implements QuizService {
                 .findByStudentIdAndQuizIdIn(student.profileId(), quizIds).stream()
                 .collect(Collectors.groupingBy(QuizAttempt::getQuizId));
 
+        Map<Long, Integer> extra = extraAttempts.extraForStudent(student.profileId(), quizIds);
         Instant now = Instant.now();
         return quizzes.stream().map(q -> {
             List<QuizAttempt> mine = attemptsByQuiz.getOrDefault(q.getId(), List.of());
@@ -367,7 +387,7 @@ public class QuizServiceImpl implements QuizService {
                     .map(QuizAttempt::getId).findFirst().orElse(null);
             boolean visible = q.isShowResultImmediately() || q.getStatus() == QuizStatus.CLOSED;
             return StudentQuizResponse.of(q,
-                    (int) mine.stream().filter(a -> a.getStatus() != AttemptStatus.TERMINATED).count(), running, best.get(q.getId()), visible, now);
+                    (int) mine.stream().filter(a -> a.getStatus() != AttemptStatus.TERMINATED).count(), running, best.get(q.getId()), visible, now, extra.getOrDefault(q.getId(), 0));
         }).toList();
     }
 
