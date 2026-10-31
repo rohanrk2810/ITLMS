@@ -227,6 +227,7 @@ public class StudentServiceImpl implements StudentService {
     private Student persistWithGeneratedCode(CreateStudentRequest request, LeadSource source,
                                              Long userId, String fullName, String email) {
         LocalDate admissionDate = request.admissionDate() == null ? LocalDate.now() : request.admissionDate();
+        studentRepository.lockCodeSequence();
 
         for (int attempt = 1; attempt <= CODE_RETRY_LIMIT; attempt++) {
             long sequence = studentRepository.nextCodeSequence(admissionDate.getYear()) + attempt - 1;

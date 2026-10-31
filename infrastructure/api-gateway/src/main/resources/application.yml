@@ -396,6 +396,14 @@ resilience4j:
     configs:
       default:
         timeoutDuration: 30s
+  # Each circuit breaker also carries a bulkhead, and its default lets only 25 calls to one service run at the same time;
+  # the 26th is answered at once with the "temporarily unavailable" fallback. A class starting a test together is well
+  # past 25. The services queue extra work themselves, so this only needs to stop a runaway, not shape normal traffic.
+  bulkhead:
+    configs:
+      default:
+        maxConcurrentCalls: 500
+        maxWaitDuration: 2s
 
 # One Swagger page listing every service, so a reviewer does not have to know
 # the twelve port numbers (Doc S23, criterion 8).
