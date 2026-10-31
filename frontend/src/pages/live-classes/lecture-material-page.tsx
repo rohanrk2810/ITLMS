@@ -36,6 +36,7 @@ export function LectureMaterialPage() {
   const [importing, setImporting] = useState(false)
   const [report, setReport] = useState<MaterialImportResult | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const jsonInput = useRef<HTMLInputElement>(null)
   const [pasted, setPasted] = useState('')
 
   /** Puts the instructions for ChatGPT on the clipboard; if the browser refuses, saves them as a text file instead. */
@@ -56,6 +57,27 @@ export function LectureMaterialPage() {
       }
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Could not get the text.'))
+    }
+  }
+
+  /**
+   * Saves the whole prompt (format, rules and example) as a file to attach to ChatGPT. The "describe it here" line is
+   * replaced, because the trainer says what they want in the chat message that goes with the file.
+   */
+  async function downloadPrompt() {
+    try {
+      const prompt = (await fetchAiPrompt()).replace(
+        /\[Describe it here:[^\n]*\]/,
+        '(Written by me in my chat message: the subject and topic, how many questions, which kinds, the difficulty and the folder.)',
+      )
+      const url = URL.createObjectURL(new Blob([prompt], { type: 'text/plain' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'question-bank-prompt.txt'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not get the prompt.'))
     }
   }
 
@@ -123,14 +145,31 @@ export function LectureMaterialPage() {
             <Bot className="size-4" /> Make questions with ChatGPT - one file with everything
           </p>
           <ol className="list-decimal pl-5 text-sm text-muted-foreground">
-            <li>Press <b>Copy ChatGPT prompt</b> and paste it into ChatGPT.</li>
-            <li>Write what you want where it says WHAT I WANT (topic, how many, which kinds, folder).</li>
-            <li>Copy ChatGPT&apos;s reply and paste it in the box below (or save it as a .json file and upload it).</li>
+            <li>Press <b>Download prompt file</b> and attach it in ChatGPT (or press <b>Copy ChatGPT prompt</b> and paste it).</li>
+            <li>In the same message write what you want: the topic and how many questions (and kinds, difficulty, folder if you like).</li>
+            <li>Ask ChatGPT for the answer as a .json file and press <b>Upload .json file</b>, or paste its reply in the box below.</li>
           </ol>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => void copyPrompt()}>
+            <Button size="sm" onClick={() => void downloadPrompt()}>
+              <Download className="size-4" /> Download prompt file
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => void copyPrompt()}>
               <Copy className="size-4" /> Copy ChatGPT prompt
             </Button>
+            <Button size="sm" variant="outline" disabled={importing} onClick={() => jsonInput.current?.click()}>
+              {importing ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />} Upload .json file
+            </Button>
+            <input
+              ref={jsonInput}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void upload([file])
+                e.target.value = ''
+              }}
+            />
             <Button size="sm" variant="outline" onClick={() => void downloadMaterialTemplate('json').catch((err) => toast.error(apiErrorMessage(err, 'Could not download the example.')))}>
               <Download className="size-4" /> Example file (.json)
             </Button>
