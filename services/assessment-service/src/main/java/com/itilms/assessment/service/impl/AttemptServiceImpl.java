@@ -505,6 +505,12 @@ public class AttemptServiceImpl implements AttemptService {
                     }
                     continue;
                 }
+                // The page sends every answer on each autosave; one that has not changed is left alone (no write).
+                if (existing != null && text.equals(existing.getAnswerText())
+                        && (question.getType() != QuestionType.CODING
+                            || chosenLanguage(question, answer.codeLanguage()) == existing.getCodeLanguage())) {
+                    continue;
+                }
                 QuizAnswer row = existing != null ? existing
                         : QuizAnswer.builder().attemptId(attempt.getId()).questionId(question.getId()).build();
                 row.setAnswerText(text);
@@ -540,6 +546,9 @@ public class AttemptServiceImpl implements AttemptService {
                     toDelete.add(existing);
                     saved.remove(question.getId());
                 }
+                continue;
+            }
+            if (existing != null && existing.getSelectedOptionIds().equals(selected)) {
                 continue;
             }
             QuizAnswer row = existing != null ? existing

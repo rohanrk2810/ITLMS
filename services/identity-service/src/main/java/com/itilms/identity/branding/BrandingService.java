@@ -24,13 +24,30 @@ public class BrandingService {
     private final InstituteSettingsRepository repository;
     private final EventPublisher events;
 
+    private static final long CACHE_MS = 10_000;
+    private volatile Cached cached;
+
+    private record Cached(BrandingResponse value, long at) {
+    }
+
     /** An image the service will serve back to browsers. */
     public record Image(byte[] bytes, String contentType) {
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Every page load of every user asks for this, so the row is read from the database at most once in {@link #CACHE_MS}.
+     * Any change by the admin clears it at once on this instance; at worst a read racing the commit keeps the old
+     * copy for those few seconds. (No transaction here: a cache hit should not take a database connection.)
+     */
     public BrandingResponse get() {
-        return BrandingResponse.from(load());
+        Cached hit = cached;
+        long now = System.currentTimeMillis();
+        if (hit != null && now - hit.at() < CACHE_MS) {
+            return hit.value();
+        }
+        BrandingResponse fresh = BrandingResponse.from(load());
+        cached = new Cached(fresh, now);
+        return fresh;
     }
 
     @Transactional
@@ -167,6 +184,7 @@ public class BrandingService {
         s.setUpdatedAt(Instant.now());
         s.setUpdatedBy(adminId);
         repository.save(s);
+        cached = null;
         events.audit(SERVICE_NAME, action, "InstituteSettings", (long) InstituteSettings.ROW_ID, adminId,
                 Map.of("name", s.getName()));
         return BrandingResponse.from(s);
