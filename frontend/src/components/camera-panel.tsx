@@ -1,11 +1,12 @@
 import { type RefObject, useEffect, useRef, useState } from 'react'
-import { Camera, CameraOff, Loader2, ScanFace } from 'lucide-react'
+import { ArrowDown, ArrowUp, Camera, CameraOff, ChevronLeft, ChevronRight, Loader2, ScanFace } from 'lucide-react'
 
 import type { CameraCheckName } from '@/api/assessments'
 import { Button } from '@/components/ui/button'
 import { CAMERA_PROBLEM_TEXT, CameraError, loadFaceDetector, openCamera, OVAL, readFaces } from '@/lib/face-detector'
 import { describeFace, loadFaceIdentity, REFERENCE_SAMPLES, samplesAgree } from '@/lib/face-identity'
 import { loadObjectDetector } from '@/lib/object-detector'
+import { monitorDock, useMonitorDock } from '@/lib/monitor-dock'
 import type { CameraStatus } from '@/lib/use-camera-monitor'
 import { cn } from '@/lib/utils'
 
@@ -286,23 +287,60 @@ export function CameraPreview({ stream, video, status, oval = false }: CameraPre
     status === 'off' ||
     status === 'denied'
 
+  const { side, collapsed } = useMonitorDock()
+  const vertical = side === 'top' ? 'top-[4.25rem]' : 'bottom-3'
+
   return (
-    <div
-      className={cn(
-        'fixed right-3 bottom-3 z-30 flex flex-col overflow-hidden rounded-md border-2 bg-black shadow-lg',
-        oval ? 'w-52' : 'w-40',
-        bad ? 'border-destructive' : 'border-emerald-500',
-      )}
-      aria-label="Your camera"
-    >
-      <div className={cn('relative w-full', oval ? 'aspect-[4/3]' : 'h-28')}>
-        <video ref={video} muted playsInline className="size-full -scale-x-100 object-cover" />
-        {oval && <OvalGuide good={status === 'ok' ? true : bad ? false : null} />}
+    <>
+      {/* Tucked away it slides out of sight but stays on the page, so the camera is still on and still watched. */}
+      <div
+        className={cn(
+          'fixed right-8 z-30 flex flex-col overflow-hidden rounded-md border-2 bg-black shadow-lg transition-transform duration-300',
+          vertical,
+          oval ? 'w-52' : 'w-40',
+          bad ? 'border-destructive' : 'border-emerald-500',
+          collapsed && 'pointer-events-none translate-x-[calc(100%+2.5rem)]',
+        )}
+        aria-label="Your camera"
+        aria-hidden={collapsed}
+      >
+        <div className={cn('relative w-full', oval ? 'aspect-[4/3]' : 'h-28')}>
+          <video ref={video} muted playsInline className="size-full -scale-x-100 object-cover" />
+          {oval && <OvalGuide good={status === 'ok' ? true : bad ? false : null} />}
+        </div>
+        <div className={cn('flex items-center gap-1 px-2 py-1 text-xs', bad ? 'bg-destructive text-white' : 'bg-card text-foreground')}>
+          {bad ? <CameraOff className="size-3" /> : <ScanFace className="size-3" />}
+          {STATUS_TEXT[status]}
+        </div>
       </div>
-      <div className={cn('flex items-center gap-1 px-2 py-1 text-xs', bad ? 'bg-destructive text-white' : 'bg-card text-foreground')}>
-        {bad ? <CameraOff className="size-3" /> : <ScanFace className="size-3" />}
-        {STATUS_TEXT[status]}
+      {/* The tab at the edge: > hides the camera box, < brings it back; the arrows move it to the top or the bottom. */}
+      <div
+        className={cn(
+          'fixed right-0 z-30 flex flex-col items-center overflow-hidden rounded-l-md border-y-2 border-l-2 bg-card shadow-lg',
+          vertical,
+          bad ? 'border-destructive' : 'border-emerald-500',
+        )}
+      >
+        <button
+          type="button"
+          onClick={monitorDock.toggleCollapsed}
+          aria-label={collapsed ? 'Show my camera' : 'Hide my camera'}
+          title={collapsed ? 'Show my camera' : 'Hide my camera (it stays on)'}
+          className="flex h-8 w-6 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          {collapsed ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={monitorDock.toggleSide}
+          aria-label={side === 'top' ? 'Move to the bottom' : 'Move to the top'}
+          title={side === 'top' ? 'Move to the bottom' : 'Move to the top'}
+          className="flex h-6 w-6 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          {side === 'top' ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />}
+        </button>
+        <span className={cn('mb-1.5 mt-0.5 size-2 rounded-full', bad ? 'animate-pulse bg-destructive' : 'bg-emerald-500')} />
       </div>
-    </div>
+    </>
   )
 }
