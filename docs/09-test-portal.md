@@ -128,3 +128,9 @@ Questions can carry tables (`tables`: up to 20, each up to 60 columns and 20 000
 ## Saving answers (2026-10-31)
 
 The page autosaves every 20 seconds and sends all the answers; the server now writes only the ones that changed and loads the chosen options and the test cases for the whole paper in one query each, instead of one per question. A save went from about 26 database queries to about 12 and from a p95 of 604 ms to 89 ms with 150 students at once (local load test, [25-load-testing.md](25-load-testing.md)).
+
+## Remote-control software (desktop app only, 2026-10-31)
+
+In the SutraVidya desktop app a secure test also looks for remote-control programs on the computer (AnyDesk, TeamViewer, RustDesk, Getscreen, UltraViewer, Ammyy, Remote Utilities, LogMeIn, Chrome Remote Desktop, VNC, Splashtop, Supremo, DameWare, ScreenConnect, Windows Remote Assistance). Before the test starts, the *Start test* button stays off and the screen names the program until it is closed (checked every 5 seconds). During the test the app looks every 15 seconds; a program found is sent to the server as `REMOTE_TOOL` (the detail names it), the student sees *"Remote-control software is running on this computer. Close it now"*, and the trainer sees it in the violation list. It never ends the attempt: it is a match on program names, so it catches the common ones and not a renamed copy or one hidden on purpose. It is one layer next to the camera and window checks.
+
+A **browser cannot look at the computer's programs**, so on the web this check does nothing. To rely on it, have students take secure tests in the desktop app (`desktop/preload.js` offers `sutraDesktop.remoteTools()`, `desktop/main.js` does the lookup with `tasklist` on Windows or `ps` elsewhere and answers only the app's own page). The new violation type needed migration V15 in assessment-service.

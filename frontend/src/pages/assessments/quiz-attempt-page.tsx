@@ -33,6 +33,7 @@ import { CAMERA_PROBLEM_TEXT, CameraError, openCamera, stopStream } from '@/lib/
 import { MIC_PROBLEM_TEXT, MicError, openMicrophone } from '@/lib/microphone'
 import { useCameraMonitor } from '@/lib/use-camera-monitor'
 import { thresholdFor, useMicMonitor } from '@/lib/use-mic-monitor'
+import { useRemoteToolGuard, useRemoteToolsBeforeStart } from '@/lib/use-remote-tool-guard'
 import { enterFullscreen, leaveFullscreen, useTestGuard } from '@/lib/use-test-guard'
 import { cn } from '@/lib/utils'
 
@@ -88,6 +89,8 @@ export function QuizAttemptPage() {
 
   const [view, setView] = useState<'loading' | 'intro' | 'live' | 'results' | 'error'>('loading')
   const [intro, setIntro] = useState<StudentQuizResponse | null>(null)
+  // Desktop app only: remote-control programs running before a secure test starts (empty in a browser).
+  const remoteToolsNow = useRemoteToolsBeforeStart(view === 'intro' && intro?.secureMode === true)
   const [warning, setWarning] = useState<string | null>(null)
   const [needFullscreen, setNeedFullscreen] = useState(false)
   const [paper, setPaper] = useState<AttemptViewResponse | null>(null)
@@ -233,6 +236,8 @@ export function QuizAttemptPage() {
     onViolation: handleViolation,
     onFullscreenChange: (fullscreen) => setNeedFullscreen(!fullscreen && document.fullscreenEnabled),
   })
+  // In the desktop app only: remote-control software running during the test is warned about and recorded.
+  useRemoteToolGuard(secure, handleViolation)
 
   // Camera tests: the camera is opened on the rules screen (that needs a click) and kept for the sitting.
   // Each problem the monitor notices goes to the server the same way a window event does, and the server
@@ -407,9 +412,14 @@ export function QuizAttemptPage() {
                 onThreshold={setMicThreshold}
               />
             )}
+            {remoteToolsNow.length > 0 && (
+              <p className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                Remote-control software is running on this computer ({remoteToolsNow.join(', ')}). Close it to start this test.
+              </p>
+            )}
             <Button
               className="self-start"
-              disabled={(intro.requireCamera && !cameraReady) || (intro.requireMicrophone && !micReady)}
+              disabled={(intro.requireCamera && !cameraReady) || (intro.requireMicrophone && !micReady) || remoteToolsNow.length > 0}
               onClick={() => {
                 // Fullscreen must be asked for from this click, so it comes first.
                 void (intro.secureMode ? enterFullscreen() : Promise.resolve(true)).then(() => startAttempt())
