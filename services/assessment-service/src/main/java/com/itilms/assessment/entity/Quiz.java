@@ -70,6 +70,11 @@ public class Quiz extends AuditableEntity {
     @Builder.Default
     private boolean shuffleQuestions = true;
 
+    /** Each student sees the options of a choice question in their own order. True/false keeps its order. */
+    @Column(name = "shuffle_options", nullable = false)
+    @Builder.Default
+    private boolean shuffleOptions = true;
+
     @Column(name = "show_result_immediately", nullable = false)
     @Builder.Default
     private boolean showResultImmediately = true;

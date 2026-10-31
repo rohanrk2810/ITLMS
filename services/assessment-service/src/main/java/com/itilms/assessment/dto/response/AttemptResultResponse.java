@@ -91,7 +91,7 @@ public record AttemptResultResponse(
                 QuizAnswer a = byQuestion.get(q.getId());
                 return new AnswerResult(
                         q.getId(), q.getQuestionText(), q.getType().name(), q.getMarks(),
-                        q.getOptions().stream()
+                        q.optionsFor(attempt.getId(), quiz.isShuffleOptions()).stream()
                                 .map(o -> new AttemptViewResponse.Option(o.getId(), o.getOptionText()))
                                 .toList(),
                         a == null ? Set.of() : Set.copyOf(a.getSelectedOptionIds()),

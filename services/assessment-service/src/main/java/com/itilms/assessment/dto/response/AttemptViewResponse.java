@@ -86,7 +86,7 @@ public record AttemptViewResponse(
                                          List<QuizQuestion> questions, List<QuizAnswer> saved, Instant now) {
         List<Question> paper = questions.stream()
                 .map(q -> new Question(q.getId(), q.getQuestionText(), q.getType().name(), q.getMarks(),
-                        q.getOptions().stream()
+                        q.optionsFor(attempt.getId(), quiz.isShuffleOptions()).stream()
                                 .map(o -> new Option(o.getId(), o.getOptionText()))
                                 .toList(),
                         q.getCodeLanguage() == null ? null : q.getCodeLanguage().name(),
