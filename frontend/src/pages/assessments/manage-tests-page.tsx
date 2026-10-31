@@ -161,7 +161,13 @@ export function ManageTestsPage() {
 
 function NewQuizDialog() {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState<Partial<QuizInput>>({ durationMinutes: 30, passPercentage: 40, attemptsAllowed: 1 })
+  const [form, setForm] = useState<Partial<QuizInput>>({
+    durationMinutes: 30,
+    passPercentage: 40,
+    attemptsAllowed: 1,
+    shuffleQuestions: true,
+    shuffleOptions: true,
+  })
   // When the test can be taken: any time once it is published, or only between two moments (then it expires).
   const [timing, setTiming] = useState<'anytime' | 'scheduled'>('anytime')
   const [opensAt, setOpensAt] = useState('')
@@ -443,6 +449,27 @@ function NewQuizDialog() {
               off or when sustained sound is picked up, and each is recorded with its time for you to review. Only the
               loudness is measured against the room&apos;s own background level: nothing is recorded or stored, it cannot
               tell speech from other noise, and nothing is failed automatically.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-md border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox
+                checked={form.shuffleQuestions ?? true}
+                onCheckedChange={(value) => setForm({ ...form, shuffleQuestions: value === true })}
+              />
+              Shuffle the questions
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox
+                checked={form.shuffleOptions ?? true}
+                onCheckedChange={(value) => setForm({ ...form, shuffleOptions: value === true })}
+              />
+              Shuffle the answer options
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Each student gets the questions, and the options of every multiple-choice question, in their own order, so a
+              neighbour&apos;s answer letter is no use. A student who reloads sees the same order. True/false questions keep
+              True before False.
             </p>
           </div>
           <div className="flex flex-col gap-2 rounded-md border p-3">

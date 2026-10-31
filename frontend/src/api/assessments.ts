@@ -437,6 +437,8 @@ export interface QuizResponse {
   availableFrom: string | null
   availableUntil: string | null
   shuffleQuestions: boolean
+  /** Each student sees the options of a choice question in their own order. */
+  shuffleOptions: boolean
   showResultImmediately: boolean
   mandatory: boolean
   secureMode: boolean
@@ -467,6 +469,7 @@ export interface QuizInput {
   availableFrom?: string
   availableUntil?: string
   shuffleQuestions?: boolean
+  shuffleOptions?: boolean
   showResultImmediately?: boolean
   mandatory?: boolean
   secureMode?: boolean

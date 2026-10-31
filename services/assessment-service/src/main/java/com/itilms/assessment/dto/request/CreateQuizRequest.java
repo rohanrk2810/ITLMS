@@ -44,6 +44,9 @@ public record CreateQuizRequest(
 
         Boolean shuffleQuestions,
 
+        @Schema(description = "Each student sees the options of a choice question in their own order. Default true.")
+        Boolean shuffleOptions,
+
         @Schema(description = "Show the score the moment the student submits. Turn off for a "
                 + "test whose questions will be reused with a later batch.")
         Boolean showResultImmediately,

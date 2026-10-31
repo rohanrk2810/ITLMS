@@ -78,6 +78,7 @@ public class QuizServiceImpl implements QuizService {
                 .availableFrom(request.availableFrom())
                 .availableUntil(request.availableUntil())
                 .shuffleQuestions(request.shuffleQuestions() == null || request.shuffleQuestions())
+                .shuffleOptions(request.shuffleOptions() == null || request.shuffleOptions())
                 .showResultImmediately(request.showResultImmediately() == null || request.showResultImmediately())
                 .mandatory(request.mandatory() == null || request.mandatory())
                 .secureMode(Boolean.TRUE.equals(request.secureMode()))
@@ -126,6 +127,9 @@ public class QuizServiceImpl implements QuizService {
         quiz.setAvailableUntil(request.availableUntil());
         if (request.shuffleQuestions() != null) {
             quiz.setShuffleQuestions(request.shuffleQuestions());
+        }
+        if (request.shuffleOptions() != null) {
+            quiz.setShuffleOptions(request.shuffleOptions());
         }
         if (request.showResultImmediately() != null) {
             quiz.setShowResultImmediately(request.showResultImmediately());

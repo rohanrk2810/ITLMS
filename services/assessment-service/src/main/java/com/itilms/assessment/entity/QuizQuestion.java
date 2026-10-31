@@ -151,6 +151,21 @@ public class QuizQuestion extends AuditableEntity {
         return text.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * The options in the order one attempt shows them. With shuffling on, a single- or multiple-choice question's options
+     * are mixed, the same way every time for the same attempt (a reload must not move them) and differently for another
+     * attempt. True/false keeps True before False, and other question types have no options to mix.
+     */
+    public List<QuizOption> optionsFor(Long attemptId, boolean shuffle) {
+        if (!shuffle || (type != QuestionType.SINGLE_CHOICE && type != QuestionType.MULTI_CHOICE) || options.size() < 2) {
+            return options;
+        }
+        List<QuizOption> mixed = new ArrayList<>(options);
+        long seed = (attemptId == null ? 0 : attemptId) * 1_000_003L + (id == null ? 0 : id);
+        java.util.Collections.shuffle(mixed, new java.util.Random(seed));
+        return mixed;
+    }
+
     /** Sum of the weights of every test case: the denominator of a coding score. */
     public int totalTestWeight() {
         return testCases.stream().mapToInt(QuizTestCase::getWeight).sum();

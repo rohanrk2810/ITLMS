@@ -32,6 +32,7 @@ public record QuizResponse(
         Instant availableFrom,
         Instant availableUntil,
         boolean shuffleQuestions,
+        boolean shuffleOptions,
         boolean showResultImmediately,
         boolean mandatory,
         boolean secureMode,
@@ -98,7 +99,7 @@ public record QuizResponse(
         return new QuizResponse(
                 q.getId(), q.getCourseId(), q.getBatchId(), q.getTitle(), q.getInstructions(),
                 q.getDurationMinutes(), q.getPassPercentage(), q.getAttemptsAllowed(), q.getTotalMarks(),
-                q.getAvailableFrom(), q.getAvailableUntil(), q.isShuffleQuestions(),
+                q.getAvailableFrom(), q.getAvailableUntil(), q.isShuffleQuestions(), q.isShuffleOptions(),
                 q.isShowResultImmediately(), q.isMandatory(), q.isSecureMode(), q.getMaxViolations(),
                 q.isRequireCamera(), q.isRequireMicrophone(),
                 com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.isRecordTyping(), q.getQuestionsPerAttempt(), q.getStatus().name(), q.getTrainerId(),
