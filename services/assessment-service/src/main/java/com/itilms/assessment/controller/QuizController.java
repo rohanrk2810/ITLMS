@@ -127,6 +127,18 @@ public class QuizController {
         return quizService.close(id);
     }
 
+    @Operation(summary = "Give one student more attempts",
+            description = "On top of the attempts the test allows everyone: a retake after a bad connection, or after a secure "
+                    + "test was ended. The test must be open and the student must already have taken it.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/{id}/students/{studentId}/extra-attempts")
+    public com.itilms.assessment.dto.response.ExtraAttemptResponse giveExtraAttempts(
+            @PathVariable Long id, @PathVariable Long studentId,
+            @Valid @RequestBody(required = false) com.itilms.assessment.dto.request.ExtraAttemptRequest request) {
+        int count = request == null || request.count() == null ? 1 : request.count();
+        return quizService.giveExtraAttempts(id, studentId, count);
+    }
+
     @Operation(summary = "Every result for a test", description = "The trainer's results sheet, best score first.")
     @PreAuthorize(Roles.ACADEMIC)
     @GetMapping("/{id}/results")

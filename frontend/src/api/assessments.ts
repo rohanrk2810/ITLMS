@@ -567,6 +567,20 @@ export async function closeQuiz(quizId: number | string): Promise<QuizResponse> 
   return data
 }
 
+export interface ExtraAttemptResult {
+  studentId: number
+  /** Attempts given to this student on top of the test's own. */
+  extraAttempts: number
+  /** The test's attempts plus the extra ones: how many this student may make in all. */
+  attemptsAllowed: number
+}
+
+/** Gives one student more attempts than the test allows everyone (a retake). */
+export async function giveExtraAttempts(quizId: number | string, studentId: number, count = 1): Promise<ExtraAttemptResult> {
+  const { data } = await apiClient.post<ExtraAttemptResult>(`/api/quizzes/${quizId}/students/${studentId}/extra-attempts`, { count })
+  return data
+}
+
 /** The trainer's results sheet, best score first. */
 export async function getQuizResults(quizId: number | string): Promise<AttemptResultResponse[]> {
   const { data } = await apiClient.get<AttemptResultResponse[]>(`/api/quizzes/${quizId}/results`)

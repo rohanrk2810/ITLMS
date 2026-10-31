@@ -43,6 +43,7 @@ import com.itilms.assessment.repository.QuizRepository;
 import com.itilms.assessment.repository.QuizViolationRepository;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
+import com.itilms.assessment.service.ExtraAttemptStore;
 import com.itilms.assessment.service.TypingStatsStore;
 import com.itilms.assessment.service.CodingJudge;
 import com.itilms.common.exception.BusinessRuleException;
@@ -68,6 +69,7 @@ class AttemptServiceImplTest {
     @Mock private CodingJudge judge;
     @Mock private QuizViolationRepository violations;
     @Mock private TypingStatsStore typingStats;
+    @Mock private ExtraAttemptStore extraAttempts;
 
     private AttemptServiceImpl service;
     private Quiz quiz;
@@ -77,7 +79,7 @@ class AttemptServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new AttemptServiceImpl(quizRepository, questionRepository, attemptRepository,
-                answerRepository, access, scorer, judge, violations, typingStats);
+                answerRepository, access, scorer, judge, violations, typingStats, extraAttempts);
 
         quiz = Quiz.builder().id(1L).courseId(1L).title("t").durationMinutes(30).totalMarks(2)
                 .attemptsAllowed(1).status(QuizStatus.PUBLISHED).build();
@@ -144,6 +146,34 @@ class AttemptServiceImplTest {
 
         assertThat(paper.questions()).extracting(q -> q.id()).containsExactly(20L);
         assertThat(paper.totalMarks()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("A student who used every attempt is refused, and told how many they had")
+    void attemptsExhausted() {
+        when(access.studentBatchFor(quiz)).thenReturn(Optional.of(5L));
+        when(attemptRepository.countByQuizIdAndStudentIdAndStatusNot(1L, STUDENT, AttemptStatus.TERMINATED)).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.start(1L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("all 1 attempt");
+    }
+
+    @Test
+    @DisplayName("Extra attempts a trainer gave this student let them start again")
+    void extraAttemptsAllowAnotherStart() {
+        when(access.studentBatchFor(quiz)).thenReturn(Optional.of(5L));
+        when(attemptRepository.countByQuizIdAndStudentIdAndStatusNot(1L, STUDENT, AttemptStatus.TERMINATED)).thenReturn(1L);
+        when(extraAttempts.extraFor(1L, STUDENT)).thenReturn(1);
+        when(attemptRepository.save(any(QuizAttempt.class))).thenAnswer(inv -> {
+            QuizAttempt saved = inv.getArgument(0);
+            saved.setId(11L);
+            return saved;
+        });
+
+        var paper = service.start(1L);
+
+        assertThat(paper.attemptId()).isEqualTo(11L);
     }
 
     @Test

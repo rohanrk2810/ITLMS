@@ -11,6 +11,7 @@ import {
   deleteQuestion,
   getQuiz,
   getQuizResults,
+  giveExtraAttempts,
   listViolations,
   publishQuiz,
   QUESTION_TYPE_LABEL,
@@ -74,6 +75,12 @@ export function QuizEditorPage() {
       void invalidate()
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not close the test.')),
+  })
+
+  const extraAttemptMutation = useMutation({
+    mutationFn: (student: { id: number; name: string }) => giveExtraAttempts(quizId!, student.id).then((r) => ({ ...r, name: student.name })),
+    onSuccess: (r) => toast.success(`${r.name} can now make ${r.attemptsAllowed} attempts in all (${r.extraAttempts} extra).`),
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not give another attempt.')),
   })
 
   const deleteQuestionMutation = useMutation({
@@ -183,6 +190,7 @@ export function QuizEditorPage() {
                 <TableHead>Result</TableHead>
                 {(quiz.secureMode || quiz.requireCamera) && <TableHead>Monitoring</TableHead>}
                 {quiz.recordTyping && codingQuestionsOf(quiz).length > 0 && <TableHead>Typing</TableHead>}
+                {quiz.status === 'PUBLISHED' && <TableHead>Attempts</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -222,6 +230,20 @@ export function QuizEditorPage() {
                           </Badge>
                         )}
                       </div>
+                    </TableCell>
+                  )}
+                  {quiz.status === 'PUBLISHED' && (
+                    <TableCell>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={extraAttemptMutation.isPending}
+                        title="Let this student take the test one more time"
+                        onClick={() => extraAttemptMutation.mutate({ id: result.studentId, name: result.studentName })}
+                      >
+                        +1 attempt
+                      </Button>
                     </TableCell>
                   )}
                 </TableRow>
