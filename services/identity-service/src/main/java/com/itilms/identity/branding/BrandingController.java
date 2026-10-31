@@ -35,8 +35,12 @@ public class BrandingController {
 
     @SecurityRequirements
     @GetMapping("/api/public/branding")
-    public BrandingResponse get() {
-        return service.get();
+    public ResponseEntity<BrandingResponse> get() {
+        // Every page load asks for this, signed in or not. A few seconds in the browser spares the database; an edit
+        // by the admin shows up for everyone within that time.
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofSeconds(15)).cachePublic())
+                .body(service.get());
     }
 
     @SecurityRequirements
