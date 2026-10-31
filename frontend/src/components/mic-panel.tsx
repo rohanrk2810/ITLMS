@@ -3,6 +3,7 @@ import { Loader2, Mic, MicOff, Volume2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { MIC_PROBLEM_TEXT, MicError, openAnalyser, openMicrophone, readLevel } from '@/lib/microphone'
+import { useMonitorDock } from '@/lib/monitor-dock'
 import { type MicStatus, thresholdFor } from '@/lib/use-mic-monitor'
 import { cn } from '@/lib/utils'
 
@@ -133,17 +134,22 @@ const STATUS_TEXT: Record<MicStatus, string> = {
 export function MicIndicator({ status, besideCamera }: { status: MicStatus; besideCamera?: boolean }) {
   const bad = status === 'off' || status === 'denied' || status === 'sound'
   const Icon = status === 'off' || status === 'denied' ? MicOff : status === 'sound' ? Volume2 : Mic
+  // Sits on the same side as the camera box, and shrinks to its icon when the camera box is tucked away.
+  const { side, collapsed } = useMonitorDock()
+  const tucked = collapsed && besideCamera === true
   return (
     <div
       className={cn(
-        'fixed bottom-3 z-30 flex items-center gap-1 rounded-md border-2 px-2 py-1 text-xs shadow-lg',
-        besideCamera ? 'right-[11.5rem]' : 'right-3',
+        'fixed z-30 flex items-center gap-1 rounded-md border-2 px-2 py-1 text-xs shadow-lg transition-all duration-300',
+        side === 'top' ? 'top-[4.25rem]' : 'bottom-3',
+        besideCamera ? (tucked ? 'right-9' : 'right-[15.5rem]') : 'right-3',
         bad ? 'border-destructive bg-destructive text-white' : 'border-emerald-500 bg-card text-foreground',
       )}
       aria-label="Your microphone"
+      title={STATUS_TEXT[status]}
     >
       <Icon className="size-3" />
-      {STATUS_TEXT[status]}
+      {!tucked && STATUS_TEXT[status]}
     </div>
   )
 }
