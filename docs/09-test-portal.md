@@ -118,3 +118,13 @@ In the test's results, each attempt of a secure or camera test has a **Monitorin
 ## Creating a test from a JSON file or a pasted ChatGPT reply
 
 The *New test* dialog has **Create from a JSON file** and a box to paste ChatGPT's reply. Both read the question-bank JSON format (`{"questions": [...]}`, see `question-bank-example.json` in liveclass-service); `title`, `instructions`, `durationMinutes`, `passPercentage` and `attemptsAllowed` may sit beside `questions` and fill the form. Text around the JSON, such as a markdown code fence, is cut away. When the test is created, the questions are added to the draft one by one. Supported types: MCQ, MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER and CODING (with test cases); open questions cannot be marked and are left out with a warning. The reader is `frontend/src/lib/test-json.ts`. Dialogs now scroll when taller than the screen.
+
+## Making a question bank with ChatGPT (2026-10-31)
+
+On the **Question bank** page the box *Make questions with ChatGPT* has these steps: **Download prompt file** saves the whole instruction text (the format, the rules and an example, with the "describe it here" line replaced by a note that the request is written in the chat) as `question-bank-prompt.txt`; attach it in ChatGPT and, in the same message, say the topic and how many questions (and kinds, difficulty, folder if wanted). Ask for the answer as a `.json` file and press **Upload .json file**, or paste the reply in the box and press *Add these questions to my bank*. **Copy ChatGPT prompt** puts the same text on the clipboard instead. Excel and CSV templates and *Upload filled file* are unchanged.
+
+Questions can carry tables (`tables`: up to 20, each up to 60 columns and 20 000 rows) and SQL: `setupSql` (Oracle `CREATE TABLE` and one `INSERT` per row) builds the database before the student's query, and `testCases[].expectedOutput` is what the correct query prints (one row per line, columns joined by `|`, no heading, an empty value for NULL). The data in `tables` and in `setupSql` must be the same, or the student sees one thing and the query runs on another.
+
+## Saving answers (2026-10-31)
+
+The page autosaves every 20 seconds and sends all the answers; the server now writes only the ones that changed and loads the chosen options and the test cases for the whole paper in one query each, instead of one per question. A save went from about 26 database queries to about 12 and from a p95 of 604 ms to 89 ms with 150 students at once (local load test, [25-load-testing.md](25-load-testing.md)).

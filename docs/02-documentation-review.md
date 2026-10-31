@@ -126,7 +126,7 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 | Secrets from the environment | The database password, JWT secret, first admin password and LiveKit secret have no defaults; startup fails if any is missing | Done |
 | Secure CORS and security headers | Allowed origins are configured at the gateway and in every service | Done |
 | Audit privileged actions | Services publish audit events; reporting-service stores them (`audit_logs`) and exposes them to ADMIN as CSV/Excel/PDF | Done |
-| Rate-limit login and password reset | Gateway limiter backed by Redis on `/api/auth/**`: 5 requests per second, bursts of 10 | Done |
+| Rate-limit login and password reset | Gateway limiter backed by Redis, per client address. Sign-in, registration, codes and password reset (`/api/auth/**`): 15 requests per second, bursts of 40. The calls a signed-in page makes all the time (`/me`, `/refresh`, `/logout`, the two sign-in settings) have their own limit of 50 per second, bursts of 150, because they cannot be used to guess a password and a classroom behind one address would otherwise use up the sign-in budget just by opening pages (changed 2026-10-31; it was 5 per second, bursts of 10, shared by all of them). Guessing is stopped by the lock-out after five wrong passwords and the human check | Done |
 
 ### §14 Validation and business rules
 

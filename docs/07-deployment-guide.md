@@ -94,6 +94,7 @@ This has not yet been exercised end-to-end in this project (see the "still not d
 
 Each business service is capped at `512M` (`deploy: resources: limits: memory:` in compose), except:
 - **notification-service: 640M** — Thymeleaf templating plus the outbox job and a mail client sit close to the 512M ceiling under load (measured at ~470M during the smoke test); raised after hitting this in practice.
+- **api-gateway, identity-service, assessment-service, batch-service, course-service and liveclass-service: 768M** (changed 2026-10-31). They carry the load when a class signs in and takes a test together; batch-service had been sitting at 495M of 512M. Raise further if `docker stats` shows them near the limit.
 - **frontend: 128M** — static Nginx only.
 
 Platform services (gateway, config-server, discovery-server) are 512M each. The whole stack is roughly **4.5GB** and 18 containers; Docker Desktop needs at least 6GB allocated, or containers get OOM-killed rather than failing with a clear error. `JAVA_OPTS`'s `-XX:MaxRAMPercentage=65` (70 in the shared Dockerfile default) means the JVM heap is sized from *the container's* limit — raising a service's memory limit without also raising `JAVA_OPTS` if you override it wastes the extra memory outside the heap.
@@ -139,3 +140,21 @@ Recorded here rather than implied by omission:
 - **MinIO** has not been exercised end-to-end (§6).
 - **No automated backup**, no rolling/blue-green deploy, no image build in CI (§7–§9 describe how you would do each by hand today).
 - **No staging environment exists yet** — only "local" and "whatever you point a fresh `.env` at."
+
+## Database connections and the gateway's concurrency limit (2026-10-31)
+
+- **Postgres runs with `max_connections=200`** (`command:` in compose). Twelve services each hold a pool of up to 10 connections, which with the default of 100 runs out when they are all busy together.
+- **Pool size per service** is set with `DB_POOL_MAX` in compose, overridable from `.env`: assessment 20 (a whole class takes a test at once), identity 15, the quiet services (finance, certificate, placement, notification, file, reporting, codeexec) 5, the rest 10 (`<SERVICE>_DB_POOL_MAX`, for example `ASSESSMENT_DB_POOL_MAX`). Keep the sum under `max_connections`.
+- **Gateway bulkhead:** each circuit breaker also has a bulkhead, and its default lets only 25 calls to one service run at once; the 26th gets the "temporarily unavailable" answer (503). A class starting a test together went past that (found by the load test, [25-load-testing.md](25-load-testing.md)). `resilience4j.bulkhead` in the gateway's `application.yml` now allows 500 and waits up to 2 seconds.
+- **Nginx compresses the bundle.** The site sits behind Caddy, which adds a `Via` header, and Nginx does not compress such requests unless `gzip_proxied any` is set; before 2026-10-31 none of it was compressed (`frontend/deploy/nginx.conf`).
+
+## Updating a running server by hand (when `git pull` is not possible)
+
+If the server has no GitHub access, copy the changed files over with `scp`, then on the server build and replace only what changed:
+
+```
+cd ~/ITLMS && mvn -q -DskipTests -pl services/identity-service -am package    # from the repository root, online; add every changed module
+cd deploy/docker && docker compose up -d --build --no-deps identity-service     # always --no-deps
+```
+
+The Docker image copies a jar that is already built, so changing a source file without running Maven changes nothing in the running service. Recreating a service takes it out for a minute or two (a Java service needs time to be healthy again); a change to Postgres's own settings restarts the database and every service reconnects, so do it out of hours. For the frontend only: `docker compose up -d --build --no-deps frontend`.
