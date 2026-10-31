@@ -113,6 +113,28 @@ spring:
           predicates:
             - Path=/api/branding/**
 
+        # What a signed-in page does all the time (who am I, renew the token, sign out) and the two settings the sign-in
+        # page reads. None of them can be used to guess a password, so they get a roomy limit: before, they shared the
+        # sign-in budget and a classroom behind one address used it up just by opening pages.
+        - id: identity-auth-session
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/auth/me,/api/auth/refresh,/api/auth/logout,/api/auth/logout-all,/api/auth/sessions/**,/api/auth/captcha-config,/api/auth/social-config
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@clientAddressKeyResolver}"
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 150
+                redis-rate-limiter.requestedTokens: 1
+            - name: CircuitBreaker
+              args:
+                name: identityCircuitBreaker
+                fallbackUri: forward:/fallback/identity
+
+        # Sign-in, registration, codes and password reset: the ones a guessing script goes for. The limit is per address,
+        # and a whole college can share one address, so it is 15 a second (burst 40) rather than 5; what stops guessing
+        # is the lock-out after five wrong passwords and the human check, not this.
         - id: identity-auth
           uri: lb://identity-service
           predicates:
@@ -121,8 +143,8 @@ spring:
             - name: RequestRateLimiter
               args:
                 key-resolver: "#{@clientAddressKeyResolver}"
-                redis-rate-limiter.replenishRate: 5
-                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 40
                 redis-rate-limiter.requestedTokens: 1
             - name: CircuitBreaker
               args:
