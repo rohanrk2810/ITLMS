@@ -26,6 +26,12 @@ public enum ViolationType {
     CAMERA_DISABLED(false, true, "Warning: Your camera must stay on for this test. Turn it back on."),
     CAMERA_PERMISSION_DENIED(false, true, "Warning: Camera permission was removed. Allow the camera again to continue."),
 
+    /**
+     * The desktop app found remote-control software running on the computer (for example AnyDesk or TeamViewer). Only the
+     * app can look; a browser cannot. Recorded and warned, never ends the attempt: a name match can be wrong.
+     */
+    REMOTE_TOOL(false, false, "Warning: Remote-control software is running on this computer. Close it now; this is recorded for your trainer."),
+
     MICROPHONE_DISABLED(false, false, true, "Warning: Your microphone must stay on for this test. Turn it back on."),
     MICROPHONE_PERMISSION_DENIED(false, false, true,
             "Warning: Microphone permission was removed. Allow the microphone again to continue."),

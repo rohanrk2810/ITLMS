@@ -181,6 +181,7 @@ export type ViolationType =
   | 'MICROPHONE_DISABLED'
   | 'MICROPHONE_PERMISSION_DENIED'
   | 'SPEECH_DETECTED'
+  | 'REMOTE_TOOL'
 
 export const VIOLATION_LABEL: Record<ViolationType, string> = {
   FACE_NOT_DETECTED: 'Face not visible',
@@ -193,6 +194,7 @@ export const VIOLATION_LABEL: Record<ViolationType, string> = {
   MICROPHONE_DISABLED: 'Microphone turned off',
   MICROPHONE_PERMISSION_DENIED: 'Microphone permission removed',
   SPEECH_DETECTED: 'Sound picked up',
+  REMOTE_TOOL: 'Remote-control software running',
   TAB_SWITCH: 'Left the test tab',
   WINDOW_BLUR: 'Left the test window',
   FULLSCREEN_EXIT: 'Left fullscreen',

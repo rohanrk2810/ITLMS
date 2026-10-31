@@ -1,6 +1,7 @@
-const { app, BrowserWindow, desktopCapturer, protocol, net, session, shell } = require('electron')
+const { app, BrowserWindow, desktopCapturer, ipcMain, protocol, net, session, shell } = require('electron')
 const path = require('node:path')
 const os = require('node:os')
+const { execFile } = require('node:child_process')
 const fs = require('node:fs')
 const { pathToFileURL } = require('node:url')
 
@@ -46,6 +47,46 @@ function serveApp() {
     protocol.handle(SCHEME, bundledFile)
   }
 }
+
+// Remote-control programs a secure test warns about. The page asks (preload.js) and gets back the names found. This is a
+// match on the running programs' names, so it catches the common ones and not a renamed copy or one hidden on purpose:
+// it is one layer next to the camera and window checks, not a guarantee.
+const REMOTE_TOOLS = [
+  'anydesk', 'teamviewer', 'rustdesk', 'getscreen', 'ultraviewer', 'ammyy', 'rutserv', 'rfusclient', 'logmein',
+  'remoting_host', 'winvnc', 'tvnserver', 'vncserver', 'splashtop', 'supremo', 'dwagsvc', 'screenconnect', 'msra',
+]
+
+function runningProgramNames() {
+  return new Promise((resolve) => {
+    const [command, args] =
+      process.platform === 'win32' ? ['tasklist', ['/fo', 'csv', '/nh']] : ['ps', ['-A', '-o', 'comm=']]
+    execFile(command, args, { windowsHide: true, timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, (error, stdout) => {
+      if (error) {
+        resolve([])
+        return
+      }
+      // tasklist CSV lines start with "Image Name", ps lines are the program's path.
+      resolve(
+        stdout
+          .split(/\r?\n/)
+          .map((line) => (process.platform === 'win32' ? (line.match(/^"([^"]+)"/) ?? [])[1] : line.split('/').pop()))
+          .filter(Boolean)
+          .map((name) => name.toLowerCase()),
+      )
+    })
+  })
+}
+
+// Only the app's own page may ask.
+ipcMain.handle('remote-tools', async (event) => {
+  if (!event.senderFrame || !event.senderFrame.url.startsWith(ORIGIN)) return []
+  const found = new Set()
+  for (const name of await runningProgramNames()) {
+    const tool = REMOTE_TOOLS.find((t) => name.includes(t))
+    if (tool) found.add(tool)
+  }
+  return [...found]
+})
 
 // One copy at a time. Two copies share the same cache folder, fight over it and one of them shows a blank window.
 const gotLock = app.requestSingleInstanceLock()
