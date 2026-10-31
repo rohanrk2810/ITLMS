@@ -179,18 +179,25 @@ export function CourseEditorPage() {
           >
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
+                  required
+                  maxLength={160}
                   value={form.title}
                   disabled={!isStaff}
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="code">Code</Label>
+                <Label htmlFor="code">Code *</Label>
                 <Input
                   id="code"
+                  required
+                  minLength={2}
+                  maxLength={30}
+                  pattern="[A-Za-z0-9\-]{2,30}"
+                  title="Letters, digits and hyphens only (2 to 30 characters)"
                   value={form.code}
                   disabled={!isStaff}
                   onChange={(event) => setForm({ ...form, code: event.target.value })}
@@ -532,10 +539,12 @@ function AddLessonDialog({ moduleId, onAdded }: { moduleId: number; onAdded: () 
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="durationMinutes">Duration (minutes)</Label>
+            <Label htmlFor="durationMinutes">Duration (minutes) *</Label>
             <Input
               id="durationMinutes"
               type="number"
+              required
+              min={1}
               onChange={(event) =>
                 setForm({ ...form, durationMinutes: event.target.value ? Number(event.target.value) : undefined })
               }
