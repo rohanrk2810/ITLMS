@@ -37,6 +37,7 @@ import com.itilms.assessment.repository.QuizAttemptRepository;
 import com.itilms.assessment.repository.QuizQuestionRepository;
 import com.itilms.assessment.repository.QuizRepository;
 import com.itilms.assessment.repository.QuizViolationRepository;
+import com.itilms.assessment.service.TypingStatsStore;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
 import com.itilms.assessment.service.AttemptService;
@@ -80,6 +81,7 @@ public class AttemptServiceImpl implements AttemptService {
     private final AttemptScorer scorer;
     private final CodingJudge judge;
     private final QuizViolationRepository violations;
+    private final TypingStatsStore typingStats;
 
     // -----------------------------------------------------------------
     // Sitting the test
@@ -140,6 +142,10 @@ public class AttemptServiceImpl implements AttemptService {
                 .expiresAt(deadline)
                 .status(AttemptStatus.IN_PROGRESS)
                 .build());
+        if (quiz.getQuestionsPerAttempt() != null) {
+            // Question pool: this attempt's own draw, kept for the whole sitting.
+            attempt.drawPaper(questionRepository.findWithOptions(quizId), quiz.getQuestionsPerAttempt());
+        }
 
         log.info("Student {} started attempt {} of test {}", student.profileId(), attempt.getAttemptNo(), quizId);
         return paperFor(attempt, quiz, now);
@@ -169,7 +175,7 @@ public class AttemptServiceImpl implements AttemptService {
         Instant now = Instant.now();
 
         requireRunning(attempt, quiz, now, Duration.ZERO);
-        List<QuizQuestion> questions = questionRepository.findWithOptions(quiz.getId());
+        List<QuizQuestion> questions = attempt.paperFrom(questionRepository.findWithOptions(quiz.getId()));
         int answered = store(attempt, questions, request, now);
 
         return new AnswerSaveResponse(attempt.getId(), answered, questions.size(),
@@ -278,7 +284,7 @@ public class AttemptServiceImpl implements AttemptService {
         Instant now = Instant.now();
         requireRunning(attempt, quiz, now, Duration.ZERO);
 
-        QuizQuestion question = questionRepository.findWithOptions(quiz.getId()).stream()
+        QuizQuestion question = attempt.paperFrom(questionRepository.findWithOptions(quiz.getId())).stream()
                 .filter(q -> q.getId().equals(questionId)).findFirst()
                 .orElseThrow(() -> new BusinessRuleException("INVALID_ANSWER",
                         "Question %d is not part of this test.".formatted(questionId)));
@@ -380,7 +386,7 @@ public class AttemptServiceImpl implements AttemptService {
             return resultFor(attempt, quiz, false);
         }
 
-        List<QuizQuestion> questions = questionRepository.findWithOptions(quiz.getId());
+        List<QuizQuestion> questions = attempt.paperFrom(questionRepository.findWithOptions(quiz.getId()));
         boolean inTime = !now.isAfter(attempt.getExpiresAt().plus(SUBMIT_GRACE));
         if (inTime) {
             store(attempt, questions, request, now);
@@ -449,9 +455,13 @@ public class AttemptServiceImpl implements AttemptService {
             violations.countByAttemptAndTypes(finished.stream().map(QuizAttempt::getId).toList(), cameraTypes)
                     .forEach(row -> cameraEvents.put((Long) row[0], ((Number) row[1]).intValue()));
         }
+        // The pasted-code note per attempt, in one query, only for tests that record typing.
+        Map<Long, TypingStatsStore.Counts> typing = quiz.isRecordTyping() && !finished.isEmpty()
+                ? typingStats.byAttempt(finished.stream().map(QuizAttempt::getId).toList()) : Map.of();
         return finished.stream()
                 .map(a -> AttemptResultResponse.of(a, quiz, true, null, List.of())
-                        .withCameraEventCount(cameraEvents.getOrDefault(a.getId(), 0)))
+                        .withCameraEventCount(cameraEvents.getOrDefault(a.getId(), 0))
+                        .withTypingReview(TypingStatsStore.review(typing.get(a.getId()))))
                 .toList();
     }
 
@@ -585,7 +595,7 @@ public class AttemptServiceImpl implements AttemptService {
      * students lose their place.
      */
     private AttemptViewResponse paperFor(QuizAttempt attempt, Quiz quiz, Instant now) {
-        List<QuizQuestion> questions = new ArrayList<>(questionRepository.findWithOptions(quiz.getId()));
+        List<QuizQuestion> questions = new ArrayList<>(attempt.paperFrom(questionRepository.findWithOptions(quiz.getId())));
         if (quiz.isShuffleQuestions()) {
             Collections.shuffle(questions, new Random(attempt.getId()));
         }
@@ -594,7 +604,7 @@ public class AttemptServiceImpl implements AttemptService {
 
     private AttemptResultResponse resultFor(QuizAttempt attempt, Quiz quiz, boolean staffView) {
         boolean visible = staffView || resultsVisibleToStudents(quiz);
-        List<QuizQuestion> questions = visible ? questionRepository.findWithOptions(quiz.getId()) : null;
+        List<QuizQuestion> questions = visible ? attempt.paperFrom(questionRepository.findWithOptions(quiz.getId())) : null;
         List<QuizAnswer> answers = visible ? answerRepository.findByAttemptId(attempt.getId()) : List.of();
         return AttemptResultResponse.of(attempt, quiz, visible, questions, answers);
     }

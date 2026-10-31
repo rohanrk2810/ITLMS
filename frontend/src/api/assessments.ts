@@ -151,6 +151,8 @@ export interface AttemptResultResponse {
   /** Set when the attempt was ended by the secure-test rules. */
   terminatedReason: string | null
   answers: AnswerResult[] | null
+  /** Staff results sheet: a note when most of the coding was pasted, else null. */
+  typingReview?: string | null
 }
 
 /** What a camera test can look for; the trainer picks which when making the test. */
@@ -444,6 +446,8 @@ export interface QuizResponse {
   cameraChecks: CameraCheckName[]
   /** Coding answers are recorded as typed, for the trainer to replay. */
   recordTyping: boolean
+  /** Question pool: how many of the questions each student gets, drawn at random; null = every question. */
+  questionsPerAttempt: number | null
   status: string
   trainerId: number | null
   publishedAt: string | null
@@ -472,6 +476,8 @@ export interface QuizInput {
   /** Camera tests: which checks run. Leave out for all of them on a new test. */
   cameraChecks?: CameraCheckName[]
   recordTyping?: boolean
+  /** Question pool: questions each student gets, drawn at random. Leave out (or 0) for every question. */
+  questionsPerAttempt?: number
 }
 
 export interface QuestionOptionInput {

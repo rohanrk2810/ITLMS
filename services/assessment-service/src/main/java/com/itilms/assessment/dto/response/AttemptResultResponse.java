@@ -53,7 +53,10 @@ public record AttemptResultResponse(
         String terminatedReason,
 
         @Schema(description = "Per-question breakdown, when results are visible")
-        List<AnswerResult> answers
+        List<AnswerResult> answers,
+
+        @Schema(description = "Staff results sheet: a note when most of the coding was pasted, else null")
+        String typingReview
 ) {
 
     @Schema(description = "One question: what was chosen, what was right, what it was worth")
@@ -109,18 +112,25 @@ public record AttemptResultResponse(
                 attempt.getStudentName(), attempt.getAttemptNo(), attempt.getStatus().name(),
                 attempt.getStartedAt(), attempt.getSubmittedAt(), visible,
                 visible ? attempt.getScore() : null,
-                quiz.getTotalMarks(),
+                attempt.maxMarksOr(quiz.getTotalMarks()),
                 visible ? attempt.getPercentage() : null,
                 visible ? attempt.getPassed() : null,
                 quiz.getPassPercentage(),
                 attempt.getViolationCount(), 0, attempt.getTerminatedReason(),
-                breakdown);
+                breakdown, null);
     }
 
     /** The same result with the number of camera events recorded for the attempt, for the trainer's sheet. */
     public AttemptResultResponse withCameraEventCount(int count) {
         return new AttemptResultResponse(attemptId, quizId, quizTitle, studentId, studentName, attemptNo, status,
                 startedAt, submittedAt, resultVisible, score, totalMarks, percentage, passed, passPercentage,
-                violationCount, count, terminatedReason, answers);
+                violationCount, count, terminatedReason, answers, typingReview);
+    }
+
+    /** The same result with a note for the trainer when the coding looks pasted. */
+    public AttemptResultResponse withTypingReview(String review) {
+        return new AttemptResultResponse(attemptId, quizId, quizTitle, studentId, studentName, attemptNo, status,
+                startedAt, submittedAt, resultVisible, score, totalMarks, percentage, passed, passPercentage,
+                violationCount, cameraEventCount, terminatedReason, answers, review);
     }
 }

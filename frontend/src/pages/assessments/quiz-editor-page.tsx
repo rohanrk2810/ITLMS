@@ -210,11 +210,18 @@ export function QuizEditorPage() {
                   )}
                   {quiz.recordTyping && codingQuestionsOf(quiz).length > 0 && (
                     <TableCell>
-                      <TypingReplayButton
-                        attemptId={result.attemptId}
-                        studentName={result.studentName}
-                        questions={codingQuestionsOf(quiz)}
-                      />
+                      <div className="flex flex-col items-start gap-1">
+                        <TypingReplayButton
+                          attemptId={result.attemptId}
+                          studentName={result.studentName}
+                          questions={codingQuestionsOf(quiz)}
+                        />
+                        {result.typingReview && (
+                          <Badge variant="destructive" title={result.typingReview} className="whitespace-normal text-left">
+                            Pasted code: {result.typingReview}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>

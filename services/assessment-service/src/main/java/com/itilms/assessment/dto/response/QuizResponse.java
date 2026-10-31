@@ -42,6 +42,8 @@ public record QuizResponse(
         List<String> cameraChecks,
         @Schema(description = "Coding answers are recorded as typed, for the trainer to replay")
         boolean recordTyping,
+        @Schema(description = "Question pool: questions each student gets, drawn at random per attempt; null = all")
+        Integer questionsPerAttempt,
         String status,
         Long trainerId,
         Instant publishedAt,
@@ -99,7 +101,7 @@ public record QuizResponse(
                 q.getAvailableFrom(), q.getAvailableUntil(), q.isShuffleQuestions(),
                 q.isShowResultImmediately(), q.isMandatory(), q.isSecureMode(), q.getMaxViolations(),
                 q.isRequireCamera(), q.isRequireMicrophone(),
-                com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.isRecordTyping(), q.getStatus().name(), q.getTrainerId(),
+                com.itilms.assessment.entity.CameraCheck.names(q.cameraChecks()), q.isRecordTyping(), q.getQuestionsPerAttempt(), q.getStatus().name(), q.getTrainerId(),
                 q.getPublishedAt(), questionCount, questions);
     }
 }

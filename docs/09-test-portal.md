@@ -134,3 +134,16 @@ The page autosaves every 20 seconds and sends all the answers; the server now wr
 In the SutraVidya desktop app a secure test also looks for remote-control programs on the computer (AnyDesk, TeamViewer, RustDesk, Getscreen, UltraViewer, Ammyy, Remote Utilities, LogMeIn, Chrome Remote Desktop, VNC, Splashtop, Supremo, DameWare, ScreenConnect, Windows Remote Assistance). Before the test starts, the *Start test* button stays off and the screen names the program until it is closed (checked every 5 seconds). During the test the app looks every 15 seconds; a program found is sent to the server as `REMOTE_TOOL` (the detail names it), the student sees *"Remote-control software is running on this computer. Close it now"*, and the trainer sees it in the violation list. It never ends the attempt: it is a match on program names, so it catches the common ones and not a renamed copy or one hidden on purpose. It is one layer next to the camera and window checks.
 
 A **browser cannot look at the computer's programs**, so on the web this check does nothing. To rely on it, have students take secure tests in the desktop app (`desktop/preload.js` offers `sutraDesktop.remoteTools()`, `desktop/main.js` does the lookup with `tasklist` on Windows or `ps` elsewhere and answers only the app's own page). The new violation type needed migration V15 in assessment-service.
+
+## Question pool (2026-10-31)
+
+A test can hold more questions than a student should get. In the *New test* dialog, **Questions for each student** sets how many (empty = every question). When a student starts an attempt the server draws that many at random and keeps the draw on the attempt (`quiz_attempts.question_ids`, with `max_marks` for what they are worth together; V16), so:
+
+- neighbours do not sit the same paper, and a reload or a second look shows the same questions;
+- answers to a question the student was not given are refused (`not part of this test`), and the answer sheet, the result and the score all count only the drawn questions: the percentage is the score over that attempt's own `max_marks`;
+- before starting, the student is shown what one draw is worth (`quizzes.attempt_marks`, the test's marks scaled by drawn/total, set on publish). If questions have unequal marks the draw can be worth a little more or less than that;
+- publishing is refused when the number is larger than the questions in the test, and a pool as large as the test is dropped. A second attempt draws again. The test list shows "3 of 8 questions each".
+
+## Pasted code on the results sheet (2026-10-31)
+
+For tests that record typing, the server counts the characters typed and pasted in each coding answer as the edits arrive (`quiz_typing_stats`, V16; the starting snapshot counts as neither). The staff results sheet shows a red **Pasted code** note under the replay button when at least 80 characters were pasted and pasted text is 60% or more of what was inserted ("Pasted 330 of 333 characters of code (largest paste 330)"), so a trainer sees where to open the replay without opening every one. It is the browser's own report: a hint to look, not proof.

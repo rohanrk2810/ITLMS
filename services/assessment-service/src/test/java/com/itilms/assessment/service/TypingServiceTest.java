@@ -52,6 +52,7 @@ class TypingServiceTest {
     @Mock private QuizQuestionRepository questionRepository;
     @Mock private QuizAnswerRepository answerRepository;
     @Mock private QuizTypingChunkRepository chunks;
+    @Mock private TypingStatsStore typingStats;
     @Mock private AssessmentAccess access;
 
     private TypingService service;
@@ -60,7 +61,7 @@ class TypingServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TypingService(quizRepository, attemptRepository, questionRepository, answerRepository, chunks, access);
+        service = new TypingService(quizRepository, attemptRepository, questionRepository, answerRepository, chunks, typingStats, access);
         quiz = Quiz.builder().id(1L).courseId(1L).title("t").durationMinutes(30).status(QuizStatus.PUBLISHED)
                 .recordTyping(true).build();
         attempt = QuizAttempt.builder().id(9L).quizId(1L).studentId(STUDENT).attemptNo(1)

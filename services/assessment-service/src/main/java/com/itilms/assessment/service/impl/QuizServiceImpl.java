@@ -86,6 +86,7 @@ public class QuizServiceImpl implements QuizService {
                 .requireMicrophone(Boolean.TRUE.equals(request.requireMicrophone()))
                 .cameraChecks(CameraCheck.join(request.cameraChecks() == null ? CameraCheck.all() : request.cameraChecks()))
                 .recordTyping(Boolean.TRUE.equals(request.recordTyping()))
+                .questionsPerAttempt(request.questionsPerAttempt() == null || request.questionsPerAttempt() == 0 ? null : request.questionsPerAttempt())
                 .trainerId(caller.trainerIdOrNull())
                 .status(QuizStatus.DRAFT)
                 .build());
@@ -149,6 +150,10 @@ public class QuizServiceImpl implements QuizService {
         }
         if (request.recordTyping() != null) {
             quiz.setRecordTyping(request.recordTyping());
+        }
+        if (request.questionsPerAttempt() != null) {
+            // 0 clears the pool: every student gets every question again.
+            quiz.setQuestionsPerAttempt(request.questionsPerAttempt() == 0 ? null : request.questionsPerAttempt());
         }
         quizRepository.save(quiz);
         return detail(quiz);
@@ -216,6 +221,20 @@ public class QuizServiceImpl implements QuizService {
         }
         if (quiz.getAvailableUntil() != null && quiz.getAvailableUntil().isBefore(Instant.now())) {
             throw new BusinessRuleException("The test's closing time has already passed.");
+        }
+
+        Integer pool = quiz.getQuestionsPerAttempt();
+        if (pool != null && pool > questions.size()) {
+            throw new BusinessRuleException("The test gives each student %d questions but has only %d. Add questions or lower the number."
+                    .formatted(pool, questions.size()));
+        }
+        // A pool as large as the test is no pool. Otherwise an attempt is worth its share of the marks; shown to students
+        // before they start (each attempt counts its own drawn questions).
+        if (pool == null || pool >= questions.size()) {
+            quiz.setQuestionsPerAttempt(null);
+            quiz.setAttemptMarks(null);
+        } else {
+            quiz.setAttemptMarks((int) Math.round((double) quiz.getTotalMarks() * pool / questions.size()));
         }
 
         quiz.publish(Instant.now());

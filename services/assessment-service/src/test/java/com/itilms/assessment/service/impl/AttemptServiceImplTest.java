@@ -43,6 +43,7 @@ import com.itilms.assessment.repository.QuizRepository;
 import com.itilms.assessment.repository.QuizViolationRepository;
 import com.itilms.assessment.service.AssessmentAccess;
 import com.itilms.assessment.service.AttemptScorer;
+import com.itilms.assessment.service.TypingStatsStore;
 import com.itilms.assessment.service.CodingJudge;
 import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.exception.ResourceNotFoundException;
@@ -66,6 +67,7 @@ class AttemptServiceImplTest {
     @Mock private AttemptScorer scorer;
     @Mock private CodingJudge judge;
     @Mock private QuizViolationRepository violations;
+    @Mock private TypingStatsStore typingStats;
 
     private AttemptServiceImpl service;
     private Quiz quiz;
@@ -75,7 +77,7 @@ class AttemptServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new AttemptServiceImpl(quizRepository, questionRepository, attemptRepository,
-                answerRepository, access, scorer, judge, violations);
+                answerRepository, access, scorer, judge, violations, typingStats);
 
         quiz = Quiz.builder().id(1L).courseId(1L).title("t").durationMinutes(30).totalMarks(2)
                 .attemptsAllowed(1).status(QuizStatus.PUBLISHED).build();
@@ -118,6 +120,30 @@ class AttemptServiceImplTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("does not belong");
         verify(answerRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("Question pool: a question this attempt did not draw is refused, though it is in the test")
+    void undrawnQuestionRefused() {
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+        a.setQuestionIds("10");
+
+        assertThatThrownBy(() -> service.saveAnswers(9L, answers(20L, 200L)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("not part of this test");
+    }
+
+    @Test
+    @DisplayName("Question pool: the paper shows only the drawn questions, and their marks")
+    void paperShowsDrawnQuestionsOnly() {
+        QuizAttempt a = attempt(STUDENT, Instant.now().plusSeconds(600));
+        a.setQuestionIds("20");
+        a.setMaxMarks(1);
+
+        var paper = service.paper(9L);
+
+        assertThat(paper.questions()).extracting(q -> q.id()).containsExactly(20L);
+        assertThat(paper.totalMarks()).isEqualTo(1);
     }
 
     @Test

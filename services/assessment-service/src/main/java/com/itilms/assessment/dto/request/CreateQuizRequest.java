@@ -72,6 +72,11 @@ public record CreateQuizRequest(
         java.util.Set<com.itilms.assessment.entity.CameraCheck> cameraChecks,
 
         @Schema(description = "Coding answers are recorded as they are typed, for the trainer to replay. Default false.")
-        Boolean recordTyping
+        Boolean recordTyping,
+
+        @Schema(description = "Question pool: how many of the test's questions each student gets, drawn at random for "
+                + "each attempt. Omit or 0 for every question. Cannot be more than the questions in the test.")
+        @Min(value = 0) @Max(value = 500)
+        Integer questionsPerAttempt
 ) {
 }
