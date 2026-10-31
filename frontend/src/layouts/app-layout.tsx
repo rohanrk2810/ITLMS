@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { ChevronLeft, Menu } from 'lucide-react'
 
@@ -24,6 +24,11 @@ function storedCollapsed(): boolean {
 export function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const { pathname } = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+  // The page area is the one thing that scrolls, so a new page starts at its top.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 })
+  }, [pathname])
   // The desktop sidebar can be hidden with the arrow on its edge; the choice is remembered in this browser.
   const [collapsed, setCollapsed] = useState(storedCollapsed)
 
@@ -38,8 +43,9 @@ export function AppLayout() {
     })
   }
 
+  // Exactly the height of the window (not "at least"), so the menu and the header stay put and only <main> scrolls.
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex h-svh overflow-hidden bg-background">
       {/* The width slides to nothing instead of the menu vanishing; the inner box keeps its size so nothing reflows. */}
       <aside
         className={`relative hidden shrink-0 bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-in-out md:block ${collapsed ? 'w-0' : 'w-64 border-r'}`}
@@ -72,7 +78,7 @@ export function AppLayout() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-between gap-2 border-b px-4">
           <Button
             variant="ghost"
@@ -90,7 +96,7 @@ export function AppLayout() {
             <UserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto p-6">
           {/* A new page eases in instead of snapping. */}
           <div key={pathname} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
             <Outlet />
