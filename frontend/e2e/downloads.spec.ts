@@ -297,6 +297,73 @@ test.describe('finance desk and the video watch report', () => {
   })
 })
 
+test.describe('the Users page download', () => {
+  const account = (id: number, name: string, extras: string[] = []) =>
+    userFor('TRAINER', { id, fullName: name, email: `${name.split(' ')[0].toLowerCase()}@x.test`, extraRoles: extras, profileCode: `EMP-${id}` })
+
+  test('an administrator downloads every account page by page, as Excel with the letterhead', async ({ page }) => {
+    const api = await signedInAs(page, 'ADMIN', {
+      ...BRANDED,
+      'GET /api/users': (request) => {
+        const n = Number(request.query.get('page') ?? 0)
+        return { ...EMPTY_PAGE, content: n === 0 ? [account(1, 'Ravi Kulkarni', ['COORDINATOR'])] : n === 1 ? [account(2, 'Meera Joshi')] : [], page: n, last: n >= 1 }
+      },
+      'POST /api/reports/exports': (_request, route) => route.fulfill({ status: 204 }),
+    })
+    await page.goto('/app/users')
+    const xlsx = await xlsxOf(await choose(page, 'Download users', xlsxItem))
+    for (const text of ['GH Test College', 'User accounts', 'Ravi Kulkarni', 'Meera Joshi', 'COORDINATOR']) expect(xlsx.strings, text).toContain(text)
+    await expect.poll(() => api.seen.find((r) => r.method === 'POST' && r.path === '/api/reports/exports')?.body).toMatchObject({ report: 'USERS', rows: 2 })
+  })
+
+  test('the PDF is the printed page with the letterhead and the accounts', async ({ page }) => {
+    await signedInAs(page, 'ADMIN', {
+      ...BRANDED,
+      'GET /api/users': () => ({ ...EMPTY_PAGE, content: [account(1, 'Ravi Kulkarni', ['FINANCE'])], last: true }),
+      'POST /api/reports/exports': (_request, route) => route.fulfill({ status: 204 }),
+    })
+    await page.goto('/app/users')
+    await page.getByRole('button', { name: 'Download users' }).click()
+    await page.getByRole('menuitem', { name: pdfItem }).click()
+    const sheet = page.frameLocator('iframe[title="Report print preview"]')
+    await expect(sheet.locator('.name')).toHaveText('GH Test College')
+    await expect(sheet.locator('h1.title')).toHaveText('User accounts')
+    await expect(sheet.locator('table.data tbody tr').first()).toContainText('Ravi Kulkarni')
+    await expect(sheet.locator('table.data tbody tr').first()).toContainText('FINANCE')
+  })
+
+  test('a coordinator may download the list too, as plain data', async ({ page }) => {
+    await signedInAs(page, 'COORDINATOR', {
+      ...BRANDED,
+      'GET /api/users': () => ({ ...EMPTY_PAGE, content: [account(1, 'Ravi Kulkarni')], last: true }),
+      'POST /api/reports/exports': (_request, route) => route.fulfill({ status: 204 }),
+    })
+    await page.goto('/app/users')
+    const csv = await textOf(await choose(page, 'Download users', csvItem))
+    expect(csv.split('\r\n')[0]).toBe('Name,Email,Phone,Main role,Extra duties,Status,Student or trainer code,Last sign-in,Created')
+    expect(csv).toContain('Ravi Kulkarni')
+    expect(csv).not.toMatch(/password|token/i)
+  })
+
+  test('the filter chosen on the page is what is downloaded', async ({ page }) => {
+    const api = await signedInAs(page, 'ADMIN', {
+      ...BRANDED,
+      'GET /api/users': () => ({ ...EMPTY_PAGE, content: [account(1, 'Ravi Kulkarni')], last: true }),
+      'POST /api/reports/exports': (_request, route) => route.fulfill({ status: 204 }),
+    })
+    await page.goto('/app/users')
+    await page.getByPlaceholder('Search name, email, phone...').fill('ravi')
+    await choose(page, 'Download users', csvItem)
+    expect(api.seen.some((r) => r.path === '/api/users' && r.query.get('query') === 'ravi' && r.query.get('page') === '0')).toBe(true)
+  })
+
+  test('a person who is not allowed on the Users page cannot reach the download', async ({ page }) => {
+    await signedInAs(page, 'TRAINER', { ...BRANDED })
+    await page.goto('/app/users')
+    await expect(page).toHaveURL(/\/app\/forbidden/)
+  })
+})
+
 test.describe('student progress report', () => {
   const report = {
     studentId: 30,

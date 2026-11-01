@@ -5,6 +5,7 @@ import type { LeadResponse } from '@/api/leads'
 import type { StudentProgressReport } from '@/api/progress'
 import type { DashboardSummaryResponse } from '@/api/reporting'
 import type { StudentResponse, StudentSummaryResponse } from '@/api/students'
+import type { UserResponse } from '@/api/types'
 
 import type { Cell, Report } from './report'
 
@@ -327,6 +328,28 @@ export function lessonWatchReport(
     rows: sorted.map((w) => [
       names.get(w.studentId) ?? `Student #${w.studentId}`, w.watchedPercent, w.playedSeconds, w.durationSeconds, w.faceAwaySeconds,
       w.facePauses, status(w),
+    ]),
+  }
+}
+
+/**
+ * Every login account: who, which role and duties, whether it can sign in, and when it was last used. No password,
+ * token or anything secret is in a UserResponse, and none is added here.
+ */
+export function usersReport(users: UserResponse[], filter: { role?: string; query?: string } = {}): Report {
+  return {
+    title: 'User accounts',
+    fileName: 'users',
+    info: [
+      ['Accounts', String(users.length)],
+      ['Role', filter.role || 'All'],
+      ['Search', filter.query || 'None'],
+      ['Active', String(users.filter((u) => u.status === 'ACTIVE').length)],
+    ],
+    header: ['Name', 'Email', 'Phone', 'Main role', 'Extra duties', 'Status', 'Student or trainer code', 'Last sign-in', 'Created'],
+    rows: users.map((u) => [
+      u.fullName, u.email, u.phone, u.roleDisplayName, (u.extraRoles ?? []).join(', '), u.status, u.profileCode,
+      dateTime(u.lastLoginAt), day(u.createdAt),
     ]),
   }
 }

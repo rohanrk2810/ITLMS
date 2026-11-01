@@ -29,6 +29,16 @@ export async function searchUsers(params: {
   return data
 }
 
+/** Every account matching the filter, read page by page (the Users page shows one page at a time). */
+export async function fetchAllUsers(params: { role?: string; status?: string; query?: string }): Promise<UserResponse[]> {
+  const all: UserResponse[] = []
+  for (let page = 0; ; page += 1) {
+    const result = await searchUsers({ ...params, page })
+    all.push(...result.content)
+    if (result.last || result.content.length === 0) return all
+  }
+}
+
 export async function getUser(id: number | string): Promise<UserResponse> {
   const { data } = await apiClient.get<UserResponse>(`/api/users/${id}`)
   return data

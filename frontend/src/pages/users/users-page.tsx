@@ -5,8 +5,10 @@ import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { type CreateTrainerInput, type TrainerResponse, createTrainer } from '@/api/trainers'
-import { type CreateUserInput, createUser, deleteUser, resetUserPassword, searchUsers, updateUserDuties, updateUserMenu, updateUserStatus } from '@/api/users'
+import { type CreateUserInput, createUser, deleteUser, fetchAllUsers, resetUserPassword, searchUsers, updateUserDuties, updateUserMenu, updateUserStatus } from '@/api/users'
+import { ExportMenu } from '@/components/export-menu'
 import { NAV_ITEMS } from '@/components/nav-items'
+import { usersReport } from '@/lib/export-rows'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useBranding } from '@/lib/use-branding'
 import type { UserResponse } from '@/api/types'
@@ -63,7 +65,15 @@ export function UsersPage() {
           <h1 className="text-2xl font-semibold">Users</h1>
           <p className="text-muted-foreground">Every login account, and its role.</p>
         </div>
-        {isAdmin && <NewUserDialog />}
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu
+            label="Download users"
+            report="USERS"
+            detail={role || 'all roles'}
+            build={async () => usersReport(await fetchAllUsers({ role: role || undefined, query: query || undefined }), { role, query })}
+          />
+          {isAdmin && <NewUserDialog />}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
