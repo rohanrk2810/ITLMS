@@ -57,6 +57,12 @@ class ExportLogServiceTest {
     }
 
     @Test
+    void everyReportTheBrowserCanBuildIsKnownByName() {
+        assertThat(ExportedReport.values()).extracting(Enum::name).contains(
+                "LEADS", "ATTENDANCE", "RESULTS", "DASHBOARD", "PROGRESS", "WATCH_REPORT", "FEE_POSITION", "FEE_PLANS", "OVERDUE_FEES");
+    }
+
+    @Test
     void aBlankDetailIsLeftOut() {
         signInAs("ADMIN");
         ExportLogService service = new ExportLogService(repository);

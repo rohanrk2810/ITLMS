@@ -6,5 +6,9 @@ public enum ExportedReport {
     ATTENDANCE,
     RESULTS,
     DASHBOARD,
-    PROGRESS
+    PROGRESS,
+    WATCH_REPORT,
+    FEE_POSITION,
+    FEE_PLANS,
+    OVERDUE_FEES
 }

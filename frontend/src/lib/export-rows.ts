@@ -1,8 +1,10 @@
 import type { AttemptResultResponse } from '@/api/assessments'
+import type { LessonWatch } from '@/api/courses'
+import type { FeePlanResponse, OverdueItemResponse } from '@/api/finance'
 import type { LeadResponse } from '@/api/leads'
 import type { StudentProgressReport } from '@/api/progress'
 import type { DashboardSummaryResponse } from '@/api/reporting'
-import type { StudentResponse } from '@/api/students'
+import type { StudentResponse, StudentSummaryResponse } from '@/api/students'
 
 import type { Cell, Report } from './report'
 
@@ -234,5 +236,97 @@ export function progressReport(r: StudentProgressReport): Report {
     ],
     header: ['Item', 'Value'],
     rows,
+  }
+}
+
+const sum = (values: number[]) => values.reduce((a, b) => a + b, 0)
+/** A total only means something in one currency; with several, say so rather than add rupees to dollars. */
+const total = (items: { currency: string }[], pick: (i: never) => number) => {
+  const currencies = new Set(items.map((i) => i.currency))
+  return currencies.size > 1 ? 'mixed currencies' : String(sum(items.map((i) => pick(i as never))))
+}
+
+/** Every student with their contact details and fee position, one row per fee plan (a student without a plan still gets a row). */
+export function feePositionReport(students: StudentSummaryResponse[], plans: FeePlanResponse[]): Report {
+  const rows = students.flatMap((student) => {
+    const mine = plans.filter((plan) => plan.studentId === student.id)
+    const who: Cell[] = [student.studentCode, student.fullName, student.email, student.phone, student.status]
+    return mine.length === 0
+      ? [[...who, '', '', '', '', '', '', ''] as Cell[]]
+      : mine.map((plan) => [...who, plan.status, plan.currency, plan.netFee, plan.paid, plan.outstanding, plan.overdue, plan.nextDueDate] as Cell[])
+  })
+  return {
+    title: 'Fee position of every student',
+    fileName: 'students-fees',
+    info: [
+      ['Students', String(students.length)],
+      ['Fee plans', String(plans.length)],
+      ['Outstanding', total(plans, (p: FeePlanResponse) => p.outstanding)],
+      ['Overdue', total(plans, (p: FeePlanResponse) => p.overdue)],
+    ],
+    header: ['Student code', 'Name', 'Email', 'Phone', 'Student status', 'Plan status', 'Currency', 'Net fee', 'Paid', 'Outstanding', 'Overdue', 'Next due'],
+    rows,
+  }
+}
+
+export function feePlansReport(plans: FeePlanResponse[], status = ''): Report {
+  return {
+    title: 'Fee plans',
+    fileName: 'fee-plans',
+    info: [
+      ['Fee plans', String(plans.length)],
+      ['Status', status || 'All'],
+      ['Net fee', total(plans, (p: FeePlanResponse) => p.netFee)],
+      ['Paid', total(plans, (p: FeePlanResponse) => p.paid)],
+      ['Outstanding', total(plans, (p: FeePlanResponse) => p.outstanding)],
+    ],
+    header: ['Student code', 'Student', 'Currency', 'Total fee', 'Discount', 'Net fee', 'Paid', 'Outstanding', 'Overdue', 'Status', 'Next due', 'Next amount'],
+    rows: plans.map((p) => [
+      p.studentCode, p.studentName, p.currency, p.totalFee, p.discount, p.netFee, p.paid, p.outstanding, p.overdue, p.status,
+      p.nextDueDate, p.nextDueAmount,
+    ]),
+  }
+}
+
+export function overdueReport(items: OverdueItemResponse[]): Report {
+  return {
+    title: 'Overdue instalments',
+    fileName: 'overdue-instalments',
+    info: [
+      ['Instalments', String(items.length)],
+      ['Students', String(new Set(items.map((i) => i.studentId)).size)],
+      ['Amount overdue', String(sum(items.map((i) => i.amountOverdue)))],
+    ],
+    header: ['Student code', 'Student', 'Instalment', 'Due date', 'Days overdue', 'Amount overdue'],
+    rows: [...items]
+      .sort((a, b) => b.daysOverdue - a.daysOverdue)
+      .map((i) => [i.studentCode, i.studentName, i.installmentNo, i.dueDate, i.daysOverdue, i.amountOverdue]),
+  }
+}
+
+/** Who watched a video lesson, how much of it, and how often the face went missing; least watched first. */
+export function lessonWatchReport(
+  watches: LessonWatch[],
+  names: ReadonlyMap<number, string>,
+  lesson: { title: string; course?: string | null; monitored?: boolean },
+): Report {
+  const sorted = [...watches].sort((a, b) => a.watchedPercent - b.watchedPercent)
+  const status = (w: LessonWatch) => (w.completed ? 'Completed' : w.watchedPercent > 0 ? 'Watching' : 'Not started')
+  return {
+    title: 'Video lesson watch report',
+    fileName: `watch-${lesson.title.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'lesson'}`,
+    info: [
+      ['Lesson', lesson.title],
+      ['Course', lesson.course || '-'],
+      ['Students', String(watches.length)],
+      ['Completed', String(watches.filter((w) => w.completed).length)],
+      ['Not started', String(watches.filter((w) => !w.completed && w.watchedPercent === 0).length)],
+      ['Camera monitoring', lesson.monitored === false ? 'Off' : 'On'],
+    ],
+    header: ['Student', 'Watched %', 'Time played (s)', 'Video length (s)', 'Face away (s)', 'Auto-pauses', 'Status'],
+    rows: sorted.map((w) => [
+      names.get(w.studentId) ?? `Student #${w.studentId}`, w.watchedPercent, w.playedSeconds, w.durationSeconds, w.faceAwaySeconds,
+      w.facePauses, status(w),
+    ]),
   }
 }

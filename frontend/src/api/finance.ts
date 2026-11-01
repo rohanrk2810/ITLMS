@@ -144,6 +144,16 @@ export async function searchFeePlans(params: { status?: string; page?: number })
   return data
 }
 
+/** Every fee plan matching the status, read page by page. */
+export async function allFeePlans(status: string): Promise<FeePlanResponse[]> {
+  const all: FeePlanResponse[] = []
+  for (let page = 0; ; page += 1) {
+    const result = await searchFeePlans({ status: status || undefined, page })
+    all.push(...result.content)
+    if (result.last || result.content.length === 0) return all
+  }
+}
+
 export async function getFeePlan(id: number | string): Promise<FeePlanResponse> {
   const { data } = await apiClient.get<FeePlanResponse>(`/api/fee-plans/${id}`)
   return data
