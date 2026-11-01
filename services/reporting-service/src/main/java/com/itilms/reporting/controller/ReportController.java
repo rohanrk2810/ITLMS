@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,13 +24,24 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /** CSV, Excel and PDF exports (Doc S15), capped at itilms.reporting.max-export-rows. */
-@Tag(name = "Reports", description = "CSV, Excel and PDF exports of the audit trail")
+@Tag(name = "Reports", description = "CSV, Excel and PDF exports of the audit trail, and a note of spreadsheets downloaded")
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 public class ReportController {
 
     private final ReportExportService exportService;
+    private final com.itilms.reporting.service.ExportLogService exportLog;
+
+    @Operation(summary = "Note a download in the audit log",
+            description = "Called by the browser after it builds a spreadsheet (leads, attendance, results, dashboard "
+                    + "figures, a student's progress). Staff and trainers.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @PostMapping("/exports")
+    public ResponseEntity<Void> noteDownload(@jakarta.validation.Valid @RequestBody com.itilms.reporting.dto.ExportLogRequest request) {
+        exportLog.record(request);
+        return ResponseEntity.noContent().build();
+    }
 
     @Operation(summary = "Export the audit trail", description = "Same filters as GET /api/audit-logs.")
     @PreAuthorize(Roles.ADMIN_ONLY)

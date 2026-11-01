@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
-import { searchStudents } from '@/api/students'
+import { exportStudents, searchStudents } from '@/api/students'
+import { ExportMenu } from '@/components/export-menu'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { studentsReport } from '@/lib/export-rows'
+import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   ACTIVE: 'default',
@@ -16,6 +19,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 }
 
 export function StudentsPage() {
+  const role = useAuthStore((state) => state.user?.role)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
 
@@ -26,9 +30,17 @@ export function StudentsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Students</h1>
-        <p className="text-muted-foreground">Every admitted student.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Students</h1>
+          <p className="text-muted-foreground">Every admitted student.</p>
+        </div>
+        {hasRole(role, ['ADMIN', 'COORDINATOR']) && (
+          <ExportMenu
+            label="Download all students"
+            build={async () => studentsReport(await exportStudents({ status: status || undefined, query: query || undefined }), { status, query })}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">

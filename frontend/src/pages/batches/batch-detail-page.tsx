@@ -10,6 +10,7 @@ import {
   createSession,
   enrollStudents,
   getBatch,
+  getBatchAttendance,
   getBatchSessions,
   getRoster,
 } from '@/api/batches'
@@ -23,6 +24,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ExportMenu } from '@/components/export-menu'
+import { attendanceReport } from '@/lib/export-rows'
 import { formatDate } from '@/lib/format'
 import { type ClassProvider, newJitsiRoomUrl } from '@/lib/jitsi'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
@@ -75,7 +78,21 @@ export function BatchDetailPage() {
             {batch.courseTitle} &middot; {batch.trainerName ?? 'No trainer assigned'}
           </p>
         </div>
-        <Badge>{batch.status}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu
+            label="Download attendance"
+            report="ATTENDANCE"
+            detail={batch.batchCode}
+            build={async () =>
+              attendanceReport(await getBatchAttendance(batch.id), {
+                code: batch.batchCode,
+                course: batch.courseTitle,
+                trainer: batch.trainerName,
+              })
+            }
+          />
+          <Badge>{batch.status}</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">

@@ -76,6 +76,8 @@ Client side (monitoring, not prevention, and recorded as events for the trainer)
 
 ## 7. Audit
 
+Downloads of personal data are audited too: the all-students export by the server (`STUDENTS_EXPORTED`), the other reports by a note the page sends after it builds the file (`REPORT_DOWNLOADED`). Spreadsheet files neutralise formulas in names and notes. Details: [31-downloads.md](31-downloads.md).
+
 Services publish audit events; reporting-service stores them in `audit_logs`. ADMIN can filter and export them as CSV, Excel or PDF. Attendance corrections need a reason and are audited; every placement stage change is written to the stage history in the same transaction.
 
 ## 8. Known limits

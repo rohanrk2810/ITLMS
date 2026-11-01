@@ -2,11 +2,14 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Circle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import type { Band, CourseProgress, Indicator, StudentProgressReport, Suggestion } from '@/api/progress'
+import { ExportMenu } from '@/components/export-menu'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { progressReport } from '@/lib/export-rows'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 const BAND_TEXT: Record<Band, string> = {
   GOOD: 'text-emerald-600',
@@ -31,8 +34,17 @@ const SECTION_NAME: Record<string, string> = {
  * rather than "you" where the two would differ.
  */
 export function ProgressReportView({ report }: { report: StudentProgressReport }) {
+  const role = useAuthStore((state) => state.user?.role)
   return (
     <div className="flex flex-col gap-6">
+      <div className="no-print flex flex-wrap justify-end gap-2">
+        <ExportMenu
+          label="Download or print"
+          report={role === 'STUDENT' ? undefined : 'PROGRESS'}
+          detail={report.profile?.studentCode ?? String(report.studentId)}
+          build={async () => progressReport(report)}
+        />
+      </div>
       {report.unavailable.length > 0 && (
         <p className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
           <AlertTriangle className="size-4 shrink-0 text-amber-600" />

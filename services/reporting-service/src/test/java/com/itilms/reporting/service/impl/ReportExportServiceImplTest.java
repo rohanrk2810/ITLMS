@@ -29,6 +29,7 @@ import com.itilms.reporting.service.ReportExportService;
 class ReportExportServiceImplTest {
 
     @Mock private AuditLogRepository repository;
+    @Mock private com.itilms.reporting.service.export.InstituteLetterhead letterhead;
 
     private ReportExportServiceImpl service;
 
@@ -38,11 +39,12 @@ class ReportExportServiceImplTest {
     void setUp() {
         ReportingProperties props = new ReportingProperties();
         props.setMaxExportRows(2);
-        service = new ReportExportServiceImpl(repository, props);
+        service = new ReportExportServiceImpl(repository, props, letterhead);
 
         AuditLog entry = AuditLog.builder().id(1L).occurredAt(Instant.parse("2026-09-18T10:00:00Z"))
                 .serviceName("identity-service").actorEmail("admin@x").actorRole("ADMIN")
                 .action("PASSWORD_RESET").entityType("User").entityId("7").build();
+        org.mockito.Mockito.lenient().when(letterhead.get()).thenReturn(com.itilms.reporting.service.export.Letterhead.NONE);
         when(repository.findAll(org.mockito.ArgumentMatchers.<Specification<AuditLog>>any(),
                 org.mockito.ArgumentMatchers.<PageRequest>any()))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(entry)));

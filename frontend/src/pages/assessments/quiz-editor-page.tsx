@@ -40,7 +40,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { TypingReplayButton } from '@/components/typing-replay'
+import { ExportMenu } from '@/components/export-menu'
 import { Skeleton } from '@/components/ui/skeleton'
+import { resultsReport } from '@/lib/export-rows'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ImportFromBankDialog } from './import-from-bank-dialog'
 
@@ -181,7 +183,15 @@ export function QuizEditorPage() {
 
       {resultsQuery.data && resultsQuery.data.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Results</h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground">Results</h2>
+            <ExportMenu
+              label="Download results"
+              report="RESULTS"
+              detail={quiz.title.slice(0, 120)}
+              build={async () => resultsReport(resultsQuery.data ?? [], { title: quiz.title })}
+            />
+          </div>
           <Table>
             <TableHeader>
               <TableRow>

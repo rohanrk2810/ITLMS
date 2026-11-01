@@ -5,9 +5,11 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
-import { type CreateLeadInput, createLead, searchLeads } from '@/api/leads'
+import { type CreateLeadInput, createLead, fetchAllLeads, searchLeads } from '@/api/leads'
 import { Badge } from '@/components/ui/badge'
+import { ExportMenu } from '@/components/export-menu'
 import { Button } from '@/components/ui/button'
+import { leadsReport } from '@/lib/export-rows'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,7 +46,15 @@ export function LeadsPage() {
           <h1 className="text-2xl font-semibold">Admissions</h1>
           <p className="text-muted-foreground">Leads, follow-ups and conversions.</p>
         </div>
-        <NewLeadDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+        <div className="flex flex-wrap gap-2">
+          <ExportMenu
+            label="Download leads"
+            report="LEADS"
+            detail={status || 'all statuses'}
+            build={async () => leadsReport(await fetchAllLeads({ status: status || undefined, query: query || undefined }), { status, query })}
+          />
+          <NewLeadDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

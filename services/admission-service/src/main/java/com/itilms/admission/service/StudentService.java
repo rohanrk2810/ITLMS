@@ -17,6 +17,12 @@ import com.itilms.common.dto.PageResponse;
 /** Student profiles: the academic identity eight other services refer to. */
 public interface StudentService {
 
+    /** Most students one export holds; a bigger institute narrows by status. */
+    int EXPORT_LIMIT = 20_000;
+
+    /** Every student with the full profile, for a staff export (CSV in the browser). Audited. */
+    java.util.List<StudentResponse> exportAll(String status, String query);
+
     PageResponse<StudentSummaryResponse> search(String status, String query, Pageable pageable);
 
     StudentResponse get(Long id);
