@@ -86,7 +86,16 @@ export async function exportAuditLogs(filter: AuditLogFilter, format: 'CSV' | 'X
   setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }
 
-export type ExportedReport = 'LEADS' | 'ATTENDANCE' | 'RESULTS' | 'DASHBOARD' | 'PROGRESS'
+export type ExportedReport =
+  | 'LEADS'
+  | 'ATTENDANCE'
+  | 'RESULTS'
+  | 'DASHBOARD'
+  | 'PROGRESS'
+  | 'WATCH_REPORT'
+  | 'FEE_POSITION'
+  | 'FEE_PLANS'
+  | 'OVERDUE_FEES'
 
 /** Notes in the audit log that a spreadsheet was downloaded. Never blocks or fails the download itself. */
 export async function noteDownload(report: ExportedReport, rows: number, detail?: string): Promise<void> {

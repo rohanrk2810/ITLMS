@@ -1,12 +1,26 @@
 import { describe, expect, it } from 'vitest'
 
 import type { AttemptResultResponse } from '@/api/assessments'
+import type { LessonWatch } from '@/api/courses'
+import type { FeePlanResponse, OverdueItemResponse } from '@/api/finance'
+import type { StudentSummaryResponse } from '@/api/students'
 import type { LeadResponse } from '@/api/leads'
 import type { StudentProgressReport } from '@/api/progress'
 import type { DashboardSummaryResponse } from '@/api/reporting'
 import type { StudentResponse } from '@/api/students'
 
-import { attendanceReport, dashboardReport, leadsReport, progressReport, resultsReport, studentsReport } from './export-rows'
+import {
+  attendanceReport,
+  dashboardReport,
+  feePlansReport,
+  feePositionReport,
+  leadsReport,
+  lessonWatchReport,
+  overdueReport,
+  progressReport,
+  resultsReport,
+  studentsReport,
+} from './export-rows'
 import type { Report } from './report'
 
 /** Every row must be as wide as the header, or the columns of a spreadsheet slide. */
@@ -172,5 +186,89 @@ describe('progressReport', () => {
     expect(first).toBeGreaterThan(-1)
     expect(first).toBeLessThan(second)
     expect(report.rows).toContainEqual(['coding', 'unavailable'])
+  })
+})
+
+const plan = (id: number, studentId: number, over: Partial<FeePlanResponse> = {}) =>
+  ({
+    id, studentId, studentCode: `STU-${studentId}`, studentName: `Student ${studentId}`, currency: 'INR', totalFee: 60000,
+    discount: 5000, netFee: 55000, paid: 20000, outstanding: 35000, overdue: 10000, status: 'ACTIVE', nextDueDate: '2026-12-01',
+    nextDueAmount: 10000, ...over,
+  }) as unknown as FeePlanResponse
+
+describe('feePositionReport', () => {
+  const students = [
+    { id: 1, studentCode: 'STU-1', fullName: 'Asha Patil', email: 'a@x.test', phone: '+91 98765 43210', status: 'ACTIVE' },
+    { id: 2, studentCode: 'STU-2', fullName: 'Ravi Kale', email: 'r@x.test', phone: '9800000002', status: 'ACTIVE' },
+  ] as unknown as StudentSummaryResponse[]
+
+  it('gives a student without any plan a row of their own, with the fee columns empty', () => {
+    const report = feePositionReport(students, [plan(10, 1)])
+    expectRectangular(report)
+    expect(report.rows).toHaveLength(2)
+    expect(report.rows[0][report.header.indexOf('Outstanding')]).toBe(35000)
+    expect(report.rows[1][report.header.indexOf('Outstanding')]).toBe('')
+    expect(report.rows[1][1]).toBe('Ravi Kale')
+  })
+
+  it('a student with two plans gets two rows', () => {
+    expect(feePositionReport(students, [plan(10, 1), plan(11, 1, { status: 'SETTLED' })]).rows).toHaveLength(3)
+  })
+
+  it('adds the money up in one currency, and does not add rupees to dollars', () => {
+    const same = feePositionReport(students, [plan(10, 1), plan(11, 2)])
+    expect(same.info).toContainEqual(['Outstanding', '70000'])
+    expect(same.info).toContainEqual(['Overdue', '20000'])
+    const mixed = feePositionReport(students, [plan(10, 1), plan(11, 2, { currency: 'USD' })])
+    expect(mixed.info).toContainEqual(['Outstanding', 'mixed currencies'])
+  })
+})
+
+describe('feePlansReport', () => {
+  it('lists each plan with its figures and says which status it covers', () => {
+    const report = feePlansReport([plan(10, 1), plan(11, 2, { status: 'SETTLED', outstanding: 0 })], 'ACTIVE')
+    expectRectangular(report)
+    expect(report.title).toBe('Fee plans')
+    expect(report.info).toContainEqual(['Status', 'ACTIVE'])
+    expect(report.info).toContainEqual(['Fee plans', '2'])
+    expect(report.info).toContainEqual(['Outstanding', '35000'])
+    expect(feePlansReport([]).info).toContainEqual(['Status', 'All'])
+  })
+})
+
+describe('overdueReport', () => {
+  const item = (n: number, studentId: number, days: number, amount: number) =>
+    ({ feePlanId: n, installmentId: n, studentId, studentCode: `STU-${studentId}`, studentName: `Student ${studentId}`, installmentNo: n, dueDate: '2026-10-01', daysOverdue: days, amountOverdue: amount }) as OverdueItemResponse
+
+  it('shows the longest overdue first, and counts students once', () => {
+    const report = overdueReport([item(1, 1, 5, 1000), item(2, 1, 40, 2000), item(3, 2, 12, 500)])
+    expectRectangular(report)
+    expect(report.rows.map((r) => r[report.header.indexOf('Days overdue')])).toEqual([40, 12, 5])
+    expect(report.info).toContainEqual(['Instalments', '3'])
+    expect(report.info).toContainEqual(['Students', '2'])
+    expect(report.info).toContainEqual(['Amount overdue', '3500'])
+  })
+})
+
+describe('lessonWatchReport', () => {
+  const watch = (studentId: number, percent: number, completed = false) =>
+    ({ studentId, batchId: 9, watchedPercent: percent, playedSeconds: percent * 6, durationSeconds: 600, faceAwaySeconds: 12, facePauses: 1, completed }) as LessonWatch
+
+  it('puts the least watched first and names each student, or numbers one it cannot name', () => {
+    const report = lessonWatchReport([watch(1, 100, true), watch(2, 0), watch(3, 40)], new Map([[1, 'Asha Patil'], [2, 'Ravi Kale']]), {
+      title: 'Intro to Java', course: 'Full Stack Java',
+    })
+    expectRectangular(report)
+    expect(report.rows.map((r) => r[0])).toEqual(['Ravi Kale', 'Student #3', 'Asha Patil'])
+    expect(report.rows.map((r) => r.at(-1))).toEqual(['Not started', 'Watching', 'Completed'])
+    expect(report.info).toContainEqual(['Lesson', 'Intro to Java'])
+    expect(report.info).toContainEqual(['Completed', '1'])
+    expect(report.info).toContainEqual(['Not started', '1'])
+    expect(report.fileName).toBe('watch-intro-to-java')
+  })
+
+  it('says when the camera was not watching, so zero face figures are not misread', () => {
+    const off = lessonWatchReport([watch(1, 50)], new Map(), { title: 'L', monitored: false })
+    expect(off.info).toContainEqual(['Camera monitoring', 'Off'])
   })
 })

@@ -205,6 +205,98 @@ test.describe('other reports', () => {
   })
 })
 
+test.describe('finance desk and the video watch report', () => {
+  const desk = (extra: Record<string, Handler> = {}): Record<string, Handler> => ({
+    ...BRANDED,
+    'GET /api/fees/dashboard': () => ({
+      currency: 'INR', totalBilled: 100000, collected: 40000, pending: 60000, overdueAmount: 12000, overdueInstallments: 2,
+      studentsWithOverdue: 2, activePlans: 2, settledPlans: 0, collectedThisMonth: 0, methodSplitThisMonth: [],
+    }),
+    'GET /api/fees/overdue': () => [
+      { feePlanId: 10, installmentId: 1, studentId: 1, studentCode: 'STU-1', studentName: 'Asha Patil', installmentNo: 2, dueDate: '2026-10-01', daysOverdue: 31, amountOverdue: 7000 },
+      { feePlanId: 11, installmentId: 2, studentId: 2, studentCode: 'STU-2', studentName: 'Ravi Kale', installmentNo: 1, dueDate: '2026-10-20', daysOverdue: 12, amountOverdue: 5000 },
+    ],
+    'GET /api/fee-plans': (request) => ({
+      ...EMPTY_PAGE,
+      content: [feePlan(10, 1, 'Asha Patil'), feePlan(11, 2, 'Ravi Kale')].filter((p) => !request.query.get('status') || p.status === request.query.get('status')),
+      last: true,
+    }),
+    'GET /api/students': () => ({ ...EMPTY_PAGE, content: [{ id: 1, studentCode: 'STU-1', fullName: 'Asha Patil', email: 'a@x.test', phone: '+91 98765 43210', status: 'ACTIVE' }, { id: 3, studentCode: 'STU-3', fullName: 'Meera Joshi', email: 'm@x.test', phone: '9800000003', status: 'ACTIVE' }], last: true }),
+    'POST /api/reports/exports': (_request, route) => route.fulfill({ status: 204 }),
+    ...extra,
+  })
+  const feePlan = (id: number, studentId: number, name: string) => ({
+    id, studentId, studentCode: `STU-${studentId}`, studentName: name, courseId: 1, batchId: 9, currency: 'INR', totalFee: 60000,
+    discount: 0, netFee: 60000, paid: 30000, outstanding: 30000, overdue: 6000, status: 'ACTIVE', nextDueDate: '2026-12-01',
+    nextDueAmount: 10000, notes: null, installments: [], payments: null,
+  })
+
+  test('the finance desk downloads the overdue list as Excel with the letterhead, and notes it', async ({ page }) => {
+    const api = await signedInAs(page, 'ADMIN', desk())
+    await page.goto('/app/finance')
+    const download = await choose(page, 'Download overdue', xlsxItem)
+    const xlsx = await xlsxOf(download)
+    expect(download.suggestedFilename()).toMatch(/^overdue-instalments-\d{4}-\d{2}-\d{2}\.xlsx$/)
+    for (const text of ['GH Test College', 'Overdue instalments', 'Asha Patil', 'Ravi Kale']) expect(xlsx.strings, text).toContain(text)
+    expect(xlsx.sheet).toContain('<v>7000</v>')
+    await expect.poll(() => api.seen.find((r) => r.method === 'POST' && r.path === '/api/reports/exports')?.body).toMatchObject({ report: 'OVERDUE_FEES', rows: 2 })
+  })
+
+  test('the fee plans download follows the status chosen on the page', async ({ page }) => {
+    const api = await signedInAs(page, 'COORDINATOR', desk())
+    await page.goto('/app/finance')
+    await page.getByRole('combobox').selectOption('SETTLED')
+    const pending = page.waitForEvent('download', { timeout: 5000 }).catch(() => null)
+    await page.getByRole('button', { name: 'Download fee plans' }).click()
+    await page.getByRole('menuitem', { name: csvItem }).click()
+    await pending
+    await expect.poll(() => api.seen.some((r) => r.path === '/api/fee-plans' && r.query.get('status') === 'SETTLED')).toBe(true)
+  })
+
+  test('the fee position of every student includes a student who has no plan', async ({ page }) => {
+    await signedInAs(page, 'ADMIN', desk())
+    await page.goto('/app/finance')
+    const csv = await textOf(await choose(page, "Download every student's fees", csvItem))
+    const lines = csv.split('\r\n')
+    expect(lines[0]).toContain('Student code,Name,Email,Phone')
+    expect(lines.some((l) => l.includes('Asha Patil') && l.includes('30000'))).toBe(true)
+    expect(lines.some((l) => l.includes('Meera Joshi'))).toBe(true) // no plan, still listed
+    expect(csv).toContain('+91 98765 43210')
+  })
+
+  test('a person who may only see their own fees has no desk downloads', async ({ page }) => {
+    await signedInAs(page, 'STUDENT', { ...BRANDED, 'GET /api/auth/me': () => userFor('STUDENT'), 'GET /api/fee-plans/mine': () => [] })
+    await page.goto('/app/finance')
+    await expect(page.getByRole('button', { name: 'Download overdue' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Download every student/ })).toHaveCount(0)
+  })
+
+  test('the video lesson watch report downloads with the lesson, the course and the students named', async ({ page }) => {
+    const api = await signedInAs(page, 'TRAINER', {
+      ...BRANDED,
+      'GET /api/courses/1': () => ({
+        course: { id: 1, title: 'Full Stack Java', code: 'JFS' },
+        modules: [{ id: 1, courseId: 1, title: 'Module 1', sequenceNo: 1, lessons: [{ id: 3, title: 'Intro to Java', videoMonitoring: true }] }],
+        enrolled: false, progress: null,
+      }),
+      'GET /api/progress/lessons/3/watch-report': () => [
+        { studentId: 1, batchId: 9, watchedPercent: 100, playedSeconds: 600, durationSeconds: 600, faceAwaySeconds: 0, facePauses: 0, completed: true },
+        { studentId: 2, batchId: 9, watchedPercent: 20, playedSeconds: 120, durationSeconds: 600, faceAwaySeconds: 30, facePauses: 2, completed: false },
+      ],
+      'GET /api/batches/9/students': () => [{ studentId: 1, studentName: 'Asha Patil' }, { studentId: 2, studentName: 'Ravi Kale' }],
+      'POST /api/reports/exports': (_request, route) => route.fulfill({ status: 204 }),
+    })
+    await page.goto('/app/courses/1/lessons/3/watch-report')
+    await expect(page.getByText('Who watched: Intro to Java')).toBeVisible()
+    await expect(page.getByText('Ravi Kale')).toBeVisible() // names loaded before the file is built
+    const xlsx = await xlsxOf(await choose(page, 'Download', xlsxItem))
+    for (const text of ['Video lesson watch report', 'Intro to Java', 'Full Stack Java', 'Asha Patil', 'Ravi Kale', 'Completed', 'Watching']) {
+      expect(xlsx.strings, text).toContain(text)
+    }
+    await expect.poll(() => api.seen.find((r) => r.method === 'POST' && r.path === '/api/reports/exports')?.body).toMatchObject({ report: 'WATCH_REPORT', rows: 2 })
+  })
+})
+
 test.describe('student progress report', () => {
   const report = {
     studentId: 30,

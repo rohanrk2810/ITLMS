@@ -4,10 +4,12 @@ import { Link, useParams } from 'react-router-dom'
 
 import { getRoster } from '@/api/batches'
 import { getCourseDetail, getLessonWatchReport } from '@/api/courses'
+import { ExportMenu } from '@/components/export-menu'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { lessonWatchReport } from '@/lib/export-rows'
 
 function formatSeconds(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
@@ -52,7 +54,21 @@ export function LessonWatchReportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Who watched: {lesson?.title ?? 'video lesson'}</CardTitle>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <CardTitle>Who watched: {lesson?.title ?? 'video lesson'}</CardTitle>
+            <ExportMenu
+              label="Download"
+              report="WATCH_REPORT"
+              detail={(lesson?.title ?? `lesson ${lessonId}`).slice(0, 120)}
+              build={async () =>
+                lessonWatchReport(report.data ?? [], names, {
+                  title: lesson?.title ?? `Lesson ${lessonId}`,
+                  course: course.data?.course.title,
+                  monitored: lesson?.videoMonitoring,
+                })
+              }
+            />
+          </div>
           <CardDescription>
             Share of the video actually played (skipping ahead does not count), time the camera found no face while it
             played, and times it paused for that. Shown least-watched first.
