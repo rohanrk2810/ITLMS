@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor T as Trainer
+    actor S as Student
+    participant LC as liveclass-service
+    participant LK as LiveKit
+    participant EG as livekit-egress
+    participant V as recordings volume
+    participant B as Browser
+
+    T->>LC: POST /sessions/{id}/recording/start
+    LC->>LK: start room composite egress
+    alt no egress worker running
+        LK-->>LC: times out
+        LC-->>T: 503, nothing half-started in the database
+    else worker available
+        LK->>EG: job
+        EG->>V: write the video file
+        LC->>LC: remember egressId
+    end
+
+    Note over T,B: In the room, the trainer's browser also turns speech into text
+    T->>B: speaks
+    B->>B: speech recognition (captions)
+    B->>LC: POST transcript lines
+    LC->>LC: store live_transcript_lines
+    S->>B: reads live subtitles (if the preference is on)
+
+    T->>LC: End class, or stop recording
+    LC->>LK: stop egress
+    EG-->>LK: file finished
+    LK-->>LC: webhook egress_ended
+    LC->>LC: match egressId, set recordingUrl (an older capture cannot overwrite)
+
+    S->>LC: GET /sessions/{id}/recording
+    LC->>LC: enrolled or teaching? else 403
+    LC-->>S: the whole file (no range support)
+    S->>B: object URL in the video player
+    B->>B: watermark with viewer name, blackout when the tab is hidden

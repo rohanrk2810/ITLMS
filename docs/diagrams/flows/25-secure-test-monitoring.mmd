@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor S as Student
+    participant D as Desktop app / browser
+    participant AS as assessment-service
+    actor T as Trainer
+
+    S->>D: open a secure test
+    D->>D: pre-checks
+    Note right of D: remote-control software scan (AnyDesk, TeamViewer, Getscreen...)<br/>camera and microphone permission<br/>face oval, same face, phone detection (in the browser, MediaPipe)
+    D->>AS: start attempt
+    AS-->>D: paper + rules (secure mode, max violations, camera, mic)
+
+    loop during the test
+        D->>D: full screen, copy block, tab-visibility watch
+        alt tab switched or full screen left
+            D->>AS: POST /quiz-attempts/{id}/violations
+            AS->>AS: count + 1
+            alt count reaches max_violations
+                AS->>AS: status IN_PROGRESS -> TERMINATED
+                AS-->>D: test ended
+            else below the limit
+                AS-->>D: warning shown
+            end
+        else camera event (face missing, other face, phone)
+            D->>AS: violation of a camera type
+            AS->>AS: recorded, warn only, never terminates
+        else remote tool detected
+            D->>AS: remote tool violation
+            AS->>AS: recorded
+        end
+        D->>AS: typing chunks of coding answers
+        AS->>AS: typed vs pasted counts
+    end
+
+    T->>AS: GET violations and typing stats
+    AS-->>T: events with times, pasted-code flag, typing replay
+    T->>AS: optional: give this student another attempt

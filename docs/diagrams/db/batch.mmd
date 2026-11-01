@@ -1,0 +1,118 @@
+erDiagram
+    attendance {
+        bigint id PK
+        bigint session_id FK
+        bigint student_id
+        varchar status
+        varchar remark
+        varchar source
+        integer attended_minutes
+        timestamptz marked_at
+        bigint marked_by
+        timestamptz corrected_at
+        bigint corrected_by
+    }
+    batch_trainers {
+        bigint id PK
+        bigint batch_id FK
+        bigint trainer_id
+        bigint trainer_user_id
+        varchar trainer_name
+        varchar role
+        timestamptz created_at
+    }
+    batches {
+        bigint id PK
+        varchar batch_code UK
+        varchar name
+        bigint course_id
+        varchar course_code
+        varchar course_title
+        bigint trainer_id
+        bigint trainer_user_id
+        varchar trainer_name
+        date start_date
+        date end_date
+        time start_time
+        time end_time
+        varchar class_days
+        varchar mode
+        integer capacity
+        varchar classroom
+        varchar meeting_url
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    class_sessions {
+        bigint id PK
+        bigint batch_id FK
+        bigint trainer_id
+        bigint trainer_user_id
+        date session_date
+        time start_time
+        time end_time
+        varchar topic
+        varchar mode
+        varchar meeting_url
+        varchar room
+        varchar status
+        boolean attendance_marked
+        boolean attendance_auto
+        varchar cancelled_reason
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    course_requests {
+        bigint id PK
+        bigint student_id
+        bigint user_id
+        varchar student_code
+        varchar student_name
+        varchar student_email
+        varchar student_phone
+        bigint course_id
+        varchar course_code
+        varchar course_title
+        bigint preferred_batch_id FK
+        varchar message
+        varchar status
+        bigint decided_by
+        varchar decided_by_name
+        timestamptz decided_at
+        varchar decision_note
+        bigint approved_batch_id FK
+        bigint enrollment_id FK
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    enrollments {
+        bigint id PK
+        bigint student_id
+        bigint user_id
+        varchar student_code
+        varchar student_name
+        bigint course_id
+        bigint batch_id FK
+        timestamptz enrolled_at
+        varchar status
+        date completion_date
+        varchar dropped_reason
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    class_sessions ||--o{ attendance : "session_id"
+    batches ||--o{ batch_trainers : "batch_id"
+    batches ||--o{ class_sessions : "batch_id"
+    batches ||--o{ course_requests : "preferred_batch_id"
+    batches ||--o{ course_requests : "approved_batch_id"
+    enrollments ||--o{ course_requests : "enrollment_id"
+    batches ||--o{ enrollments : "batch_id"

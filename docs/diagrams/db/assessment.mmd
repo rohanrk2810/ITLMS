@@ -1,0 +1,215 @@
+erDiagram
+    assignment_submissions {
+        bigint id PK
+        bigint assignment_id FK
+        bigint student_id
+        varchar student_name
+        bigint student_user_id
+        text text_answer
+        timestamptz submitted_at
+        integer submission_count
+        varchar status
+        integer marks
+        text feedback
+        timestamptz evaluated_at
+        bigint evaluated_by
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    assignments {
+        bigint id PK
+        bigint batch_id
+        bigint course_id
+        varchar title
+        text instructions
+        varchar attachment_ref
+        timestamptz due_at
+        integer max_marks
+        boolean allow_late
+        boolean mandatory
+        varchar status
+        bigint trainer_id
+        timestamptz published_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    coding_run_stats {
+        bigint id PK
+        bigint question_id
+        bigint student_id
+        int runtime_ms
+        int memory_kb
+        timestamptz updated_at
+    }
+    quiz_accepted_answers {
+        bigint question_id PK,FK
+        integer sequence_no PK
+        varchar answer_text
+    }
+    quiz_answer_options {
+        bigint answer_id PK,FK
+        bigint option_id PK,FK
+    }
+    quiz_answers {
+        bigint id PK
+        bigint attempt_id FK
+        bigint question_id FK
+        boolean correct
+        integer marks_awarded
+        timestamptz answered_at
+        text answer_text
+        integer tests_passed
+        integer tests_total
+        varchar tested_source_hash
+        integer tested_marks
+        varchar code_language
+    }
+    quiz_attempts {
+        bigint id PK
+        bigint quiz_id FK
+        bigint student_id
+        varchar student_name
+        bigint student_user_id
+        bigint batch_id
+        integer attempt_no
+        timestamptz started_at
+        timestamptz expires_at
+        timestamptz submitted_at
+        integer score
+        integer percentage
+        boolean passed
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        integer violation_count
+        varchar terminated_reason
+        text question_ids
+        integer max_marks
+    }
+    quiz_extra_attempts {
+        bigint quiz_id PK,FK
+        bigint student_id PK
+        integer extra
+        bigint granted_by
+        timestamptz updated_at
+    }
+    quiz_options {
+        bigint id PK
+        bigint question_id FK
+        text option_text
+        boolean is_correct
+        integer sequence_no
+    }
+    quiz_questions {
+        bigint id PK
+        bigint quiz_id FK
+        text question_text
+        varchar type
+        integer marks
+        integer sequence_no
+        text explanation
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        varchar code_language
+        text starter_code
+        boolean allow_language_choice
+        boolean allow_suggestions
+        text setup_sql
+    }
+    quiz_test_cases {
+        bigint id PK
+        bigint question_id FK
+        integer sequence_no
+        text input
+        text expected_output
+        boolean hidden
+        integer weight
+    }
+    quiz_typing_chunks {
+        bigint id PK
+        bigint attempt_id FK
+        bigint question_id
+        integer seq
+        text events
+        timestamptz created_at
+    }
+    quiz_typing_stats {
+        bigint attempt_id PK,FK
+        bigint question_id PK
+        integer typed_chars
+        integer pasted_chars
+        integer largest_paste
+    }
+    quiz_violations {
+        bigint id PK
+        bigint attempt_id FK
+        varchar type
+        boolean counted
+        varchar detail
+        timestamptz occurred_at
+        timestamptz client_at
+    }
+    quizzes {
+        bigint id PK
+        bigint course_id
+        bigint batch_id
+        varchar title
+        text instructions
+        integer duration_minutes
+        integer pass_percentage
+        integer attempts_allowed
+        integer total_marks
+        timestamptz available_from
+        timestamptz available_until
+        boolean shuffle_questions
+        boolean show_result_immediately
+        boolean mandatory
+        varchar status
+        bigint trainer_id
+        timestamptz published_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        boolean secure_mode
+        integer max_violations
+        boolean require_camera
+        boolean require_microphone
+        varchar camera_checks
+        boolean record_typing
+        integer questions_per_attempt
+        integer attempt_marks
+        boolean shuffle_options
+    }
+    submission_files {
+        bigint id PK
+        bigint submission_id FK
+        varchar file_ref
+        varchar file_name
+        varchar content_type
+        bigint size_bytes
+        timestamptz uploaded_at
+    }
+    assignments ||--o{ assignment_submissions : "assignment_id"
+    quiz_questions ||--o{ quiz_accepted_answers : "question_id"
+    quiz_answers ||--o{ quiz_answer_options : "answer_id"
+    quiz_options ||--o{ quiz_answer_options : "option_id"
+    quiz_attempts ||--o{ quiz_answers : "attempt_id"
+    quiz_questions ||--o{ quiz_answers : "question_id"
+    quizzes ||--o{ quiz_attempts : "quiz_id"
+    quizzes ||--o{ quiz_extra_attempts : "quiz_id"
+    quiz_questions ||--o{ quiz_options : "question_id"
+    quizzes ||--o{ quiz_questions : "quiz_id"
+    quiz_questions ||--o{ quiz_test_cases : "question_id"
+    quiz_attempts ||--o{ quiz_typing_chunks : "attempt_id"
+    quiz_attempts ||--o{ quiz_typing_stats : "attempt_id"
+    quiz_attempts ||--o{ quiz_violations : "attempt_id"
+    assignment_submissions ||--o{ submission_files : "submission_id"

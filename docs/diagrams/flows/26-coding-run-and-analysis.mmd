@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor S as Student
+    participant B as Browser (Monaco editor)
+    participant G as Gateway
+    participant AS as assessment-service
+    participant CX as codeexec-service
+    participant SB as Judge0 / Piston
+
+    Note over S,SB: Practice editor in a lesson
+    S->>B: write code, choose language (if the author allowed it)
+    B->>G: POST /api/code/run {language, source, stdin}
+    G->>CX: forward (45 s timeout)
+    CX->>CX: signed in? language enabled? size ok? per-user rate limit, concurrency cap
+    CX->>SB: run with time, memory limits, no network
+    SB-->>CX: output / compile error / runtime error / timeout
+    CX-->>B: outcome
+    B->>G: POST /api/code/analyze
+    CX->>CX: static analysis: lines, nesting, loops, complexity estimate
+    CX-->>B: metrics, explanation, optimisation hints, growth chart
+
+    Note over S,SB: Coding question inside a test
+    S->>B: Run tests
+    B->>G: POST /quiz-attempts/{id}/questions/{q}/run-tests (90 s, no circuit breaker)
+    G->>AS: forward
+    AS->>AS: enforce the allowed language server-side
+    AS->>CX: run the test cases (CodeClient, /api/code/run-batch)
+    CX->>SB: each case
+    SB-->>CX: result per case with time and memory
+    CX-->>AS: verdict list
+    AS->>AS: store verdict + SHA-256 of the code, a refused run keeps the old verdict
+    AS-->>B: passed / failed per test case
+
+    S->>B: Submit test
+    B->>AS: submit
+    AS->>AS: changed code is re-run, marks come from the stored verdict
+    Note over AS: scoring never runs code itself,<br/>so the expiry job needs no token

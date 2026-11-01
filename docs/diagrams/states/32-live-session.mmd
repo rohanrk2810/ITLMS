@@ -1,0 +1,15 @@
+stateDiagram-v2
+    [*] --> SCHEDULED: batch-service schedules a session (event)
+    SCHEDULED --> LIVE: host joins, room created
+    SCHEDULED --> CANCELLED: session-cancelled event
+    LIVE --> ENDED: End class button
+    LIVE --> ENDED: sweep job settles an abandoned room
+    ENDED --> [*]: attendance computed and sent to batch-service
+    CANCELLED --> [*]
+
+    note right of LIVE
+        Open questions are closed and any recording
+        is stopped at the moment of ending.
+        Students may use mic, camera and screen
+        only as the room rules allow.
+    end note

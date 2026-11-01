@@ -1,0 +1,44 @@
+flowchart LR
+    subgraph People["People"]
+        ST["Student"]
+        TR["Trainer"]
+        CO["Coordinator / Admin"]
+        FI["Finance"]
+        PL["Placement officer"]
+        PUB["Public visitor<br/>(enquiry, certificate check)"]
+    end
+
+    subgraph Clients["Clients"]
+        WEB["Web app<br/>React 19"]
+        DESK["Windows desktop app<br/>(Electron, secure tests)"]
+    end
+
+    SYS["IT-ILMS<br/>gateway + 13 services"]
+
+    subgraph External["External systems"]
+        LK["LiveKit<br/>video, audio, recording"]
+        JD["Code sandbox<br/>Judge0 or Piston"]
+        MAIL["SMTP mail server"]
+        GOOG["Google sign-in"]
+        WA["WhatsApp sender<br/>(sign-in code)"]
+        TURN["Cloudflare Turnstile<br/>(human check)"]
+        JITSI["Jitsi / Google Meet / Zoom<br/>(optional class link)"]
+    end
+
+    ST --> WEB
+    TR --> WEB
+    CO --> WEB
+    FI --> WEB
+    PL --> WEB
+    PUB --> WEB
+    ST --> DESK
+    WEB -->|"HTTPS, JWT"| SYS
+    DESK -->|"HTTPS, JWT"| SYS
+    WEB <-->|"WebRTC media"| LK
+    SYS -->|"tokens, webhooks, egress"| LK
+    SYS -->|"run code"| JD
+    SYS -->|"emails via outbox"| MAIL
+    SYS -->|"verify ID token"| GOOG
+    SYS -->|"send code"| WA
+    SYS -->|"verify token"| TURN
+    WEB -.->|"opens link"| JITSI

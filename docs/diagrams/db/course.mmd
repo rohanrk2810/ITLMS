@@ -1,0 +1,88 @@
+erDiagram
+    course_enrollments {
+        bigint id PK
+        bigint enrollment_id UK
+        bigint student_id
+        bigint user_id
+        bigint course_id FK
+        bigint batch_id
+        varchar status
+        numeric progress_percent
+        integer completed_lessons
+        integer total_lessons
+        timestamptz completed_at
+        timestamptz enrolled_at
+    }
+    course_modules {
+        bigint id PK
+        bigint course_id FK
+        varchar title
+        text description
+        integer sequence_no
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    courses {
+        bigint id PK
+        varchar title
+        varchar code UK
+        varchar summary
+        text description
+        text learning_outcomes
+        text prerequisites
+        varchar technology_stack
+        integer duration_hours
+        varchar level
+        numeric fee
+        varchar thumbnail_ref
+        varchar status
+        timestamptz published_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    lesson_progress {
+        bigint id PK
+        bigint enrollment_id FK
+        bigint lesson_id FK
+        boolean completed
+        integer watched_seconds
+        timestamptz completed_at
+        timestamptz updated_at
+        int played_seconds
+        int duration_seconds
+        int face_away_seconds
+        int face_pauses
+    }
+    lessons {
+        bigint id PK
+        bigint module_id FK
+        varchar title
+        varchar type
+        varchar content_url
+        varchar content_file_ref
+        text text_content
+        integer duration_minutes
+        integer sequence_no
+        boolean is_preview
+        boolean is_mandatory
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        varchar code_language
+        text starter_code
+        boolean allow_language_choice
+        boolean video_monitoring
+        boolean pause_on_no_face
+        boolean auto_resume
+        int face_grace_seconds
+    }
+    courses ||--o{ course_enrollments : "course_id"
+    courses ||--o{ course_modules : "course_id"
+    course_enrollments ||--o{ lesson_progress : "enrollment_id"
+    lessons ||--o{ lesson_progress : "lesson_id"
+    course_modules ||--o{ lessons : "module_id"

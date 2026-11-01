@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    actor T as Trainer
+    actor S as Student
+    participant AS as assessment-service
+    participant BA as batch-service
+    participant K as Kafka
+    participant RP as reporting-service
+
+    T->>AS: create test (DRAFT): questions, pool size, shuffle, attempts, duration
+    T->>AS: publish
+    AS->>AS: DRAFT -> PUBLISHED (a published test cannot be edited)
+
+    S->>AS: POST /api/quizzes/{id}/attempts
+    AS->>BA: is the student in the batch? (Feign)
+    AS->>AS: attempts used < attempts_allowed + extra for this student?
+    alt allowance used up
+        AS-->>S: refused
+    else may start
+        AS->>AS: draw this attempt's questions from the pool, keep the ids
+        AS->>AS: shuffle questions and options per student
+        AS-->>S: paper (no answer key), deadline, saved answers if resuming
+    end
+
+    loop while answering
+        S->>AS: PUT /quiz-attempts/{id}/answers (autosave)
+        AS->>AS: write only changed answers
+    end
+
+    alt student submits
+        S->>AS: POST /quiz-attempts/{id}/submit
+    else time runs out
+        AS->>AS: AttemptExpiryJob settles it, status EXPIRED
+    end
+    AS->>AS: score on the server from the stored key (coding uses stored verdicts)
+    AS->>K: quiz-attempt-completed
+    K->>RP: progress and dashboard facts
+    S->>AS: GET /quiz-attempts/{id}/result
+    AS-->>S: marks, pass or fail, review if allowed
+    T->>AS: results sheet: violations, pasted-code note, +1 attempt for one student

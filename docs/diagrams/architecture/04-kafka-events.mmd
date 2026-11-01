@@ -1,0 +1,92 @@
+flowchart LR
+    %% Producer --> topic --> consumers. Topics are itilms.<service>.<fact>.
+    subgraph P["Producers"]
+        ID["identity"]
+        AD["admission"]
+        BA["batch"]
+        CR["course"]
+        AS["assessment"]
+        FN["finance"]
+        CE["certificate"]
+        PLC["placement"]
+        LC["liveclass"]
+        ANY["any service<br/>(audit helper)"]
+    end
+
+    subgraph T["Topics"]
+        t1(["identity.user-created / updated /<br/>status-changed"])
+        t2(["admission.student-admitted"])
+        t3(["admission.profile-linked"])
+        t4(["batch.enrollment-created / closed"])
+        t5(["batch.session-scheduled / cancelled"])
+        t6(["batch.attendance-marked"])
+        t7(["course.published"])
+        t8(["course.lesson-published /<br/>progress-updated"])
+        t9(["assessment.assignment-created"])
+        t10(["assessment.submission-evaluated"])
+        t11(["assessment.quiz-attempt-completed"])
+        t12(["finance.fee-plan-created /<br/>payment-recorded"])
+        t13(["finance.installment-overdue"])
+        t14(["certificate.issued"])
+        t15(["placement.job-posted"])
+        t16(["placement.application-stage-changed"])
+        t17(["liveclass.attendance-computed"])
+        t18(["notification.requested"])
+        t19(["audit.recorded"])
+    end
+
+    subgraph C["Consumers"]
+        cAD["admission"]
+        cID["identity"]
+        cCR["course"]
+        cBA["batch"]
+        cFN["finance"]
+        cLC["liveclass"]
+        cNO["notification"]
+        cRP["reporting"]
+    end
+
+    ID --> t1
+    AD --> t2
+    AD --> t3
+    BA --> t4
+    BA --> t5
+    BA --> t6
+    CR --> t7
+    CR --> t8
+    AS --> t9
+    AS --> t10
+    AS --> t11
+    FN --> t12
+    FN --> t13
+    CE --> t14
+    PLC --> t15
+    PLC --> t16
+    LC --> t17
+    ID --> t18
+    AD --> t18
+    CE --> t18
+    ANY --> t19
+
+    t1 --> cAD
+    t1 --> cNO
+    t2 --> cFN
+    t2 --> cRP
+    t3 --> cID
+    t4 --> cCR
+    t4 --> cNO
+    t4 --> cRP
+    t5 --> cLC
+    t6 --> cRP
+    t7 --> cBA
+    t10 --> cRP
+    t11 --> cRP
+    t12 --> cRP
+    t13 --> cRP
+    t14 --> cRP
+    t15 --> cNO
+    t15 --> cRP
+    t16 --> cRP
+    t17 --> cBA
+    t18 --> cNO
+    t19 --> cRP

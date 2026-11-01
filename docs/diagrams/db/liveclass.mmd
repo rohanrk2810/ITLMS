@@ -1,0 +1,187 @@
+erDiagram
+    live_material_folders {
+        bigserial id PK
+        bigint owner_user_id
+        varchar path
+        timestamptz created_at
+    }
+    live_materials {
+        bigserial id PK
+        bigint owner_user_id
+        varchar title
+        text payload
+        timestamptz created_at
+        timestamptz updated_at
+        bigint course_id
+        varchar topic
+        varchar tags
+        varchar difficulty
+        boolean shared
+        varchar owner_name
+        varchar folder
+    }
+    live_participant_events {
+        bigserial id PK
+        bigint live_session_id FK
+        varchar identity
+        bigint user_id
+        varchar event_type
+        varchar participant_sid
+        timestamptz occurred_at
+        varchar livekit_event_id UK
+        timestamptz created_at
+    }
+    live_participants {
+        bigserial id PK
+        bigint live_session_id FK
+        varchar identity
+        bigint user_id
+        bigint student_id
+        varchar display_name
+        varchar role
+        timestamptz first_joined_at
+        timestamptz last_left_at
+        timestamptz current_join_at
+        int attended_seconds
+        int join_count
+        int attendance_percent
+        varchar computed_status
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        boolean mic_allowed
+        boolean camera_allowed
+        boolean screen_allowed
+    }
+    live_question_answers {
+        bigserial id PK
+        bigint question_id FK
+        bigint user_id
+        bigint student_id
+        varchar display_name
+        text selected
+        text answer_text
+        text code
+        varchar language
+        boolean correct
+        int awarded_marks
+        boolean via_recording
+        timestamptz submitted_at
+    }
+    live_questions {
+        bigserial id PK
+        bigint live_session_id FK
+        bigint class_session_id
+        bigint batch_id
+        bigint asked_by_user_id
+        varchar type
+        text prompt
+        text options
+        text correct_options
+        text accepted_answers
+        varchar language
+        text starter_code
+        text explanation
+        int marks
+        varchar status
+        timestamptz asked_at
+        int offset_seconds
+        timestamptz closed_at
+        timestamptz created_at
+        text snippet
+        varchar snippet_language
+        text dataset
+    }
+    live_sessions {
+        bigserial id PK
+        bigint class_session_id UK
+        bigint batch_id
+        varchar batch_code
+        varchar course_title
+        bigint trainer_id
+        bigint trainer_user_id
+        varchar room_name UK
+        varchar livekit_room_sid
+        varchar topic
+        date session_date
+        time start_time
+        time end_time
+        timestamptz scheduled_start_at
+        timestamptz scheduled_end_at
+        varchar status
+        timestamptz started_at
+        timestamptz ended_at
+        int max_participants
+        int peak_participants
+        boolean recording_enabled
+        varchar recording_url
+        boolean attendance_computed
+        timestamptz attendance_computed_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        boolean students_can_mic
+        boolean students_can_camera
+        boolean students_can_share_screen
+        varchar egress_id
+        timestamptz recording_started_at
+        varchar recording_file_path
+        boolean browser_recording_active
+        int recording_chunks
+        bigint recording_bytes
+        int transcript_lines
+    }
+    live_transcript_lines {
+        bigserial id PK
+        bigint live_session_id FK
+        int seq
+        int at_seconds
+        varchar language
+        varchar text
+        varchar client_id
+        timestamptz created_at
+    }
+    monitoring_events {
+        bigint id PK
+        bigint live_session_id FK
+        bigint student_id
+        bigint student_user_id
+        varchar student_name
+        varchar event_type
+        varchar severity
+        timestamptz occurred_at
+        int offset_seconds
+        int duration_seconds
+        varchar detail
+    }
+    monitoring_settings {
+        bigint id PK
+        varchar scope_type
+        bigint scope_id
+        boolean enabled
+        boolean face_visibility
+        boolean camera_required
+        int warning_after_seconds
+        boolean show_warning
+        varchar warning_message
+        boolean log_events
+        bigint updated_by
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        boolean microphone_required
+        boolean tab_switch_check
+        boolean attendance_penalty
+        boolean strict_severity
+        boolean auto_remove
+        int auto_remove_after_critical
+        boolean alert_trainer
+    }
+    live_sessions ||--o{ live_participant_events : "live_session_id"
+    live_sessions ||--o{ live_participants : "live_session_id"
+    live_questions ||--o{ live_question_answers : "question_id"
+    live_sessions ||--o{ live_questions : "live_session_id"
+    live_sessions ||--o{ live_transcript_lines : "live_session_id"
+    live_sessions ||--o{ monitoring_events : "live_session_id"

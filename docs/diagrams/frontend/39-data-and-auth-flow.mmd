@@ -1,0 +1,22 @@
+flowchart LR
+    PAGE["Page component"]
+    RQ["TanStack Query<br/>useQuery / useMutation<br/>cache, keys like ['announcements','list']"]
+    API["src/api/&lt;domain&gt;.ts<br/>typed functions"]
+    AX["axios client (api/client.ts)<br/>baseURL = gateway"]
+    GW["Gateway"]
+    ZS["zustand auth-store<br/>access token (memory only)<br/>user"]
+    LS[("localStorage<br/>refresh token")]
+    TOAST["sonner toast<br/>apiErrorMessage(...)"]
+    FIELD["field-error-highlighter<br/>itilms:field-errors event"]
+
+    PAGE --> RQ --> API --> AX --> GW
+    AX -->|"request interceptor adds Bearer"| ZS
+    GW -->|"401"| AX
+    AX -->|"one shared refresh call"| LS
+    AX -->|"new tokens"| ZS
+    AX -->|"retry the request once"| GW
+    GW -->|"400 with fieldErrors"| AX
+    AX --> FIELD
+    RQ -->|"onError"| TOAST
+    ZS -->|"role"| PAGE
+    TIMER["scheduled silent refresh<br/>at 80% of access lifetime"] --> AX

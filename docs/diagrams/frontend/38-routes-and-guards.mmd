@@ -1,0 +1,35 @@
+flowchart TB
+    ROOT["Browser URL"]
+    subgraph PUB["Public routes (no token)"]
+        LOGIN["/login"]
+        REG["/register"]
+        FORGOT["/forgot-password"]
+        RESET["/reset-password"]
+        VERIFY["/verify-certificate"]
+    end
+
+    PR["ProtectedRoute (no roles)<br/>checks the session, forces change-password"]
+    APP["AppLayout<br/>sidebar + top bar + Outlet"]
+
+    subgraph ROLES["ProtectedRoute roles = ... (layout routes)"]
+        A1["ADMIN, COORDINATOR, TRAINER, STUDENT<br/>courses, tests, live classes"]
+        A2["ADMIN, COORDINATOR<br/>admissions, users"]
+        A3["ADMIN, COORDINATOR, TRAINER<br/>students, batches"]
+        A4["ADMIN, COORDINATOR, FINANCE, STUDENT<br/>finance"]
+        A5["ADMIN, STUDENT<br/>certificates"]
+        A6["ADMIN, PLACEMENT, STUDENT<br/>placements"]
+        A7["ADMIN, COORDINATOR, STUDENT<br/>course requests"]
+        A8["ADMIN<br/>customize, branding, monitoring, audit logs"]
+        A9["STUDENT<br/>my progress"]
+    end
+
+    OPEN["Any signed-in role<br/>dashboard, files, announcements"]
+    CATCH["* CatchAll<br/>maps an email link to an /app route, else not found"]
+    FORB["/forbidden"]
+
+    ROOT --> PUB
+    ROOT --> PR --> APP
+    APP --> ROLES
+    APP --> OPEN
+    ROLES -->|"role missing"| FORB
+    ROOT --> CATCH

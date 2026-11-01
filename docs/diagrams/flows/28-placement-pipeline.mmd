@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    actor P as Placement officer
+    actor S as Student
+    participant PL as placement-service
+    participant AS as assessment
+    participant BA as batch
+    participant CE as certificate
+    participant FS as file-service
+    participant K as Kafka
+    participant NO as notification
+    participant RP as reporting
+
+    P->>PL: add company, create job (DRAFT) with eligibility rules
+    P->>PL: publish (DRAFT -> OPEN)
+    PL->>K: job-posted
+    K->>NO: fan out a notification
+    K->>RP: dashboard fact
+
+    S->>FS: upload resume (category RESUME, owner + staff + PLACEMENT may read)
+    S->>PL: apply to a job
+    PL->>BA: batch and attendance
+    PL->>AS: test results
+    PL->>CE: certificate status
+    alt not eligible, or job not OPEN, or already applied
+        PL-->>S: refused with the reason
+    else eligible
+        PL->>PL: application APPLIED + stage history row (same transaction)
+        PL->>K: application-stage-changed
+    end
+
+    loop pipeline
+        P->>PL: move stage (only allowed moves)
+        PL->>PL: write stage history, publish audit
+        PL->>K: application-stage-changed
+        K->>RP: counts
+        K->>NO: tell the student
+    end
+    Note over PL: SELECTED, REJECTED and WITHDRAWN are final
+    P->>FS: download the resume
+    P->>PL: close the job (OPEN -> CLOSED)

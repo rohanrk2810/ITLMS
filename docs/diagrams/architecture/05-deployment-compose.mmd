@@ -1,0 +1,48 @@
+flowchart TB
+    subgraph Host["One host: Docker Compose, network 'itilms'"]
+        direction TB
+        subgraph Edge["Published ports (bound to BIND_ADDRESS, default 127.0.0.1)"]
+            FE["frontend<br/>:5173 -> 8080"]
+            GW["api-gateway<br/>:8080"]
+            LK["livekit<br/>:7880 :7881 + UDP media"]
+            MP["mailpit<br/>:8025 UI, :1025 SMTP"]
+            EU["discovery-server :8761"]
+            CS["config-server :8888"]
+            PGP["postgres :5433"]
+            KFP["kafka :9092"]
+            RDP["redis :6379"]
+        end
+
+        subgraph Internal["Internal only (no published port)"]
+            SV["13 business services<br/>identity ... codeexec"]
+            EG["livekit-egress<br/>(optional, heavy)"]
+            OR["oracle<br/>(practice SQL)"]
+            PI["piston<br/>(profile 'piston')"]
+        end
+
+        subgraph Vols["Named volumes"]
+            V1[("postgres-data")]
+            V2[("kafka-data")]
+            V3[("file-storage")]
+            V4[("recordings")]
+            V5[("piston-packages")]
+        end
+    end
+
+    FE --> GW --> SV
+    SV --> PGP
+    SV --> KFP
+    GW --> RDP
+    SV --> EU
+    SV --> CS
+    PGP --- V1
+    KFP --- V2
+    SV --- V3
+    EG --- V4
+    SV --- V4
+    PI --- V5
+    SV --> PI
+    SV --> OR
+    SV --> LK
+    LK --> EG
+    SV --> MP

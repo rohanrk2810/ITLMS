@@ -1,0 +1,46 @@
+sequenceDiagram
+    autonumber
+    actor C as Coordinator
+    participant G as Gateway
+    participant AD as admission-service
+    participant ID as identity-service
+    participant K as Kafka
+    participant FI as finance-service
+    participant RP as reporting-service
+    participant NO as notification-service
+    participant CR as course / batch
+
+    Note over C,AD: A public enquiry becomes a lead
+    C->>G: POST /api/leads/enquiry (public) or staff adds a lead
+    G->>AD: forward
+    AD->>AD: lead NEW, follow-ups, overdue list
+
+    C->>G: POST /api/leads/{id}/convert (course, batch, fee)
+    G->>AD: forward (STAFF only)
+    AD->>ID: POST /api/users (Feign): create STUDENT login
+    ID->>ID: temporary password, must change at first sign-in
+    ID->>K: user-created
+    ID->>K: notification.requested (login details)
+    AD->>AD: save student, lead -> CONVERTED
+    AD->>K: student-admitted (after commit)
+    AD->>K: profile-linked
+
+    par Identity learns the profile id
+        K->>ID: profile-linked
+        ID->>ID: store student id for future tokens
+    and Finance raises the fee plan
+        K->>FI: student-admitted
+        FI->>FI: fee plan + instalments (idempotent by event id)
+        FI->>K: fee-plan-created
+    and Reporting counts it
+        K->>RP: student-admitted
+    and The student is told
+        K->>NO: notification.requested
+        NO->>NO: email via outbox with the temporary password (never stored)
+    end
+
+    C->>G: place the student in a batch
+    G->>CR: batch-service creates the enrolment
+    CR->>K: enrollment-created
+    K->>CR: course-service unlocks lessons
+    K->>NO: notification (batch members)

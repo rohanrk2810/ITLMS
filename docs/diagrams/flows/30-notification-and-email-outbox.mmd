@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    participant SRC as Any service
+    participant K as Kafka
+    participant NI as NotificationIntake
+    participant DB as notification DB
+    participant JOB as EmailOutboxJob
+    participant SMTP as SMTP / Mailpit
+    actor U as User
+    participant FE as Bell in the web app
+
+    SRC->>K: notification.requested {audience, title, body, actionUrl, sendEmail?}
+    Note over SRC,K: also user, enrolment and job-posted events keep recipient and batch-member projections up to date
+    K->>NI: consume
+    NI->>DB: resolve audience: one user, role, batch or course (AudienceResolver)
+    NI->>DB: insert notification per user (unique on event id + user, so a replay adds nothing)
+    opt email wanted
+        NI->>DB: insert email_outbox row (PENDING)
+        Note over NI,DB: temporary passwords and reset links go straight into the email, never into a column
+    end
+
+    loop every few seconds
+        JOB->>DB: take PENDING rows due now
+        JOB->>SMTP: send
+        alt sent
+            JOB->>DB: mark SENT
+        else mail server down
+            JOB->>DB: attempts + 1, next try later (doubling backoff)
+        end
+    end
+
+    U->>FE: open the app
+    FE->>DB: GET /api/notifications (through the gateway)
+    FE-->>U: unread count and list
+    U->>FE: click a notification
+    FE->>FE: mapActionUrl turns the backend path into an /app route
+    FE->>DB: mark read
