@@ -1,0 +1,38 @@
+flowchart LR
+    %% Which role reaches which area (from nav-items.ts and the route role lists). Backend @PreAuthorize is the real control.
+    subgraph R["Roles"]
+        AD["ADMIN"]
+        CO["COORDINATOR"]
+        TR["TRAINER"]
+        ST["STUDENT"]
+        PL["PLACEMENT"]
+        FI["FINANCE"]
+    end
+
+    subgraph M["Areas"]
+        DASH["Dashboard"]
+        ADM["Admissions"]
+        STU["Students"]
+        COU["Courses"]
+        PRG["My progress"]
+        CRQ["Course requests"]
+        BAT["Batches and attendance"]
+        LIV["Live classes"]
+        TST["Tests and assignments"]
+        FIN["Fees / finance desk"]
+        CER["Certificates"]
+        JOB["Placements"]
+        FIL["Files"]
+        ANN["Announcements"]
+        USR["Users"]
+        CUS["Customize and branding"]
+        MON["Monitoring settings"]
+        AUD["Audit logs"]
+    end
+
+    AD --> DASH & ADM & STU & COU & CRQ & BAT & LIV & TST & FIN & CER & JOB & FIL & ANN & USR & CUS & MON & AUD
+    CO --> DASH & ADM & STU & COU & CRQ & BAT & LIV & TST & FIN & FIL & ANN & USR
+    TR --> DASH & STU & COU & BAT & LIV & TST & FIL & ANN
+    ST --> DASH & COU & PRG & CRQ & LIV & TST & FIN & CER & JOB & FIL & ANN
+    PL --> DASH & JOB & FIL & ANN
+    FI --> DASH & FIN & FIL & ANN

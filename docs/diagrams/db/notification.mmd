@@ -1,0 +1,59 @@
+erDiagram
+    announcements {
+        bigint id PK
+        varchar title
+        text message
+        varchar audience
+        varchar target_role
+        bigint target_id
+        boolean send_email
+        timestamptz expires_at
+        boolean withdrawn
+        int recipient_count
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        varchar category
+    }
+    batch_members {
+        bigint batch_id PK
+        bigint user_id PK
+        bigint course_id
+        boolean active
+        timestamptz changed_at
+    }
+    email_outbox {
+        bigint id PK
+        bigint user_id
+        varchar to_address
+        varchar subject
+        text text_body
+        text html_body
+        varchar status
+        int attempts
+        timestamptz next_attempt_at
+        varchar last_error
+        timestamptz sent_at
+        timestamptz created_at
+    }
+    notifications {
+        bigint id PK
+        varchar source_event_id
+        bigint user_id
+        varchar type
+        varchar title
+        text message
+        varchar action_url
+        timestamptz read_at
+        timestamptz created_at
+    }
+    recipients {
+        bigint user_id PK
+        varchar email
+        varchar full_name
+        varchar role
+        boolean active
+        timestamptz status_changed_at
+        timestamptz updated_at
+    }

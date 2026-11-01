@@ -1,0 +1,52 @@
+erDiagram
+    fee_installments {
+        bigint id PK
+        bigint fee_plan_id FK
+        integer installment_no
+        date due_date
+        numeric amount
+        integer last_reminder_days
+        timestamptz overdue_notified_at
+    }
+    fee_plans {
+        bigint id PK
+        bigint student_id
+        bigint student_user_id
+        varchar student_code
+        varchar student_name
+        bigint course_id
+        bigint batch_id
+        numeric total_fee
+        numeric discount
+        numeric net_fee
+        varchar currency
+        varchar status
+        varchar notes
+        timestamptz cancelled_at
+        varchar cancelled_reason
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    payments {
+        bigint id PK
+        bigint fee_plan_id FK
+        bigint student_id
+        numeric amount
+        date payment_date
+        varchar method
+        varchar reference_no
+        varchar receipt_no UK
+        varchar status
+        timestamptz reversed_at
+        bigint reversed_by
+        varchar reversal_reason
+        varchar notes
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    fee_plans ||--o{ fee_installments : "fee_plan_id"
+    fee_plans ||--o{ payments : "fee_plan_id"

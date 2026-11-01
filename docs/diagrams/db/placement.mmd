@@ -1,0 +1,76 @@
+erDiagram
+    application_stage_history {
+        bigint id PK
+        bigint application_id FK
+        varchar from_stage
+        varchar to_stage
+        integer round_no
+        varchar note
+        bigint changed_by
+        timestamptz changed_at
+    }
+    companies {
+        bigint id PK
+        varchar name
+        varchar industry
+        varchar website
+        varchar location
+        varchar contact_name
+        varchar contact_email
+        varchar contact_phone
+        text notes
+        boolean active
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    job_applications {
+        bigint id PK
+        bigint job_id FK
+        bigint student_id
+        bigint student_user_id
+        varchar student_name
+        bigint course_id
+        varchar resume_ref
+        text cover_note
+        timestamptz applied_at
+        varchar stage
+        integer current_round
+        timestamptz next_interview_at
+        varchar offer_details
+        timestamptz decided_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    job_eligible_courses {
+        bigint job_id PK,FK
+        bigint course_id PK
+    }
+    job_openings {
+        bigint id PK
+        bigint company_id FK
+        varchar title
+        text description
+        varchar job_type
+        varchar location
+        varchar package_offered
+        integer openings
+        date application_deadline
+        boolean require_certificate
+        integer min_attendance_percent
+        integer min_score_percent
+        text eligibility_notes
+        varchar status
+        timestamptz published_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    job_applications ||--o{ application_stage_history : "application_id"
+    job_openings ||--o{ job_applications : "job_id"
+    job_openings ||--o{ job_eligible_courses : "job_id"
+    companies ||--o{ job_openings : "company_id"

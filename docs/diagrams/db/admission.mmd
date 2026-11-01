@@ -1,0 +1,97 @@
+erDiagram
+    lead_followups {
+        bigint id PK
+        bigint lead_id FK
+        timestamptz contacted_at
+        varchar outcome
+        text remark
+        timestamptz next_action_at
+        bigint created_by
+        timestamptz created_at
+    }
+    leads {
+        bigint id PK
+        varchar name
+        varchar phone
+        varchar email
+        varchar source
+        bigint interested_course_id
+        bigint counselor_user_id
+        varchar status
+        timestamptz next_follow_up_at
+        text notes
+        varchar lost_reason
+        bigint converted_student_id FK
+        timestamptz converted_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    student_documents {
+        bigint id PK
+        bigint student_id FK
+        varchar document_type
+        varchar file_ref
+        varchar file_name
+        boolean verified
+        bigint verified_by
+        timestamptz verified_at
+        timestamptz uploaded_at
+    }
+    students {
+        bigint id PK
+        bigint user_id UK
+        varchar student_code UK
+        varchar full_name
+        varchar email
+        varchar phone
+        date date_of_birth
+        varchar gender
+        varchar highest_education
+        varchar college
+        integer graduation_year
+        varchar address_line
+        varchar city
+        varchar state
+        varchar pincode
+        varchar guardian_name
+        varchar guardian_phone
+        varchar emergency_contact
+        date admission_date
+        varchar admission_source
+        varchar status
+        text remarks
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    trainer_courses {
+        bigint id PK
+        bigint trainer_id FK
+        bigint course_id
+        timestamptz created_at
+    }
+    trainers {
+        bigint id PK
+        bigint user_id UK
+        varchar employee_code UK
+        varchar full_name
+        varchar email
+        varchar phone
+        varchar specialization
+        varchar qualification
+        numeric experience_years
+        text bio
+        date joined_on
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    leads ||--o{ lead_followups : "lead_id"
+    students ||--o{ leads : "converted_student_id"
+    students ||--o{ student_documents : "student_id"
+    trainers ||--o{ trainer_courses : "trainer_id"

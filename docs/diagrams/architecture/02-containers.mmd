@@ -1,0 +1,49 @@
+flowchart TB
+    FE["frontend<br/>Nginx :5173"]
+    GW["api-gateway :8080<br/>JWT check, rate limit,<br/>circuit breaker, /internal blocked"]
+
+    subgraph Platform["Platform"]
+        EU["discovery-server<br/>Eureka :8761"]
+        CS["config-server :8888"]
+    end
+
+    subgraph Services["Business services (one database each)"]
+        ID["identity :8081"]
+        AD["admission :8082"]
+        CR["course :8083"]
+        BA["batch :8084"]
+        AS["assessment :8085"]
+        FN["finance :8086"]
+        CE["certificate :8087"]
+        PLC["placement :8088"]
+        NO["notification :8089"]
+        FL["file :8090"]
+        LC["liveclass :8091"]
+        RP["reporting :8092"]
+        CX["codeexec :8093<br/>(no database)"]
+    end
+
+    subgraph Stores["Shared infrastructure"]
+        PG[("PostgreSQL 17<br/>12 databases")]
+        KF[["Kafka"]]
+        RD[("Redis<br/>rate limiter")]
+        LK["LiveKit + egress"]
+        VOL[("file-storage<br/>recordings volumes")]
+        SB["Judge0 or Piston"]
+        MP["Mailpit / SMTP"]
+    end
+
+    FE --> GW
+    GW -->|"lb:// via Eureka"| Services
+    GW --> RD
+    Services -.->|"register"| EU
+    Services -.->|"config"| CS
+    GW -.-> EU
+    Services --> PG
+    Services <--> KF
+    LC --> LK
+    LK --> VOL
+    FL --> VOL
+    LC --> VOL
+    CX --> SB
+    NO --> MP

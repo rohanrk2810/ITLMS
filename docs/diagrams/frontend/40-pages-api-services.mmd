@@ -1,0 +1,58 @@
+flowchart LR
+    subgraph Pages["src/pages"]
+        P1["login, register,<br/>forgot / reset password"]
+        P2["dashboard, audit-logs"]
+        P3["admissions, students, users"]
+        P4["courses, course-requests, progress"]
+        P5["batches (attendance)"]
+        P6["live-classes"]
+        P7["assessments"]
+        P8["finance"]
+        P9["certificates"]
+        P10["placements"]
+        P11["files, announcements"]
+        P12["branding, customize, monitoring"]
+    end
+
+    subgraph Api["src/api modules"]
+        A1["auth.ts, users.ts"]
+        A2["reporting.ts, progress.ts"]
+        A3["leads.ts, students.ts, trainers.ts"]
+        A4["courses.ts, course-requests.ts"]
+        A5["batches.ts"]
+        A6["live-classes.ts, monitoring.ts"]
+        A7["assessments.ts, assignments.ts, code.ts"]
+        A8["finance.ts"]
+        A9["certificates.ts"]
+        A10["placements.ts"]
+        A11["files.ts, announcements.ts, notifications.ts"]
+        A12["branding.ts"]
+    end
+
+    subgraph Svc["Backend services"]
+        S1["identity"]
+        S2["reporting"]
+        S3["admission"]
+        S4["course + batch"]
+        S5["batch"]
+        S6["liveclass"]
+        S7["assessment + codeexec"]
+        S8["finance"]
+        S9["certificate"]
+        S10["placement"]
+        S11["file + notification"]
+        S12["identity (branding)"]
+    end
+
+    P1 --> A1 --> S1
+    P2 --> A2 --> S2
+    P3 --> A3 --> S3
+    P4 --> A4 --> S4
+    P5 --> A5 --> S5
+    P6 --> A6 --> S6
+    P7 --> A7 --> S7
+    P8 --> A8 --> S8
+    P9 --> A9 --> S9
+    P10 --> A10 --> S10
+    P11 --> A11 --> S11
+    P12 --> A12 --> S12

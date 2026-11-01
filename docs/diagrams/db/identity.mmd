@@ -1,0 +1,86 @@
+erDiagram
+    institute_settings {
+        smallint id PK
+        varchar name
+        varchar tagline
+        varchar primary_color
+        varchar contact_email
+        varchar contact_phone
+        varchar website
+        varchar address
+        varchar signatory_name
+        varchar signatory_title
+        bytea logo
+        varchar logo_type
+        bytea favicon
+        varchar favicon_type
+        bigint version
+        timestamptz updated_at
+        bigint updated_by
+        bytea login_background
+        varchar login_background_type
+        text student_hidden_menu
+        text ui_config
+        bytea app_background
+        varchar app_background_type
+    }
+    login_otps {
+        bigserial id PK
+        varchar phone_digits
+        varchar code_hash
+        timestamptz expires_at
+        timestamptz used_at
+        int attempts
+        varchar requested_ip
+        timestamptz created_at
+    }
+    password_reset_tokens {
+        bigint id PK
+        bigint user_id FK
+        varchar token_hash UK
+        timestamptz expires_at
+        timestamptz used_at
+        varchar requested_ip
+        timestamptz created_at
+        int attempts
+    }
+    refresh_tokens {
+        bigint id PK
+        bigint user_id FK
+        varchar token_hash UK
+        timestamptz expires_at
+        timestamptz revoked_at
+        varchar replaced_by
+        varchar user_agent
+        varchar ip_address
+        timestamptz created_at
+        varchar session_id
+        varchar device_label
+        timestamptz last_activity_at
+        timestamptz session_started_at
+        varchar revoke_reason
+    }
+    users {
+        bigint id PK
+        varchar first_name
+        varchar last_name
+        varchar email UK
+        varchar phone UK
+        varchar password_hash
+        varchar role
+        varchar status
+        bigint profile_id
+        varchar profile_code
+        integer failed_attempts
+        timestamptz locked_until
+        boolean must_change_password
+        timestamptz last_login_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        timestamptz deleted_at
+        text hidden_menu
+    }
+    users ||--o{ password_reset_tokens : "user_id"
+    users ||--o{ refresh_tokens : "user_id"

@@ -1,0 +1,24 @@
+flowchart TB
+    USER["Browser / desktop app"]
+    DNS["app.&lt;server-ip&gt;.sslip.io<br/>api.&lt;server-ip&gt;.sslip.io<br/>live.&lt;server-ip&gt;.sslip.io"]
+
+    subgraph VM["Cloud VM (Linux, Docker)"]
+        CADDY["Caddy on the host<br/>HTTPS certificates, auto-renew"]
+        subgraph DC["Docker Compose stack"]
+            FE["frontend (Nginx, gzip)<br/>127.0.0.1:5173"]
+            GW["api-gateway<br/>127.0.0.1:8080"]
+            LKS["livekit<br/>127.0.0.1:7880 + media ports open"]
+            SVC["13 services, Kafka, Redis,<br/>PostgreSQL"]
+        end
+        BK[("~/backups<br/>pg_dump files,<br/>copies before a change")]
+        SCRIPT["manual update:<br/>scp changed files,<br/>mvn package,<br/>docker compose up -d --build --no-deps"]
+    end
+
+    USER --> DNS --> CADDY
+    CADDY -->|"app."| FE
+    CADDY -->|"api."| GW
+    CADDY -->|"live."| LKS
+    FE --> GW --> SVC
+    SVC --- BK
+    SCRIPT -.-> DC
+    USER -.->|"UDP/TCP media direct"| LKS

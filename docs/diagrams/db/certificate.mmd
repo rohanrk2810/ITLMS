@@ -1,0 +1,51 @@
+erDiagram
+    certificate_requests {
+        bigint id PK
+        bigint student_id
+        bigint student_user_id
+        varchar student_code
+        varchar student_name
+        bigint course_id
+        varchar course_title
+        bigint batch_id
+        varchar batch_name
+        varchar status
+        timestamptz requested_at
+        text eligibility_snapshot
+        bigint reviewed_by
+        timestamptz reviewed_at
+        varchar rejection_reason
+        bigint certificate_id FK
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    certificates {
+        bigint id PK
+        varchar certificate_no UK
+        varchar verification_code
+        bigint student_id
+        bigint student_user_id
+        varchar student_code
+        varchar student_name
+        bigint course_id
+        varchar course_title
+        bigint batch_id
+        date issue_date
+        date completion_date
+        varchar status
+        timestamptz revoked_at
+        bigint revoked_by
+        varchar revoked_reason
+        text evidence
+        bigint issued_by
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        varchar batch_name
+        bigint request_id FK
+    }
+    certificates ||--o{ certificate_requests : "certificate_id"
+    certificate_requests ||--o{ certificates : "request_id"

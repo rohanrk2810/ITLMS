@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    actor S as Student
+    actor A as Admin
+    actor V as Anyone (employer)
+    participant CE as certificate-service
+    participant AD as admission
+    participant AS as assessment
+    participant BA as batch
+    participant CR as course
+    participant FI as finance
+    participant ID as identity
+    participant K as Kafka
+
+    S->>CE: GET /api/certificates/eligibility
+    CE->>CR: completion rule for the course
+    CE->>BA: attendance %, enrolment (taken from the student's own enrolment)
+    CE->>AS: required tests passed?
+    CE->>FI: fees settled?
+    CE-->>S: checklist: each condition met or not (unreachable = not met)
+
+    S->>CE: POST /api/certificates/requests
+    CE->>CE: request PENDING
+    CE->>K: notification.requested (staff told)
+
+    A->>CE: approve or reject (reason)
+    alt approved
+        CE->>CE: APPROVED
+        A->>CE: POST /requests/{id}/issue
+        CE->>CE: re-check every condition at the moment of issue
+        CE->>ID: institute branding and signatory
+        CE->>CE: certificate number + verification code, PDF
+        CE->>CE: request ISSUED
+        CE->>K: certificate.issued
+        CE->>K: notification.requested (student)
+    else rejected
+        CE->>CE: REJECTED
+        CE->>K: notification.requested (student)
+    end
+
+    S->>CE: GET /api/certificates/{id}/pdf
+    V->>CE: GET /api/certificates/verify/{number} (public, 1/s per address)
+    CE-->>V: valid, name, course, date, or revoked
+    A->>CE: POST /api/certificates/{id}/revoke (ADMIN only)

@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    actor T as Trainer
+    actor S as Student
+    participant LC as liveclass-service
+    participant BA as batch-service
+    participant LK as LiveKit
+    participant K as Kafka
+
+    T->>BA: schedule a session (batch, time, mode)
+    BA->>K: session-scheduled
+    K->>LC: create live_session SCHEDULED
+
+    T->>LC: POST /class-sessions/{id}/join
+    LC->>BA: does this trainer teach the batch? (Feign, fails closed)
+    LC->>LK: create room if missing
+    LC->>LC: status SCHEDULED -> LIVE, token with host rights
+    LC-->>T: LiveKit token (roomAdmin)
+    T->>LK: connect (media goes direct)
+
+    S->>LC: join
+    LC->>BA: is the student enrolled in the batch?
+    LC->>LC: RoomPermissions: mic / camera / screen allowed?
+    LC-->>S: token carrying only the permitted sources
+    S->>LK: connect
+
+    LK-->>LC: signed webhook participant_joined / left
+    LC->>LC: sum time in the room (reconnects added)
+
+    opt Host changes a rule mid-class
+        T->>LC: mute all / allow mic for one student
+        LC->>LK: update publish permissions
+    end
+
+    opt Live question
+        T->>LC: ask question
+        LC->>LK: data message live-question
+        S->>LC: answer (one per student)
+        LC->>LC: auto-grade choice and short answers
+    end
+
+    T->>LC: End class (or sweep job settles an abandoned room)
+    LC->>LC: status LIVE -> ENDED, close open questions, stop recording
+    LC->>LC: attendance % = time in room / class length
+    LC->>K: attendance-computed
+    K->>BA: write register: PRESENT/LATE by threshold, ABSENT if never seen, keep manual marks
+    BA->>K: attendance-marked

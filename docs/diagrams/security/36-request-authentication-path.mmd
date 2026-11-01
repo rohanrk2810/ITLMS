@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    participant B as Client
+    participant G as Gateway
+    participant R as Redis
+    participant S as Service
+    participant F as JwtAuthenticationFilter
+    participant C as Controller
+    participant SV as Service logic
+
+    B->>G: request with Authorization: Bearer JWT
+    G->>G: strip any X-User-* headers the client sent
+    alt path under /internal/**
+        G-->>B: 404 (before authentication)
+    else path on the public allow-list
+        G->>R: rate limit by client address
+        G->>S: forward without a token check
+    else protected path
+        G->>G: verify signature, issuer, expiry (30 s skew), typ = ACCESS
+        alt token missing, expired or a refresh token
+            G-->>B: 401 AUTHENTICATION_REQUIRED
+        else valid
+            G->>R: rate limit (session calls have their own larger budget)
+            G->>G: add X-User-Id, Role, Email, Profile-Id (logs only)
+            G->>S: forward (circuit breaker + bulkhead)
+        end
+    end
+
+    S->>F: filter chain
+    F->>F: verify the JWT again with the shared secret
+    F->>F: build AppPrincipal(userId, email, name, role, profileId)
+    S->>C: handler
+    C->>C: @PreAuthorize with Roles constant
+    alt role not allowed
+        C-->>B: 403
+    else allowed
+        C->>SV: call with the principal
+        SV->>SV: ownership check: student reads own records, trainer only own batches
+        alt not the owner
+            SV-->>B: 403 ACCESS_DENIED
+        else owner or staff
+            SV-->>B: 200 with data
+        end
+    end

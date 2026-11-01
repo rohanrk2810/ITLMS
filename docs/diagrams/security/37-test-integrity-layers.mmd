@@ -1,0 +1,31 @@
+flowchart TB
+    subgraph SRV["Server side: cannot be bypassed by the student"]
+        S1["Answer key never sent to the student"]
+        S2["Scoring on the server from the stored key"]
+        S3["Question pool: each attempt draws its own set and keeps it"]
+        S4["Questions and options shuffled per student"]
+        S5["Attempt allowance + per-student extra attempts"]
+        S6["Deadline enforced by AttemptExpiryJob"]
+        S7["Coding marks from a stored verdict + SHA-256 of the code"]
+        S8["Allowed language enforced when running tests"]
+    end
+
+    subgraph CLI["Browser / desktop: monitoring, leaves evidence"]
+        C1["Full screen, copy block, tab-visibility watch"]
+        C2["Violations counted, test TERMINATED at the limit"]
+        C3["Camera: face oval, same face, phone detection (warn only)"]
+        C4["Microphone: speech-level check (optional)"]
+        C5["Remote-control tool scan: AnyDesk, TeamViewer, Getscreen"]
+        C6["Typing replay: typed vs pasted"]
+    end
+
+    subgraph REV["Review by people"]
+        R1["Results sheet: violations with times"]
+        R2["Pasted-code note"]
+        R3["Typing replay"]
+        R4["Trainer decides: accept, or give +1 attempt"]
+    end
+
+    SRV --> CLI --> REV
+    LIM["Limit: a browser cannot prove honesty. A student who controls the machine can<br/>defeat client checks; OS-level screenshots and a phone camera are undetectable."]
+    CLI -.-> LIM

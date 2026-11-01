@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant B as Browser
+    participant G as Gateway
+    participant I as identity-service
+    participant DB as identity DB
+    participant K as Kafka
+
+    U->>B: email or phone + password
+    B->>G: POST /api/auth/login (public path)
+    G->>G: rate limit 15/s per address, burst 40
+    G->>I: forward
+    opt Human check is on
+        I->>I: verify Turnstile token with Cloudflare
+    end
+    I->>DB: find user by email or phone
+    alt unknown user, wrong password, or locked
+        I->>DB: failed counter +1, lock 15 min at 5
+        I-->>B: 401 invalid credentials / 403 locked
+    else status INACTIVE or BLOCKED
+        I-->>B: 403 account not active
+    else password ok
+        I->>DB: reset failed counter
+        alt single-session policy REPLACE
+            I->>DB: mark older refresh tokens REPLACED
+        else policy DENY and another session is active
+            I-->>B: refused
+        end
+        I->>DB: store refresh token as SHA-256 hash + session row (device, ip)
+        I->>K: audit.recorded (login)
+        I-->>B: access JWT 30 min + refresh token 7 d + user profile
+    end
+
+    Note over B,I: Later, silently at 80% of the access lifetime
+    B->>G: POST /api/auth/refresh {refreshToken}
+    G->>I: forward (limit 50/s)
+    I->>DB: look up hash
+    alt token valid and not used
+        I->>DB: revoke it, issue a new one (session_id kept)
+        I-->>B: new access + refresh
+    else token already used (copied)
+        I->>DB: revoke the whole token family
+        I-->>B: 401 session ended
+    else token replaced by a newer login
+        I-->>B: 401 signed in on another device
+    end

@@ -1,0 +1,37 @@
+erDiagram
+    activity_events {
+        bigint id PK
+        varchar event_id
+        varchar metric_key
+        timestamptz occurred_at
+        date event_date
+        numeric amount
+        bigint ref_id
+        varchar dimension
+    }
+    audit_logs {
+        bigint id PK
+        varchar event_id UK
+        timestamptz occurred_at
+        varchar service_name
+        bigint actor_user_id
+        varchar actor_email
+        varchar actor_role
+        varchar action
+        varchar entity_type
+        varchar entity_id
+        text old_value
+        text new_value
+        varchar ip_address
+        varchar user_agent
+        timestamptz recorded_at
+    }
+    student_session_attendance {
+        bigint id PK
+        bigint student_id
+        bigint session_id
+        bigint batch_id
+        date session_date
+        varchar status
+        timestamptz marked_at
+    }

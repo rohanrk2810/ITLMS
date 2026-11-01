@@ -1,0 +1,28 @@
+stateDiagram-v2
+    [*] --> APPLIED: student applies (eligibility enforced)
+    APPLIED --> SHORTLISTED
+    APPLIED --> ON_HOLD
+    APPLIED --> REJECTED
+    APPLIED --> WITHDRAWN
+    SHORTLISTED --> INTERVIEW
+    SHORTLISTED --> ON_HOLD
+    SHORTLISTED --> REJECTED
+    SHORTLISTED --> WITHDRAWN
+    INTERVIEW --> INTERVIEW: next round
+    INTERVIEW --> SELECTED
+    INTERVIEW --> ON_HOLD
+    INTERVIEW --> REJECTED
+    INTERVIEW --> WITHDRAWN
+    ON_HOLD --> SHORTLISTED
+    ON_HOLD --> INTERVIEW
+    ON_HOLD --> SELECTED
+    ON_HOLD --> REJECTED
+    ON_HOLD --> WITHDRAWN
+    SELECTED --> [*]
+    REJECTED --> [*]
+    WITHDRAWN --> [*]
+    note right of SELECTED
+        Final stages accept no further move.
+        Every move writes a stage-history row
+        and an audit event.
+    end note

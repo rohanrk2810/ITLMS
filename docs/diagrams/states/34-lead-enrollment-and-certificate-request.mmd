@@ -1,0 +1,44 @@
+stateDiagram-v2
+    state "Lead (admission)" as Lead {
+        [*] --> NEW
+        NEW --> CONTACTED
+        CONTACTED --> FOLLOW_UP
+        FOLLOW_UP --> INTERESTED
+        INTERESTED --> CONVERTED: convert to student
+        FOLLOW_UP --> NOT_INTERESTED
+        CONTACTED --> LOST
+        CONVERTED --> [*]
+        NOT_INTERESTED --> [*]
+        LOST --> [*]
+    }
+
+    state "Enrollment (batch)" as Enrollment {
+        [*] --> ACTIVE
+        ACTIVE --> COMPLETED
+        ACTIVE --> DROPPED
+        ACTIVE --> SUSPENDED
+        ACTIVE --> TRANSFERRED
+        SUSPENDED --> ACTIVE
+        COMPLETED --> [*]
+        DROPPED --> [*]
+        TRANSFERRED --> [*]
+    }
+
+    state "Certificate request" as CertReq {
+        [*] --> PENDING: student requests
+        PENDING --> APPROVED: admin approves
+        PENDING --> REJECTED: admin rejects with reason
+        APPROVED --> ISSUED: admin issues (conditions re-checked)
+        REJECTED --> [*]
+        ISSUED --> [*]
+    }
+
+    state "Course request (batch)" as CourseReq {
+        [*] --> RPENDING: student asks for a course
+        RPENDING --> RAPPROVED: staff approve
+        RPENDING --> RREJECTED
+        RPENDING --> RCANCELLED: student cancels
+        RAPPROVED --> [*]
+        RREJECTED --> [*]
+        RCANCELLED --> [*]
+    }

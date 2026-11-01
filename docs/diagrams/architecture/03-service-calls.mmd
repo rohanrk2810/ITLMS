@@ -1,0 +1,38 @@
+flowchart LR
+    %% Synchronous calls (Feign). Arrow = "calls". Every call has a fallback that fails closed.
+    AD["admission"]
+    ID["identity"]
+    CR["course"]
+    BA["batch"]
+    AS["assessment"]
+    FN["finance"]
+    CE["certificate"]
+    PLC["placement"]
+    NO["notification"]
+    LC["liveclass"]
+    RP["reporting"]
+    CX["codeexec"]
+
+    AD -->|"create login"| ID
+    BA -->|"student / trainer profile"| AD
+    BA -->|"course details"| CR
+    AS -->|"does trainer teach batch,<br/>is student in batch"| BA
+    AS -->|"run tests, analyse"| CX
+    LC -->|"batch, roster, trainer"| BA
+    FN -->|"student profile"| AD
+    CE -->|"student"| AD
+    CE -->|"test results"| AS
+    CE -->|"attendance, enrolment"| BA
+    CE -->|"course rules"| CR
+    CE -->|"fees settled"| FN
+    CE -->|"institute branding"| ID
+    PLC -->|"results"| AS
+    PLC -->|"batch"| BA
+    PLC -->|"certificate status"| CE
+    NO -->|"batch members"| BA
+    NO -->|"institute name"| ID
+    RP -->|"students"| AD
+    RP -->|"tests"| AS
+    RP -->|"batches"| BA
+    RP -->|"courses"| CR
+    RP -->|"live attendance"| LC

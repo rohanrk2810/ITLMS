@@ -1,0 +1,24 @@
+stateDiagram-v2
+    direction LR
+    state "Quiz (test)" as Quiz {
+        [*] --> DRAFT
+        DRAFT --> PUBLISHED: publish (needs questions, cannot edit after)
+        PUBLISHED --> CLOSED: close
+        CLOSED --> [*]
+    }
+
+    state "Attempt (one sitting)" as Attempt {
+        [*] --> IN_PROGRESS: start (allowance checked, questions drawn)
+        IN_PROGRESS --> SUBMITTED: student submits, scored on the server
+        IN_PROGRESS --> EXPIRED: AttemptExpiryJob after the deadline
+        IN_PROGRESS --> TERMINATED: violations reach max_violations
+        SUBMITTED --> [*]
+        EXPIRED --> [*]
+        TERMINATED --> [*]
+    }
+
+    Quiz --> Attempt: only while PUBLISHED
+    note right of Attempt
+        A trainer can give one student another attempt
+        (+1 attempt) after an expired or terminated sitting.
+    end note
