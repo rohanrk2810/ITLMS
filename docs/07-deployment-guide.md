@@ -119,15 +119,16 @@ There is no rolling-deploy or blue/green setup in this repository; `docker compo
 
 ## 10. CI
 
-`.github/workflows/ci.yml` runs on every push and pull request, three independent jobs:
+`.github/workflows/ci.yml` runs on every push and pull request, four jobs:
 
 | Job | What it runs | Catches |
 |---|---|---|
 | `backend-tests` | `mvn -B -ntp clean test` (every service, common-lib, infrastructure) | Any unit test failure, in any module, in one command — no Testcontainers or live database in CI; every current backend test is a Mockito unit test |
 | `gateway-routes` | `node deploy/scripts/check-gateway-routes.mjs` | A controller endpoint the gateway would route to the wrong service, or not at all (see [01-architecture.md](01-architecture.md)) |
-| `frontend` | `npm ci && npm run build && npm run lint` in `frontend/` | A TypeScript or lint error, or a build that does not produce a working bundle |
+| `frontend` | `npm ci && npm run build && npm run lint && npm test` in `frontend/` | A TypeScript or lint error, a build that does not produce a working bundle, or a failing Vitest test (helpers, auth store, menu roles, route guard) |
+| `frontend-e2e` | `npx playwright install --with-deps chromium && npx playwright test` in `frontend/`, after `frontend` passes | A broken screen or role gate: sign-in, who sees which menu, the ID card pages. The API is mocked, so no Docker stack is needed. The report is kept for 7 days when it fails ([06-test-plan.md](06-test-plan.md)) |
 
-None of the three jobs builds or pushes a Docker image, and none deploys anywhere — CI here is verification only. Adding an image-build-and-push step (and, eventually, an actual deploy step) is the natural next piece once there is somewhere to deploy to.
+None of the four jobs builds or pushes a Docker image, and none deploys anywhere — CI here is verification only. Adding an image-build-and-push step (and, eventually, an actual deploy step) is the natural next piece once there is somewhere to deploy to.
 
 `node deploy/scripts/smoke-test.mjs` (the full end-to-end run against a live Docker stack — see [06-test-plan.md](06-test-plan.md)) is **not** in CI: it needs the entire stack running, which GitHub's hosted runners were not set up for here. Run it by hand against a real stack before a release.
 

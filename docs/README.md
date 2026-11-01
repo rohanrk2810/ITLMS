@@ -36,7 +36,7 @@ Start with [../README.md](../README.md) for what the system is and how to run it
 | [12](12-single-active-login.md), [13](13-branding.md), [22](22-human-check-captcha.md) | Single login, branding, human check |
 | [14](14-certificate-workflow.md), [24](24-new-students-and-fees.md), [30](30-id-cards.md) | Certificates, new students and fees, ID cards |
 
-[diagrams/](diagrams/README.md) holds 40 diagrams (architecture, one ER diagram per service, flows, state machines, security, frontend) as Mermaid source and SVG. `api/` is a placeholder for an OpenAPI export and is empty today.
+[diagrams/](diagrams/README.md) holds 41 diagrams (architecture, one ER diagram per service, flows, state machines, security, frontend) as Mermaid source and SVG. `api/` is a placeholder for an OpenAPI export and is empty today.
 
 ## Keeping docs true
 

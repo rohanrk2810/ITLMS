@@ -1,6 +1,6 @@
 # Diagrams
 
-Forty diagrams of IT-ILMS, each as Mermaid source (`.mmd`) and a rendered picture (`.svg`) beside it. GitHub and VS Code (Markdown preview) show the pictures below; the `.mmd` files are what you edit.
+Forty-one diagrams of IT-ILMS, each as Mermaid source (`.mmd`) and a rendered picture (`.svg`) beside it. GitHub and VS Code (Markdown preview) show the pictures below; the `.mmd` files are what you edit.
 
 The short diagrams inside [../19-system-design-hld-lld.md](../19-system-design-hld-lld.md) are an overview. These go deeper: every service's real schema, every event, and each flow step by step.
 
@@ -8,7 +8,7 @@ The short diagrams inside [../19-system-design-hld-lld.md](../19-system-design-h
 |---|---|---|
 | Architecture | [architecture/](architecture) | 6 |
 | Database (ER, one per service) | [db/](db) | 12 |
-| Flows (sequence) | [flows/](flows) | 12 |
+| Flows (sequence) | [flows/](flows) | 13 |
 | State machines | [states/](states) | 4 |
 | Security | [security/](security) | 3 |
 | Frontend | [frontend/](frontend) | 3 |
@@ -63,6 +63,7 @@ Foreign keys are only drawn inside one database. Ids that point at another servi
 | 28 | Placement pipeline | [flows/28-placement-pipeline.svg](flows/28-placement-pipeline.svg) |
 | 29 | Fee payment | [flows/29-fee-payment.svg](flows/29-fee-payment.svg) |
 | 30 | Notifications and the email outbox | [flows/30-notification-and-email-outbox.svg](flows/30-notification-and-email-outbox.svg) |
+| 41 | ID cards: issue, photo, print, own card, QR check, withdraw | [flows/41-id-card-issue-print-verify.svg](flows/41-id-card-issue-print-verify.svg) |
 
 ## State machines
 

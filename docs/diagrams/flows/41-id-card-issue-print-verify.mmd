@@ -1,0 +1,68 @@
+sequenceDiagram
+    autonumber
+    actor A as Admin or Coordinator
+    actor S as Student or trainer
+    actor Q as Anyone with a phone
+    participant CE as certificate-service
+    participant AD as admission-service
+    participant BA as batch-service
+    participant K as Kafka
+    participant NO as notification-service
+
+    Note over A,CE: Issue a card
+    A->>CE: POST /api/id-cards {personType, personId, batchId, validUntil}
+    CE->>CE: STAFF role only
+    alt student
+        CE->>AD: student by id (Feign)
+        AD-->>CE: name, student code, status
+        CE->>CE: refuse if the student has dropped out
+        opt a batch was chosen
+            CE->>BA: batch name and end date
+        end
+    else trainer
+        CE->>AD: trainer by id
+        AD-->>CE: name, employee code
+    else staff
+        CE->>CE: name and title are typed in (a name is required)
+    end
+    CE->>CE: valid until = the date given, else batch end, else one year (never in the past)
+    CE->>CE: revoke any card still in force for this person ("Replaced by a new card")
+    CE->>CE: card number STU / TRN / STF + year + database sequence, new verification code
+    CE->>K: notification.requested (your ID card is ready)
+    K->>NO: tell the person
+    CE->>K: audit.recorded (ID_CARD_ISSUED)
+    CE-->>A: the card
+
+    Note over A,CE: Add the photo
+    A->>CE: PUT /api/id-cards/{id}/photo (multipart)
+    CE->>CE: at most 2 MB, type read from the first bytes: JPEG or PNG only
+    CE->>CE: store in id_card_photos, has_photo = true
+
+    Note over A,CE: Print
+    A->>CE: GET /api/id-cards/{id}/pdf, or /sheet?ids=1,2,3
+    CE->>CE: refuse a revoked or expired card (a sheet skips them, up to 60 cards)
+    CE->>CE: draw the card: logo and name, photo, name, role, code, batch, valid until
+    CE->>CE: QR code points at ID_VERIFY_URL/{cardNo}?code={code}
+    CE->>K: audit.recorded (ID_CARD_PRINTED)
+    CE-->>A: PDF, one card or nine to an A4 page
+
+    Note over S,CE: The person's own card
+    S->>CE: GET /api/id-cards/me, then /{id}/pdf
+    CE->>CE: allowed only when the card's user is the caller
+    CE-->>S: the card to download
+
+    Note over Q,CE: Check a card by scanning the QR
+    Q->>CE: GET /api/id-cards/verify/{cardNo}?code=... (public, limited per address)
+    alt code missing
+        CE-->>Q: asks for the code
+    else number and code do not match
+        CE-->>Q: 404, nothing about the person
+    else match
+        CE-->>Q: VALID, EXPIRED or REVOKED, with name, role, valid until, institute
+    end
+
+    Note over A,CE: Lost card
+    A->>CE: POST /api/id-cards/{id}/revoke {reason}
+    CE->>CE: status REVOKED, the reason is kept
+    CE->>K: notification.requested (card withdrawn)
+    CE->>K: audit.recorded (ID_CARD_REVOKED)
