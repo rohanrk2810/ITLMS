@@ -16,23 +16,25 @@ None of the three currently measures or gates on code coverage (Jacoco is wired 
 
 Every service (and `common-lib`) has its own Mockito-based unit test suite under `src/test/java`, run by `mvn clean test` — no Spring context, no database, no Testcontainers anywhere in the project. This is why `backend-tests` in CI is a single `mvn -B -ntp clean test` across the whole reactor and finishes in a few minutes rather than needing infrastructure to spin up.
 
-Counts as of this writing (`mvn -B -ntp clean test`, full reactor, 2026-09-23 — **314 tests, 0 failures, BUILD SUCCESS**):
+Counts below are the unit-test methods in the source on 2026-11-01 (`@Test` and `@ParameterizedTest`, counted from `src/test`), not a fresh run; run `mvn -B -ntp clean test` for the pass/fail result. The last full run (2026-09-23) was 314 tests, 0 failures; the suite has grown since, mainly for the test portal, live-class monitoring, code analysis, and the codeexec service.
 
-| Service | Tests | Notable coverage |
+| Service | Test methods | Notable coverage |
 |---|---|---|
-| identity | 35 | login, refresh rotation + reuse-revokes-session-family, password reset (issue/consume/single-use/rate-limit), self-registration on/off, lockout after 5 failed attempts, logout / logout-all |
-| admission | 37 | lead → follow-up → convert, student admission, status changes, `UserEventConsumer` (profile creation from `user-created`) |
-| course | 50 | curriculum CRUD + reordering, publish validation, who can open the curriculum (`EnrollmentStatus.allowsContentAccess()`), progress recording, keeping in step with other services (event consumers) |
-| batch | 26 | marking the register, attendance-derived-from-a-live-class, attendance percentage, correction requires a reason |
-| assessment | 23 | scoring rules, marking one question, percentage/pass mark, accepting submissions, **`AnswerKeyExposureTest`** (the served attempt payload never carries `correct`) |
-| finance | 21 | splitting a fee into instalments, applying payments oldest-first, outstanding-amount formula (Doc S14), reminder/schedule rules, raising a fee plan |
-| certificate | 12 | eligibility rules, verification + PDF |
+| identity | 67 | login, refresh rotation + reuse-revokes-session-family, password reset, self-registration on/off, lockout after 5 failed attempts, logout / logout-all, single active login, branding |
+| admission | 38 | lead -> follow-up -> convert, student admission, status changes, profile creation from `user-created` |
+| course | 62 | curriculum CRUD + reordering, publish validation, who can open the curriculum (`EnrollmentStatus.allowsContentAccess()`), progress, practice editor and video-monitoring fields |
+| batch | 48 | marking the register, attendance from a live class, attendance percentage, correction requires a reason, course requests |
+| assessment | 108 | scoring rules, short-answer and coding marking, question pool and shuffling, extra attempts, typing stats, secure-mode violations, **`AnswerKeyExposureTest`** (the served attempt payload never carries `correct`) |
+| finance | 21 | splitting a fee into instalments, applying payments oldest-first, outstanding-amount formula (Doc S14), reminders |
+| certificate | 25 | eligibility rules, requests, verification + PDF |
 | placement | 10 | who may apply, editing a job once students have applied, moving through the pipeline (Doc S7.4) |
-| notification | 22 | announcement rules, email composition, retrying failed emails, emails carrying a password/reset link (and never storing them), delivery rules |
-| file | 40 | `FileAccessRules` (category × role matrix, incl. `RESUME`), upload validation, `listMine` |
-| liveclass | 21 | percentage and verdict, an unattended class taken to have ended, a student's time in the room (reconnects summed), class length used as the denominator, LiveKit webhook handling |
-| reporting | 17 | attendance percentage, tabular export (CSV/Excel/PDF), dashboard service, report export service |
-| **Total** | **314** | |
+| notification | 24 | announcement rules and categories, email composition, retrying failed emails, never storing a password or reset link |
+| file | 34 | `FileAccessRules` (category x role matrix, incl. `RESUME`), upload validation, `listMine` |
+| liveclass | 114 | room permissions, live questions grading, monitoring settings and events, recording, transcript, question bank, attendance verdicts, LiveKit webhook handling |
+| reporting | 44 | attendance percentage, progress report and suggestions, tabular export, dashboard service |
+| codeexec | 121 | Judge0 and Piston runners, rate limit and concurrency cap, static code analysis |
+| api-gateway | 7 | gateway filters |
+| **Total** | **723** | |
 
 **Added since the table above was written (so its counts are out of date):** `TranscriptServiceTest` (liveclass: who may write a transcript, only while live, retries stored once, limits, the clock held inside the class, the text file), `BatchPlacedTest` (batch: placed means ever enrolled), `UserEventConsumerTest` (admission: a new student is reported to administrators and coordinators), and `AttemptServiceImplTest` now includes the new camera events (`FACE_OUT_OF_FRAME`, `FACE_MISMATCH`, `DEVICE_DETECTED`), which warn, are recorded and never end an attempt. The face, phone and subtitle code that runs in the browser has no automated test; it was tried by hand, and the phone detector's threshold was checked against real photographs with the same model.
 

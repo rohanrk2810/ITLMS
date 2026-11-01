@@ -632,3 +632,23 @@ Three read models, all fed by Kafka events; nothing here is written directly by 
 | reporting | itilms_reporting | 3 |
 
 35 tables across 12 databases. See [01-architecture.md](01-architecture.md) for the Kafka events that keep the denormalised copies (course titles in `batches`, `course_enrollments`, `recipients`, `batch_members`, ...) current, and [02-documentation-review.md](02-documentation-review.md) for why each one exists.
+
+---
+
+## Schema changes after V1 (as of 2026-11-01)
+
+The ERD above describes each service's first migration (`V1`). Every later change is a numbered Flyway migration under `services/<svc>/src/main/resources/db/migration/`; the file name says what it did. The table and column counts above are therefore a V1 baseline: read the migration list for the current schema.
+
+| Service | Migrations after V1 |
+|---|---|
+| identity (11 total) | V2 login sessions, V3 institute branding, V4 login background, V5 password reset OTP, V6 user soft delete, V7 student menu, V8 user menu, V9 login OTP, V10 UI config, V11 app background |
+| course (4) | V2 lesson practice editor, V3 lesson language choice, V4 video monitoring |
+| batch (2) | V2 course requests |
+| liveclass (12) | V2 room controls, V3 live questions, V4 recording, V5 student monitoring, V6 monitoring microphone, V7 monitoring strict options, V8 browser recording, V9 class transcript, V10 lecture material, V11 question bank, V12 question bank folders |
+| assessment (17) | V2 short-answer and coding questions, V3 secure test mode, V4 camera monitoring, V5 coding run stats, V6 language choice, V7 microphone monitoring, V8 code suggestions, V9 face oval guide, V11 identity and device checks, V12 SQL setup, V13 camera checks choice, V14 typing replay, V15 remote tool violation, V16 question pool and typing stats, V17 shuffle options, V18 extra attempts |
+| certificate (2) | V2 certificate requests |
+| notification (2) | V2 announcement category |
+| admission, finance, placement, file, reporting | V1 only |
+
+codeexec-service is stateless and has no database. To regenerate the full table and column list, read the migrations in order or run `\d` against each database.
+

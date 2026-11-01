@@ -295,6 +295,12 @@ A running cloud VM costs money. When you no longer need it, delete the **resourc
 | [docs/06-test-plan.md](docs/06-test-plan.md) | What's tested, and how |
 | [docs/07-deployment-guide.md](docs/07-deployment-guide.md) | What a real deployment adds on top of local Docker Compose |
 | [docs/08](docs/08-code-execution.md) – [docs/18](docs/18-microphone-option.md) | Feature write-ups: code execution, test portal, progress report, recording, single login, branding, certificate workflow, live monitoring, code analysis, language choice, microphone |
+| [docs/19](docs/19-system-design-hld-lld.md) – [docs/25](docs/25-load-testing.md) | System design (HLD/LLD), class delivery options, video-lesson monitoring, human check, subtitles, new students and fees, load testing |
+| [docs/26-security.md](docs/26-security.md) | Authentication, authorization, edge limits, data protection, test integrity, audit, known limits |
+| [docs/27-design-system.md](docs/27-design-system.md) | Colour tokens, components, layout, forms, theming, accessibility |
+| [docs/28-prd.md](docs/28-prd.md) | Product requirements: users, scope with requirement ids, non-functional needs, open questions |
+| [docs/29-code-style.md](docs/29-code-style.md) | Backend and frontend conventions, testing, commits, documentation |
+| [AGENTS.md](AGENTS.md) | Guide for AI coding agents and new developers: layout, commands, rules that are easy to break |
 | http://localhost:8080/swagger-ui.html | Every endpoint, live, from one page (once the stack is up) |
 
 ## Project layout
@@ -331,4 +337,4 @@ cd frontend && npm run build && npm run lint    # frontend build and lint
 - Secrets (`JWT_SECRET`, database passwords, LiveKit's API secret) come only from environment variables with no default; a service refuses to start rather than run with a placeholder.
 - A temporary password or a password-reset token is only ever emailed — never written to a database column or a log line.
 
-Known limitations, tracked deliberately rather than by omission: [docs/02-documentation-review.md](docs/02-documentation-review.md) (see the "Open items" and "Limitations" sections).
+The full security write-up is [docs/26-security.md](docs/26-security.md). Known limitations, tracked deliberately rather than by omission: [docs/02-documentation-review.md](docs/02-documentation-review.md) (see the "Open items" and "Limitations" sections).
