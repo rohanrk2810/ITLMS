@@ -24,3 +24,7 @@ dist/
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# Word documents and their lock files stay on this machine
+*.docx
+~$*
