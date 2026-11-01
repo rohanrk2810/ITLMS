@@ -29,6 +29,9 @@ public class CertificateProperties {
     /** Where the printed QR code and link point, e.g. https://institute.example/verify. */
     private String verificationBaseUrl = "http://localhost:5173/verify";
 
+    /** Where the QR code on an identity card points, e.g. https://institute.example/verify-id. */
+    private String idVerificationBaseUrl = "http://localhost:5173/verify-id";
+
     private String instituteName = "IT Training Institute";
 
     private String signatoryName = "Director";

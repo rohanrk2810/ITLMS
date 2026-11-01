@@ -20,15 +20,30 @@ public interface AdmissionClient {
     record Student(Long id, Long userId, String studentCode, String fullName, String status) {
     }
 
+    @PostMapping("/api/trainers/internal/lookup")
+    List<Trainer> lookupTrainers(@RequestBody List<Long> trainerIds);
+
+    record Trainer(Long id, Long userId, String employeeCode, String fullName, String status) {
+    }
+
     @Slf4j
     @Component
     class Fallback implements FallbackFactory<AdmissionClient> {
 
         @Override
         public AdmissionClient create(Throwable cause) {
-            return ids -> {
-                log.warn("admission-service unreachable looking up {} student(s)", ids.size(), cause);
-                return List.of();
+            return new AdmissionClient() {
+                @Override
+                public List<Student> lookup(List<Long> studentIds) {
+                    log.warn("admission-service unreachable looking up {} student(s)", studentIds.size(), cause);
+                    return List.of();
+                }
+
+                @Override
+                public List<Trainer> lookupTrainers(List<Long> trainerIds) {
+                    log.warn("admission-service unreachable looking up {} trainer(s)", trainerIds.size(), cause);
+                    return List.of();
+                }
             };
         }
     }

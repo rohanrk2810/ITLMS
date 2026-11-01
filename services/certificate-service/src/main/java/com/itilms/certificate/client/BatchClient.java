@@ -22,7 +22,10 @@ public interface BatchClient {
     @GetMapping("/api/batches/{id}")
     BatchInfo batch(@PathVariable("id") Long id);
 
-    record BatchInfo(Long id, String batchCode, String name) {
+    record BatchInfo(Long id, String batchCode, String name, java.time.LocalDate endDate) {
+        public BatchInfo(Long id, String batchCode, String name) {
+            this(id, batchCode, name, null);
+        }
     }
 
     record AttendanceSummary(Long studentId, Long batchId, int attendedSessions, int totalSessions,

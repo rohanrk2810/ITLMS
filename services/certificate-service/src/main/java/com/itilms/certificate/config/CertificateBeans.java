@@ -16,6 +16,6 @@ public class CertificateBeans {
 
     @Bean
     PublicEndpoints certificatePublicEndpoints() {
-        return () -> new String[]{"/api/certificates/verify/**"};
+        return () -> new String[]{"/api/certificates/verify/**", "/api/id-cards/verify/**"};
     }
 }

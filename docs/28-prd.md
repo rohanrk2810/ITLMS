@@ -73,6 +73,7 @@ Success looks like:
 - R-64 Institute dashboard, CSV/Excel/PDF exports, audit log.
 - R-65 Branding and customization by the admin ([27-design-system.md](27-design-system.md), [13-branding.md](13-branding.md)).
 - R-66 Windows desktop app for secure tests.
+- R-67 Identity cards for students, trainers and staff: issued by ADMIN or COORDINATOR with a photo, printed one at a time or on A4 sheets, a QR code that opens a public check, withdrawn and replaced when lost ([30-id-cards.md](30-id-cards.md)).
 
 ## 4. Non-functional requirements
 

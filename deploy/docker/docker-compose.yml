@@ -475,6 +475,9 @@ services:
       <<: *service-env
       # Connections to the database: more where a whole class works at once, fewer where little happens.
       DB_POOL_MAX: ${CERTIFICATE_DB_POOL_MAX:-5}
+      # Where the QR codes on certificates and ID cards point: the public address of the web app.
+      CERT_VERIFY_URL: ${CERT_VERIFY_URL:-http://localhost:5173/verify}
+      ID_VERIFY_URL: ${ID_VERIFY_URL:-http://localhost:5173/verify-id}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8087/actuator/health || exit 1"]
