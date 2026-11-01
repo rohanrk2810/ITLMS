@@ -329,6 +329,8 @@ mvn test                                        # backend unit tests, every modu
 node deploy/scripts/check-gateway-routes.mjs    # every endpoint reaches its own service, none is misrouted
 node deploy/scripts/smoke-test.mjs              # a full run through a live stack, including security boundaries
 cd frontend && npm run build && npm run lint    # frontend build and lint
+cd frontend && npm test                          # frontend unit and component tests (Vitest)
+cd frontend && npm run e2e                      # browser tests with the API mocked (Playwright; PW_CHANNEL=chrome uses installed Chrome)
 ```
 
 ## Security notes

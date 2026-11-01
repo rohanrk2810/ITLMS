@@ -47,5 +47,37 @@ erDiagram
         varchar batch_name
         bigint request_id FK
     }
+    id_card_photos {
+        bigint card_id PK,FK
+        bytea photo
+        varchar content_type
+        timestamptz updated_at
+    }
+    id_cards {
+        bigint id PK
+        varchar card_no UK
+        varchar verification_code
+        varchar person_type
+        bigint person_id
+        bigint user_id
+        varchar person_code
+        varchar full_name
+        varchar designation
+        bigint batch_id
+        varchar batch_name
+        boolean has_photo
+        date issued_on
+        date valid_until
+        varchar status
+        timestamptz revoked_at
+        bigint revoked_by
+        varchar revoked_reason
+        bigint issued_by
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
     certificates ||--o{ certificate_requests : "certificate_id"
     certificate_requests ||--o{ certificates : "request_id"
+    id_cards ||--o{ id_card_photos : "card_id"
