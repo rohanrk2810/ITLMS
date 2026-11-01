@@ -55,14 +55,37 @@ public final class TabularExporter {
     }
 
     public static byte[] excel(String sheetName, List<String> headers, List<List<String>> rows) {
+        return excel(sheetName, Letterhead.NONE, headers, rows);
+    }
+
+    /** With the institute's name, tagline and address above the table, then a blank row. */
+    public static byte[] excel(String sheetName, Letterhead letterhead, List<String> headers, List<List<String>> rows) {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet(sheetName);
-            Row headerRow = sheet.createRow(0);
+            int top = 0;
+            if (!letterhead.isEmpty()) {
+                org.apache.poi.ss.usermodel.Font big = workbook.createFont();
+                big.setBold(true);
+                big.setFontHeightInPoints((short) 16);
+                org.apache.poi.ss.usermodel.CellStyle nameStyle = workbook.createCellStyle();
+                nameStyle.setFont(big);
+                org.apache.poi.ss.usermodel.Cell nameCell = sheet.createRow(top++).createCell(0);
+                nameCell.setCellValue(letterhead.name());
+                nameCell.setCellStyle(nameStyle);
+                if (letterhead.tagline() != null) {
+                    sheet.createRow(top++).createCell(0).setCellValue(letterhead.tagline());
+                }
+                for (String line : letterhead.lines()) {
+                    sheet.createRow(top++).createCell(0).setCellValue(line);
+                }
+                top++;
+            }
+            Row headerRow = sheet.createRow(top);
             for (int c = 0; c < headers.size(); c++) {
                 headerRow.createCell(c).setCellValue(headers.get(c));
             }
             for (int r = 0; r < rows.size(); r++) {
-                Row row = sheet.createRow(r + 1);
+                Row row = sheet.createRow(top + r + 1);
                 List<String> values = rows.get(r);
                 for (int c = 0; c < values.size(); c++) {
                     row.createCell(c).setCellValue(values.get(c) == null ? "" : values.get(c));
@@ -76,12 +99,35 @@ public final class TabularExporter {
     }
 
     public static byte[] pdf(String title, List<String> headers, List<List<String>> rows) {
+        return pdf(title, Letterhead.NONE, headers, rows);
+    }
+
+    /** With the institute's name, tagline and address at the top, a heavy rule, then the centred title. */
+    public static byte[] pdf(String title, Letterhead letterhead, List<String> headers, List<List<String>> rows) {
         Document document = new Document(PageSize.A4.rotate(), 24, 24, 36, 24);
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PdfWriter.getInstance(document, out);
             document.open();
-            document.add(new Paragraph(title, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16)));
-            document.add(new Paragraph(" "));
+            if (!letterhead.isEmpty()) {
+                document.add(new Paragraph(letterhead.name(), FontFactory.getFont(FontFactory.TIMES_BOLD, 20)));
+                if (letterhead.tagline() != null) {
+                    document.add(new Paragraph(letterhead.tagline(), FontFactory.getFont(FontFactory.TIMES_ROMAN, 11)));
+                }
+                for (String line : letterhead.lines()) {
+                    document.add(new Paragraph(line, FontFactory.getFont(FontFactory.TIMES_ROMAN, 9)));
+                }
+                com.lowagie.text.pdf.draw.LineSeparator rule = new com.lowagie.text.pdf.draw.LineSeparator(
+                        2.5f, 100, java.awt.Color.BLACK, com.lowagie.text.Element.ALIGN_CENTER, -2);
+                document.add(new com.lowagie.text.Chunk(rule));
+                Paragraph heading = new Paragraph(title, FontFactory.getFont(FontFactory.TIMES_BOLD, 15));
+                heading.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                heading.setSpacingBefore(8);
+                heading.setSpacingAfter(8);
+                document.add(heading);
+            } else {
+                document.add(new Paragraph(title, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16)));
+                document.add(new Paragraph(" "));
+            }
 
             PdfPTable table = new PdfPTable(Math.max(headers.size(), 1));
             table.setWidthPercentage(100);

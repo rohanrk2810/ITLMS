@@ -256,4 +256,41 @@ class StudentServiceImplTest {
                     .isInstanceOf(BusinessRuleException.class);
         }
     }
+
+    @Nested
+    @DisplayName("Export")
+    class Export {
+
+        @Test
+        @SuppressWarnings("unchecked")
+        void exportsTheFullProfileOfEveryMatchingStudentAndRecordsTheExport() {
+            Student a = Student.builder().id(1L).userId(11L).studentCode("STU-1").fullName("Asha Patil")
+                    .email("a@test.local").phone("9800000001").addressLine("12 MG Road").city("Pune")
+                    .guardianName("Ramesh Patil").status(StudentStatus.ACTIVE).build();
+            Student b = Student.builder().id(2L).userId(12L).studentCode("STU-2").fullName("Ravi Kale")
+                    .email("r@test.local").phone("9800000002").status(StudentStatus.ALUMNI).build();
+            when(studentRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                    any(org.springframework.data.domain.Pageable.class)))
+                    .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(a, b)));
+
+            var rows = service.exportAll("ACTIVE", "pa");
+
+            assertThat(rows).hasSize(2);
+            assertThat(rows.get(0).fullName()).isEqualTo("Asha Patil");
+            assertThat(rows.get(0).addressLine()).isEqualTo("12 MG Road");
+            assertThat(rows.get(0).guardianName()).isEqualTo("Ramesh Patil");
+            verify(events).audit(eq("admission-service"), eq("STUDENTS_EXPORTED"), eq("Student"), any(), any(), any());
+        }
+
+        @Test
+        @SuppressWarnings("unchecked")
+        void anEmptyInstituteExportsNothingAndStillLeavesATrace() {
+            when(studentRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                    any(org.springframework.data.domain.Pageable.class)))
+                    .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
+
+            assertThat(service.exportAll(null, null)).isEmpty();
+            verify(events).audit(eq("admission-service"), eq("STUDENTS_EXPORTED"), eq("Student"), any(), any(), any());
+        }
+    }
 }

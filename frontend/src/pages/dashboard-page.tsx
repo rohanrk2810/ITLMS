@@ -6,6 +6,8 @@ import { AnnouncementsPanel } from '@/components/announcements-panel'
 import { InstituteCharts, StudentCharts } from '@/components/dashboard-charts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ExportMenu } from '@/components/export-menu'
+import { dashboardReport } from '@/lib/export-rows'
 import { formatMoney } from '@/lib/format'
 import { useUiConfig } from '@/lib/ui-config'
 import { useUnplacedStudent } from '@/lib/use-placement'
@@ -81,6 +83,9 @@ function InstituteSummary() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
+        <ExportMenu label="Download these figures" report="DASHBOARD" build={async () => dashboardReport(s)} />
+      </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {shows('stat-students') && <Stat label="Students admitted" value={s.studentsAdmittedTotal} hint={`+${s.studentsAdmittedLast30Days} in 30 days`} />}
         {shows('stat-enrollments') && <Stat label="Enrollments" value={s.enrollmentsTotal} hint={`+${s.enrollmentsLast30Days} in 30 days`} />}

@@ -224,3 +224,19 @@ export async function markAttendance(
   })
   return data
 }
+
+export interface BatchAttendanceSummary {
+  studentId: number
+  studentName: string
+  batchId: number
+  attendedSessions: number
+  totalSessions: number
+  attendancePercent: number | null
+  belowThreshold?: boolean
+}
+
+/** Every student's attendance across one batch, lowest first (trainer, coordinator or admin). */
+export async function getBatchAttendance(batchId: number | string): Promise<BatchAttendanceSummary[]> {
+  const { data } = await apiClient.get<BatchAttendanceSummary[]>(`/api/attendance/batches/${batchId}`)
+  return data
+}

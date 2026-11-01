@@ -84,3 +84,9 @@ export async function updateStudentStatus(
   })
   return data
 }
+
+/** Every student with the full profile, for a staff export. The server records the export in the audit log. */
+export async function exportStudents(params: { status?: string; query?: string }): Promise<StudentResponse[]> {
+  const { data } = await apiClient.get<StudentResponse[]>('/api/students/export', { params })
+  return data
+}

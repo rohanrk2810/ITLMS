@@ -53,6 +53,15 @@ public class StudentController {
 
     private final StudentService studentService;
 
+    @Operation(summary = "Export every student", description = "ADMIN or COORDINATOR. The full profile of up to 20,000 "
+            + "students (newest first), for a spreadsheet. Audited.")
+    @PreAuthorize(Roles.STAFF)
+    @GetMapping("/export")
+    public java.util.List<StudentResponse> exportAll(@RequestParam(required = false) String status,
+                                                     @RequestParam(required = false) String query) {
+        return studentService.exportAll(status, query);
+    }
+
     @Operation(summary = "List students", description = "Staff view with search and status filter.")
     @PreAuthorize("hasAnyRole('ADMIN','COORDINATOR','PLACEMENT','FINANCE')")
     @GetMapping

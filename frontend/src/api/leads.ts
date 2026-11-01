@@ -77,6 +77,16 @@ export async function searchLeads(params: {
   return data
 }
 
+/** Every lead matching the filter, read page by page (the leads screen shows one page at a time). */
+export async function fetchAllLeads(params: { status?: string; query?: string; openOnly?: boolean }): Promise<LeadResponse[]> {
+  const all: LeadResponse[] = []
+  for (let page = 0; ; page += 1) {
+    const result = await searchLeads({ ...params, page })
+    all.push(...result.content)
+    if (result.last || result.content.length === 0) return all
+  }
+}
+
 export async function getLead(id: number | string): Promise<LeadResponse> {
   const { data } = await apiClient.get<LeadResponse>(`/api/leads/${id}`)
   return data

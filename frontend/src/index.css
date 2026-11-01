@@ -175,3 +175,24 @@ textarea:user-invalid,
   font-size: 0.75rem;
   line-height: 1.1rem;
 }
+
+/* Print or save as PDF: the page content only, on as many pages as it needs. The app is normally exactly as tall as the
+   window with a fixed menu and header, which would cut a long page off, so print undoes that. */
+@media print {
+  html,
+  body,
+  #root,
+  .h-svh {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+}

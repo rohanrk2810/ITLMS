@@ -29,6 +29,7 @@ public class ReportExportServiceImpl implements ReportExportService {
 
     private final AuditLogRepository repository;
     private final ReportingProperties props;
+    private final com.itilms.reporting.service.export.InstituteLetterhead institute;
 
     @Override
     @Transactional(readOnly = true)
@@ -41,9 +42,9 @@ public class ReportExportServiceImpl implements ReportExportService {
         String base = "audit-log-" + LocalDate.now();
         return switch (format) {
             case CSV -> new ExportedFile(TabularExporter.csv(HEADERS, rows), base + ".csv", "text/csv");
-            case XLSX -> new ExportedFile(TabularExporter.excel("Audit log", HEADERS, rows), base + ".xlsx",
+            case XLSX -> new ExportedFile(TabularExporter.excel("Audit log", institute.get(), HEADERS, rows), base + ".xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            case PDF -> new ExportedFile(TabularExporter.pdf("Audit log", HEADERS, rows), base + ".pdf",
+            case PDF -> new ExportedFile(TabularExporter.pdf("Audit log", institute.get(), HEADERS, rows), base + ".pdf",
                     "application/pdf");
         };
     }

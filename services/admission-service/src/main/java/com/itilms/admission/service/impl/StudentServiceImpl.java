@@ -61,6 +61,23 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.List<StudentResponse> exportAll(String status, String query) {
+        Specification<Student> spec = Specification.allOf(
+                StudentSpecifications.hasStatus(status),
+                StudentSpecifications.matches(query));
+        // Unbounded would be a denial of service dressed as a feature: capped, newest first.
+        var page = org.springframework.data.domain.PageRequest.of(0, EXPORT_LIMIT,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        java.util.List<StudentResponse> students =
+                studentRepository.findAll(spec, page).getContent().stream().map(StudentResponse::from).toList();
+        events.audit(SERVICE_NAME, "STUDENTS_EXPORTED", "Student", null, null,
+                java.util.Map.of("rows", students.size(), "status", status == null ? "" : status,
+                        "query", query == null ? "" : query));
+        return students;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public StudentResponse get(Long id) {
         return studentRepository.findById(id)
                 .map(StudentResponse::from)
