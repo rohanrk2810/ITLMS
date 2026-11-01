@@ -43,6 +43,7 @@ public class GatewayJwtProperties {
             "/api/public/**",
             "/api/courses/public/**",
             "/api/certificates/verify/**",
+            "/api/id-cards/verify/**",
             "/api/leads/enquiry",
             "/api/liveclass/webhook/**",
             "/actuator/health/**",

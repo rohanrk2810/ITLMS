@@ -17,6 +17,7 @@ const RULES: Array<{ test: RegExp; to: (match: RegExpMatchArray) => string }> = 
   { test: /^\/student\/results\/?$/, to: () => '/app/assessments' },
   { test: /^\/student\/fees\/?$/, to: () => '/app/finance' },
   { test: /^\/student\/certificates\/?$/, to: () => '/app/certificates' },
+  { test: /^\/student\/id-card\/?$/, to: () => '/app/id-cards' },
   { test: /^\/student\/placements\/?$/, to: () => '/app/placements' },
   { test: /^\/finance\/overdue\/?$/, to: () => '/app/finance' },
   { test: /^\/live\/(\d+)\/?$/, to: (m) => `/app/live-classes/${m[1]}` },

@@ -33,6 +33,8 @@ itilms:
       minimum-average-score-percent: ${CERT_MIN_SCORE:40}
       require-fees-cleared: ${CERT_REQUIRE_FEES_CLEARED:true}
     verification-base-url: ${CERT_VERIFY_URL:http://localhost:5173/verify}
+    # The QR code on an identity card points here (the public ID check page).
+    id-verification-base-url: ${ID_VERIFY_URL:http://localhost:5173/verify-id}
     institute-name: ${INSTITUTE_NAME:IT Training Institute}
     signatory-name: ${CERT_SIGNATORY:Director}
     currency-symbol: ${CURRENCY_SYMBOL:Rs.}

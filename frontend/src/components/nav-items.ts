@@ -6,6 +6,7 @@ import {
   CalendarClock,
   ClipboardList,
   FileText,
+  IdCard,
   Inbox,
   LayoutDashboard,
   SlidersHorizontal,
@@ -78,6 +79,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Placements', to: '/app/placements', icon: Briefcase, roles: ['ADMIN', 'PLACEMENT', 'STUDENT'] },
   { label: 'Files', to: '/app/files', icon: FileText, roles: ALL_ROLES },
   { label: 'Announcements', to: '/app/announcements', icon: Megaphone, roles: ALL_ROLES },
+  { label: 'ID cards', to: '/app/id-cards', icon: IdCard, roles: ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT'] },
   {
     label: 'Users',
     to: '/app/users',

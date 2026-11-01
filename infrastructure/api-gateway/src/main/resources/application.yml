@@ -268,7 +268,7 @@ spring:
         - id: certificate-verify
           uri: lb://certificate-service
           predicates:
-            - Path=/api/certificates/verify/**
+            - Path=/api/certificates/verify/**,/api/id-cards/verify/**
           filters:
             - name: RequestRateLimiter
               args:
@@ -287,7 +287,7 @@ spring:
         - id: certificate-service
           uri: lb://certificate-service
           predicates:
-            - Path=/api/certificates/**
+            - Path=/api/certificates/**,/api/id-cards/**
           filters:
             - name: CircuitBreaker
               args:

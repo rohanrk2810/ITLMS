@@ -128,6 +128,12 @@ const MonitoringSettingsPage = lazy(() =>
 )
 const CustomizePage = lazy(() => import('@/pages/customize-page').then((m) => ({ default: m.CustomizePage })))
 
+const IdCardsIndexPage = lazy(() =>
+  import('@/pages/id-cards/id-cards-index-page').then((m) => ({ default: m.IdCardsIndexPage })),
+)
+const VerifyIdCardPage = lazy(() =>
+  import('@/pages/verify-id-card-page').then((m) => ({ default: m.VerifyIdCardPage })),
+)
 const AnnouncementsPage = lazy(() =>
   import('@/pages/announcements/announcements-page').then((m) => ({ default: m.AnnouncementsPage })),
 )
@@ -151,6 +157,7 @@ const BATCH_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 const USER_MANAGEMENT_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 const PLACEMENT_ROLES: readonly Role[] = ['ADMIN', 'PLACEMENT', 'STUDENT']
 const COURSE_REQUEST_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'STUDENT']
+const ID_CARD_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT']
 
 // Nav items with a real page below - excluded from the generic placeholder loop.
 const BUILT_PATHS = new Set([
@@ -166,6 +173,7 @@ const BUILT_PATHS = new Set([
   '/app/placements',
   '/app/files',
   '/app/announcements',
+  '/app/id-cards',
   '/app/course-requests',
   '/app/my-progress',
 ])
@@ -213,6 +221,7 @@ export default function App() {
 
               {/* Public: anyone with a certificate ID and code can check it, signed in or not. */}
               <Route path="/verify/:certificateNo" element={<VerifyCertificatePage />} />
+              <Route path="/verify-id/:cardNo" element={<VerifyIdCardPage />} />
 
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
@@ -308,6 +317,9 @@ export default function App() {
                       internally, the same way the notification bell already does. */}
                   <Route path="/app/files" element={<FilesPage />} />
                   <Route path="/app/announcements" element={<AnnouncementsPage />} />
+                  <Route element={<ProtectedRoute roles={ID_CARD_ROLES} />}>
+                    <Route path="/app/id-cards" element={<IdCardsIndexPage />} />
+                  </Route>
 
                   {NAV_ITEMS.filter((item) => item.to !== '/app' && !BUILT_PATHS.has(item.to)).map((item) => (
                     <Route key={item.to} element={<ProtectedRoute roles={item.roles} />}>
