@@ -55,7 +55,7 @@ How code in this repository is written, so that a new file reads like the old on
 - Backend: Mockito unit tests, no Spring context, no database; one test class per service class, named `<Class>Test`. Tests set the principal with `SecurityContextHolder` and `AppPrincipal`. Cover who is refused as well as who is allowed. Run `mvn -B -ntp clean test`.
 - Pure logic (scoring, permissions, offsets) is a pure function with its own test.
 - Anything that touches the running stack is added to `deploy/scripts/smoke-test.mjs` as a `section()` so one failure does not hide the rest.
-- Frontend has no unit-test suite yet; verify with build, lint and the browser.
+- Frontend: Vitest tests sit beside the code as `*.test.ts(x)` (`npm test`); Playwright browser tests with a mocked API are in `frontend/e2e/` (`npm run e2e`). A change to routes, roles, forms or error messages gets a test in one of them. Pages are still verified in a real browser by hand.
 - Details: [06-test-plan.md](06-test-plan.md).
 
 ## 5. Git

@@ -53,6 +53,21 @@ mvn -pl services/identity-service -am test         # one service (with its depen
 ```
 Per-module results land in `services/<name>/target/surefire-reports/`.
 
+## 1b. Frontend tests
+
+Both run from `frontend/` and in CI (`frontend` job: build, lint, `npm test`; `frontend-e2e` job: Playwright).
+
+| Layer | Command | What it is |
+|---|---|---|
+| Unit and component (Vitest, jsdom, Testing Library) | `npm test` | 79 tests in 10 files beside the code (`*.test.ts(x)`): `lib/` helpers, `api/client` error text, the auth store, `nav-items` (every item has real roles; settings pages are admin-only), and `ProtectedRoute` (waiting, signed out, wrong role, forced password change) |
+| Browser (Playwright, Chrome) | `npm run e2e` | 29 tests in `frontend/e2e/`: the built app is served and every call to the API is answered by a mock (`e2e/helpers.ts`), so no Docker stack is needed. Sign-in and sign-out, the sidebar for each role, route guards, the ID card screens (issue, search, withdraw, print selection, a student's own card) and the public ID check page |
+
+Locally, `PW_CHANNEL=chrome npm run e2e` uses the Chrome already installed; CI downloads Chromium. A call the mock does not know returns 404 and is listed in `unmocked`, so a page that starts asking for something new is noticed.
+
+The tests were checked to be able to fail: removing the role check from `ProtectedRoute`, flipping the closing-time rule in `examTiming`, and letting students into the admissions route each made tests fail.
+
+Real services behind the browser are still checked only by [the smoke test](#3-end-to-end-smoke-test), which is not in CI.
+
 ## 2. Gateway route check
 
 `deploy/scripts/check-gateway-routes.mjs` reads every `@GetMapping`/`@PostMapping`/etc. across every controller in `services/`, reads the route list in `infrastructure/api-gateway/src/main/resources/application.yml`, and simulates Spring Cloud Gateway's own first-match `Path=` predicate matching for each endpoint. It fails (non-zero exit) if any endpoint would be routed to a service other than the one that implements it, or to no route at all.
@@ -102,5 +117,5 @@ Recorded here rather than left implicit:
 - **No coverage gate.** Jacoco reports exist per module but nothing fails a build for low coverage.
 - **No Testcontainers / real-database tests.** Every backend test is a Mockito unit test with mocked repositories; nothing exercises an actual Flyway migration against a real Postgres except the smoke test indirectly doing so through the running stack.
 - **Smoke test areas still not exercised, per the last live run:** a submission with file attachments (the third of three `@OneToMany` nullable-FK fixes from 222f277), the notification inbox and announcements UI path, MinIO as the storage backend, assignment late/rework paths, and the frontend in a real browser.
-- **No frontend test suite** (no Vitest/RTL installed yet — see the frontend build notes in project memory).
+- **Frontend tests are small.** 79 Vitest tests cover the pure logic (formatting, test-file import, link mapping, menu settings, error messages), the auth store, the sidebar roles and the route guard; 29 Playwright browser tests cover sign-in, who sees which menu, the ID card screens and the public check page. The API is mocked in those, so they prove the screens, not the services. Most pages (lessons, the test attempt page, live classes, finance, placements) have no browser test yet.
 - **Smoke test is not in CI** (needs a full Docker stack — see [07-deployment-guide.md §10](07-deployment-guide.md#10-ci)); it is the one layer that depends on a human (or a future CI runner with more resources) remembering to run it.

@@ -28,3 +28,8 @@ Thumbs.db
 # Word documents and their lock files stay on this machine
 *.docx
 ~$*
+
+# Playwright output
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
