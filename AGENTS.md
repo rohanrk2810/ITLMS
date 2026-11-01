@@ -28,11 +28,13 @@ mvn -q -pl services/<svc> -am clean package              # build one service; ke
 mvn -DskipTests package                                  # build every jar (needed before docker compose --build)
 node deploy/scripts/check-gateway-routes.mjs             # every controller path must be routed by the gateway
 cd frontend && npm run dev | build | lint                # dev server :5173, tsc + vite build, oxlint
+cd frontend && npm test                                  # Vitest unit and component tests
+cd frontend && PW_CHANNEL=chrome npm run e2e             # Playwright browser tests, API mocked (CI downloads Chromium instead)
 docker compose -f deploy/docker/docker-compose.yml up -d
 node deploy/scripts/smoke-test.mjs                       # end-to-end API check against a running stack
 ```
 
-CI (`.github/workflows/ci.yml`) runs backend tests, the route check, and the frontend build and lint.
+CI (`.github/workflows/ci.yml`) runs backend tests, the route check, the frontend build, lint and Vitest tests, and the Playwright browser tests.
 
 ## Rules that are easy to break
 
