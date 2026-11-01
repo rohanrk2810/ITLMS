@@ -30,8 +30,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 
 export function BatchesPage() {
   const [query, setQuery] = useState('')
-  const role = useAuthStore((state) => state.user?.role)
-  const canCreate = hasRole(role, ['ADMIN', 'COORDINATOR'])
+  const roles = useAuthStore((state) => state.roles)
+  const canCreate = hasRole(roles, ['ADMIN', 'COORDINATOR'])
   const batchesQuery = useQuery({
     queryKey: ['batches', 'search', query],
     queryFn: () => searchBatches({ query: query || undefined }),

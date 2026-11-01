@@ -91,6 +91,9 @@ public class JwtIssuer {
         claims.put(JwtVerifier.CLAIM_ROLE, user.getRole().name());
         claims.put(JwtVerifier.CLAIM_PROFILE_ID, user.getProfileId());
         claims.put(JwtVerifier.CLAIM_TOKEN_TYPE, JwtVerifier.TYPE_ACCESS);
+        // Extra duties, and the number the gateway checks to catch a token issued before they last changed.
+        claims.put(JwtVerifier.CLAIM_EXTRA_ROLES, user.extraRoleList());
+        claims.put(JwtVerifier.CLAIM_ROLES_VERSION, user.getRolesVersion());
 
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))

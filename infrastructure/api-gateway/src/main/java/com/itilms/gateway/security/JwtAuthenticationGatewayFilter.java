@@ -53,9 +53,11 @@ public class JwtAuthenticationGatewayFilter implements GlobalFilter, Ordered {
 
     private final GatewayJwtProperties properties;
     private final SecretKey key;
+    private final RolesVersionCheck rolesVersion;
 
-    public JwtAuthenticationGatewayFilter(GatewayJwtProperties properties) {
+    public JwtAuthenticationGatewayFilter(GatewayJwtProperties properties, RolesVersionCheck rolesVersion) {
         this.properties = properties;
+        this.rolesVersion = rolesVersion;
         this.key = buildKey(properties.getJwtSecret());
     }
 
@@ -118,6 +120,15 @@ public class JwtAuthenticationGatewayFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange, "A refresh token cannot be used to call the API");
         }
 
+        // A token issued before the person's duties last changed carries the old duties: have it renewed.
+        Integer issuedVersion = claims.get("rv", Integer.class);
+        return rolesVersion.isStale(claims.getSubject(), issuedVersion == null ? 0 : issuedVersion)
+                .flatMap(stale -> stale
+                        ? unauthorized(exchange, "Your duties changed. Renewing your session.", "PERMISSIONS_CHANGED")
+                        : forward(exchange, sanitised, chain, claims));
+    }
+
+    private Mono<Void> forward(ServerWebExchange exchange, ServerHttpRequest sanitised, GatewayFilterChain chain, Claims claims) {
         Object profileId = claims.get("pid");
         ServerHttpRequest enriched = sanitised.mutate()
                 .header(HEADER_USER_ID, String.valueOf(claims.getSubject()))
@@ -153,14 +164,18 @@ public class JwtAuthenticationGatewayFilter implements GlobalFilter, Ordered {
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
+        return unauthorized(exchange, message, "AUTHENTICATION_REQUIRED");
+    }
+
+    private Mono<Void> unauthorized(ServerWebExchange exchange, String message, String code) {
         var response = exchange.getResponse();
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String body = """
                 {"timestamp":"%s","status":401,"error":"Unauthorized",\
-                "code":"AUTHENTICATION_REQUIRED","message":"%s","path":"%s"}"""
-                .formatted(java.time.Instant.now(), message, exchange.getRequest().getURI().getPath());
+                "code":"%s","message":"%s","path":"%s"}"""
+                .formatted(java.time.Instant.now(), code, message, exchange.getRequest().getURI().getPath());
 
         var buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));

@@ -16,25 +16,25 @@ None of the three currently measures or gates on code coverage (Jacoco is wired 
 
 Every service (and `common-lib`) has its own Mockito-based unit test suite under `src/test/java`, run by `mvn clean test` — no Spring context, no database, no Testcontainers anywhere in the project. This is why `backend-tests` in CI is a single `mvn -B -ntp clean test` across the whole reactor and finishes in a few minutes rather than needing infrastructure to spin up.
 
-Counts below are the unit-test methods in the source on 2026-11-01 (`@Test` and `@ParameterizedTest`, counted from `src/test`), not a fresh run; run `mvn -B -ntp clean test` for the pass/fail result. The last full run (2026-09-23) was 314 tests, 0 failures; the suite has grown since, mainly for the test portal, live-class monitoring, code analysis, and the codeexec service.
+Counts below are the unit-test methods in the source on 2026-11-01 (`@Test` and `@ParameterizedTest`, counted from `src/test`; common-lib adds 7, not listed below), not a fresh run; run `mvn -B -ntp clean test` for the pass/fail result. The last full run (2026-09-23) was 314 tests, 0 failures; the suite has grown since, mainly for the test portal, live-class monitoring, code analysis, and the codeexec service.
 
 | Service | Test methods | Notable coverage |
 |---|---|---|
-| identity | 67 | login, refresh rotation + reuse-revokes-session-family, password reset, self-registration on/off, lockout after 5 failed attempts, logout / logout-all, single active login, branding |
-| admission | 38 | lead -> follow-up -> convert, student admission, status changes, profile creation from `user-created` |
+| identity | 79 | login, refresh rotation + reuse-revokes-session-family, password reset, self-registration on/off, lockout after 5 failed attempts, logout / logout-all, single active login, branding |
+| admission | 40 | lead -> follow-up -> convert, student admission, status changes, profile creation from `user-created` |
 | course | 62 | curriculum CRUD + reordering, publish validation, who can open the curriculum (`EnrollmentStatus.allowsContentAccess()`), progress, practice editor and video-monitoring fields |
 | batch | 48 | marking the register, attendance from a live class, attendance percentage, correction requires a reason, course requests |
 | assessment | 108 | scoring rules, short-answer and coding marking, question pool and shuffling, extra attempts, typing stats, secure-mode violations, **`AnswerKeyExposureTest`** (the served attempt payload never carries `correct`) |
 | finance | 21 | splitting a fee into instalments, applying payments oldest-first, outstanding-amount formula (Doc S14), reminders |
-| certificate | 25 | eligibility rules, requests, verification + PDF |
+| certificate | 49 | eligibility rules, requests, verification + PDF |
 | placement | 10 | who may apply, editing a job once students have applied, moving through the pipeline (Doc S7.4) |
-| notification | 24 | announcement rules and categories, email composition, retrying failed emails, never storing a password or reset link |
-| file | 34 | `FileAccessRules` (category x role matrix, incl. `RESUME`), upload validation, `listMine` |
+| notification | 29 | announcement rules and categories, email composition, retrying failed emails, never storing a password or reset link |
+| file | 35 | `FileAccessRules` (category x role matrix, incl. `RESUME`), upload validation, `listMine` |
 | liveclass | 114 | room permissions, live questions grading, monitoring settings and events, recording, transcript, question bank, attendance verdicts, LiveKit webhook handling |
-| reporting | 44 | attendance percentage, progress report and suggestions, tabular export, dashboard service |
+| reporting | 56 | attendance percentage, progress report and suggestions, tabular export, dashboard service |
 | codeexec | 121 | Judge0 and Piston runners, rate limit and concurrency cap, static code analysis |
-| api-gateway | 7 | gateway filters |
-| **Total** | **723** | |
+| api-gateway | 15 | gateway filters |
+| **Total** | **794** | |
 
 **Added since the table above was written (so its counts are out of date):** `TranscriptServiceTest` (liveclass: who may write a transcript, only while live, retries stored once, limits, the clock held inside the class, the text file), `BatchPlacedTest` (batch: placed means ever enrolled), `UserEventConsumerTest` (admission: a new student is reported to administrators and coordinators), and `AttemptServiceImplTest` now includes the new camera events (`FACE_OUT_OF_FRAME`, `FACE_MISMATCH`, `DEVICE_DETECTED`), which warn, are recorded and never end an attempt. The face, phone and subtitle code that runs in the browser has no automated test; it was tried by hand, and the phone detector's threshold was checked against real photographs with the same model.
 
@@ -59,8 +59,8 @@ Both run from `frontend/` and in CI (`frontend` job: build, lint, `npm test`; `f
 
 | Layer | Command | What it is |
 |---|---|---|
-| Unit and component (Vitest, jsdom, Testing Library) | `npm test` | 121 tests in 14 files beside the code (`*.test.ts(x)`): `lib/` helpers, `api/client` error text, the auth store, `nav-items` (every item has real roles; settings pages are admin-only), `ProtectedRoute` (waiting, signed out, wrong role, forced password change), the CSV writer (formula injection, quoting), the layout of every downloadable report, the print page with the institute's letterhead (escaping, wide tables) and the Excel cells |
-| Browser (Playwright, Chrome) | `npm run e2e` | 40 tests in `frontend/e2e/`: the built app is served and every call to the API is answered by a mock (`e2e/helpers.ts`), so no Docker stack is needed. Sign-in and sign-out, the sidebar for each role, route guards, the ID card screens (issue, search, withdraw, print selection, a student's own card) the public ID check page, and the downloads (students, leads, dashboard and progress report as Excel with the letterhead read back from the .xlsx file, as the printed page, and as CSV) |
+| Unit and component (Vitest, jsdom, Testing Library) | `npm test` | 130 tests in 14 files beside the code (`*.test.ts(x)`): `lib/` helpers, `api/client` error text, the auth store, `nav-items` (every item has real roles; settings pages are admin-only), `ProtectedRoute` (waiting, signed out, wrong role, forced password change), the CSV writer (formula injection, quoting), the layout of every downloadable report, the print page with the institute's letterhead (escaping, wide tables), the Excel cells, and the list of roles a person holds |
+| Browser (Playwright, Chrome) | `npm run e2e` | 51 tests in `frontend/e2e/`: the built app is served and every call to the API is answered by a mock (`e2e/helpers.ts`), so no Docker stack is needed. Sign-in and sign-out, the sidebar for each role, route guards, the ID card screens (issue, search, withdraw, print selection, a student's own card) the public ID check page, and who holds extra duties (a trainer who also coordinates: menus, route guards, a duty given or taken back while the person works, the Duties dialog), the downloads (students, leads, dashboard and progress report as Excel with the letterhead read back from the .xlsx file, as the printed page, and as CSV) |
 
 Locally, `PW_CHANNEL=chrome npm run e2e` uses the Chrome already installed; CI downloads Chromium. A call the mock does not know returns 404 and is listed in `unmocked`, so a page that starts asking for something new is noticed.
 
@@ -117,5 +117,5 @@ Recorded here rather than left implicit:
 - **No coverage gate.** Jacoco reports exist per module but nothing fails a build for low coverage.
 - **No Testcontainers / real-database tests.** Every backend test is a Mockito unit test with mocked repositories; nothing exercises an actual Flyway migration against a real Postgres except the smoke test indirectly doing so through the running stack.
 - **Smoke test areas still not exercised, per the last live run:** a submission with file attachments (the third of three `@OneToMany` nullable-FK fixes from 222f277), the notification inbox and announcements UI path, MinIO as the storage backend, assignment late/rework paths, and the frontend in a real browser.
-- **Frontend tests are small.** 121 Vitest tests cover the pure logic (formatting, test-file import, link mapping, menu settings, error messages), the auth store, the sidebar roles and the route guard; 40 Playwright browser tests cover sign-in, who sees which menu, the ID card screens, the public check page and the downloads. The API is mocked in those, so they prove the screens, not the services. Most pages (lessons, the test attempt page, live classes, finance, placements) have no browser test yet.
+- **Frontend tests are small.** 130 Vitest tests cover the pure logic (formatting, test-file import, link mapping, menu settings, error messages), the auth store, the sidebar roles and the route guard; 51 Playwright browser tests cover sign-in, who sees which menu, the ID card screens, the public check page and the downloads. The API is mocked in those, so they prove the screens, not the services. Most pages (lessons, the test attempt page, live classes, finance, placements) have no browser test yet.
 - **Smoke test is not in CI** (needs a full Docker stack — see [07-deployment-guide.md §10](07-deployment-guide.md#10-ci)); it is the one layer that depends on a human (or a future CI runner with more resources) remembering to run it.

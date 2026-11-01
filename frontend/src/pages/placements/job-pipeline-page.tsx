@@ -58,7 +58,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 export function JobPipelinePage() {
   const { jobId } = useParams<{ jobId: string }>()
   const queryClient = useQueryClient()
-  const canEdit = hasRole(useAuthStore((state) => state.user?.role), ['ADMIN', 'PLACEMENT'])
+  const canEdit = hasRole(useAuthStore((state) => state.roles), ['ADMIN', 'PLACEMENT'])
   const [historyFor, setHistoryFor] = useState<ApplicationResponse | null>(null)
 
   const jobQuery = useQuery({

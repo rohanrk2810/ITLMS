@@ -13,7 +13,7 @@ import { hasRole, useAuthStore } from '@/stores/auth-store'
  * visibility, and this router is exactly that frontend.
  */
 export function ProtectedRoute({ roles }: { roles?: readonly Role[] }) {
-  const { status, user } = useAuthStore()
+  const { status, user, roles: held } = useAuthStore()
   const location = useLocation()
 
   if (status === 'checking') {
@@ -35,7 +35,7 @@ export function ProtectedRoute({ roles }: { roles?: readonly Role[] }) {
     return <Navigate to="/app/change-password" replace state={{ from: location }} />
   }
 
-  if (roles && !hasRole(user.role, roles)) {
+  if (roles && !hasRole(held, roles)) {
     return <Navigate to="/app/forbidden" replace />
   }
 

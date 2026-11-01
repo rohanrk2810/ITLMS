@@ -33,7 +33,7 @@ public final class FileAccessRules {
             case ASSIGNMENT, LESSON_RESOURCE -> caller.isStaff() || caller.isTrainer();
             case SUBMISSION -> caller.isStudent();
             case CERTIFICATE -> caller.isStaff();
-            case RECEIPT -> caller.isStaff() || Roles.FINANCE.equals(caller.role());
+            case RECEIPT -> caller.isStaff() || caller.hasRole(Roles.FINANCE);
             case RESUME -> caller.isStudent();
         };
     }
@@ -48,8 +48,8 @@ public final class FileAccessRules {
         return switch (category) {
             case DOCUMENT, CERTIFICATE -> caller.isStaff();
             case SUBMISSION -> caller.isStaff() || caller.isTrainer();
-            case RECEIPT -> caller.isStaff() || Roles.FINANCE.equals(caller.role());
-            case RESUME -> caller.isStaff() || Roles.PLACEMENT.equals(caller.role());
+            case RECEIPT -> caller.isStaff() || caller.hasRole(Roles.FINANCE);
+            case RESUME -> caller.isStaff() || caller.hasRole(Roles.PLACEMENT);
             default -> false;
         };
     }
@@ -61,6 +61,6 @@ public final class FileAccessRules {
 
     /** Staff (and finance, for receipts) may act on someone else's behalf; everyone else uploads only for themselves. */
     public static boolean canActOnBehalfOf(AppPrincipal caller, FileCategory category) {
-        return caller.isStaff() || (category == FileCategory.RECEIPT && Roles.FINANCE.equals(caller.role()));
+        return caller.isStaff() || (category == FileCategory.RECEIPT && caller.hasRole(Roles.FINANCE));
     }
 }

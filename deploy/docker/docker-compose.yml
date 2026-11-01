@@ -47,6 +47,7 @@ x-service-env: &service-env
   EUREKA_URL: http://discovery-server:8761/eureka/
   DB_HOST: postgres
   DB_PORT: "5432"
+  REDIS_HOST: redis
   DB_USERNAME: ${POSTGRES_USER:-itilms}
   DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/docker/.env}
   KAFKA_BROKERS: kafka:29092

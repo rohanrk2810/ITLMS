@@ -15,14 +15,15 @@ public interface RecipientRepository extends JpaRepository<Recipient, Long> {
     /** Name, email and role changed. Leaves the active flag to status events. */
     @Modifying
     @Query(value = """
-            INSERT INTO recipients (user_id, email, full_name, role, active, updated_at)
-            VALUES (:userId, :email, :fullName, :role, TRUE, NOW())
+            INSERT INTO recipients (user_id, email, full_name, role, extra_roles, active, updated_at)
+            VALUES (:userId, :email, :fullName, :role, :extraRoles, TRUE, NOW())
             ON CONFLICT (user_id) DO UPDATE
                SET email = EXCLUDED.email, full_name = EXCLUDED.full_name,
-                   role = EXCLUDED.role, updated_at = NOW()
+                   role = EXCLUDED.role, extra_roles = EXCLUDED.extra_roles, updated_at = NOW()
             """, nativeQuery = true)
     void upsertProfile(@Param("userId") Long userId, @Param("email") String email,
-                       @Param("fullName") String fullName, @Param("role") String role);
+                       @Param("fullName") String fullName, @Param("role") String role,
+                       @Param("extraRoles") String extraRoles);
 
     /** A status change, applied only if it is newer than the last one seen. */
     @Modifying
@@ -47,7 +48,13 @@ public interface RecipientRepository extends JpaRepository<Recipient, Long> {
     void insertIfAbsent(@Param("userId") Long userId, @Param("email") String email,
                         @Param("fullName") String fullName, @Param("role") String role);
 
-    @Query("SELECT r.userId FROM Recipient r WHERE r.active = true AND r.role = :role")
+    /** Everyone active who holds the role, as their main role or as an extra duty. */
+    @Query("""
+            SELECT r.userId FROM Recipient r
+             WHERE r.active = true
+               AND (r.role = :role
+                    OR (r.extraRoles IS NOT NULL AND CONCAT(',', r.extraRoles, ',') LIKE CONCAT('%,', :role, ',%')))
+            """)
     List<Long> activeUserIdsWithRole(@Param("role") String role);
 
     @Query("SELECT r.userId FROM Recipient r WHERE r.active = true")

@@ -81,6 +81,8 @@ erDiagram
         bigint updated_by
         timestamptz deleted_at
         text hidden_menu
+        varchar extra_roles
+        int roles_version
     }
     users ||--o{ password_reset_tokens : "user_id"
     users ||--o{ refresh_tokens : "user_id"

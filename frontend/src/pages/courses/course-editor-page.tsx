@@ -55,8 +55,8 @@ function LessonMonitoringEditor({ lesson, onSaved }: { lesson: LessonResponse; o
 export function CourseEditorPage() {
   const { courseId } = useParams<{ courseId: string }>()
   const queryClient = useQueryClient()
-  const role = useAuthStore((state) => state.user?.role)
-  const isStaff = hasRole(role, ['ADMIN', 'COORDINATOR'])
+  const roles = useAuthStore((state) => state.roles)
+  const isStaff = hasRole(roles, ['ADMIN', 'COORDINATOR'])
 
   const query = useQuery({
     queryKey: ['courses', 'detail', courseId],

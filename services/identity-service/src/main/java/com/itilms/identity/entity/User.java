@@ -95,6 +95,28 @@ public class User extends AuditableEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /** Extra duties an administrator gave this person, comma-separated (COORDINATOR, FINANCE, PLACEMENT); null for none. */
+    @Column(name = "extra_roles", length = 100)
+    private String extraRoles;
+
+    /** Goes up every time the duties change; it travels in the access token so the gateway can tell a token is stale. */
+    @Column(name = "roles_version", nullable = false)
+    @Builder.Default
+    private int rolesVersion = 0;
+
+    public java.util.List<String> extraRoleList() {
+        if (extraRoles == null || extraRoles.isBlank()) {
+            return java.util.List.of();
+        }
+        return java.util.Arrays.stream(extraRoles.split(",")).map(String::trim).filter(r -> !r.isEmpty()).toList();
+    }
+
+    /** Replaces the duties and moves the version on, so every token issued before is now out of date. */
+    public void changeExtraRoles(java.util.List<String> roles) {
+        this.extraRoles = roles.isEmpty() ? null : String.join(",", roles);
+        this.rolesVersion += 1;
+    }
+
     /**
      * Wipes what identifies the person and marks the account deleted. The e-mail is replaced by one that is unique
      * per id (the column is mandatory and unique) and can never be mailed; the phone is cleared so the number is free

@@ -19,7 +19,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 }
 
 export function StudentsPage() {
-  const role = useAuthStore((state) => state.user?.role)
+  const roles = useAuthStore((state) => state.roles)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
 
@@ -35,7 +35,7 @@ export function StudentsPage() {
           <h1 className="text-2xl font-semibold">Students</h1>
           <p className="text-muted-foreground">Every admitted student.</p>
         </div>
-        {hasRole(role, ['ADMIN', 'COORDINATOR']) && (
+        {hasRole(roles, ['ADMIN', 'COORDINATOR']) && (
           <ExportMenu
             label="Download all students"
             build={async () => studentsReport(await exportStudents({ status: status || undefined, query: query || undefined }), { status, query })}

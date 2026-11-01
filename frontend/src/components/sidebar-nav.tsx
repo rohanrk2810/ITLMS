@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth-store'
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const role = useAuthStore((state) => state.user?.role)
+  const roles = useAuthStore((state) => state.roles)
   const instituteHidden = useBranding().branding?.studentHiddenMenu ?? []
   // A student's own setting (made by an administrator) replaces the institute's list. It is read fresh, so a change
   // shows up without signing in again.
@@ -30,7 +31,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const menu = useUiConfig().menus[role ?? 'STUDENT'] ?? {}
   const filtered = NAV_ITEMS.filter(
     (item) =>
-      (!role || item.roles.includes(role)) &&
+      (roles.length === 0 || item.roles.some((r) => roles.includes(r))) &&
       (!unplaced || item.to === '/app' || item.to === '/app/courses') &&
       !(role === 'STUDENT' && item.to !== '/app' && hiddenForStudents.includes(item.to)) &&
       !(menu.hidden?.includes(item.to) && !ALWAYS_SHOWN.includes(item.to)),

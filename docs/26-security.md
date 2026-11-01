@@ -35,8 +35,9 @@ Scope: one institute per deployment (no tenant ids); isolation between institute
 
 ## 3. Authorization
 
-- Roles: `ADMIN`, `COORDINATOR`, `TRAINER`, `STUDENT`, `PLACEMENT`, `FINANCE` (`Roles` in `common-lib`; shared expressions `STAFF`, `ACADEMIC`, `ADMIN_ONLY`, `FINANCE_DESK`, `PLACEMENT_DESK`).
+- Roles: `ADMIN`, `COORDINATOR`, `TRAINER`, `STUDENT`, `PLACEMENT`, `FINANCE`, one main role per person plus, if an administrator gave them, extra duties (Coordinator, Finance, Placement; [32-extra-duties.md](32-extra-duties.md)). Every one is an authority, so `hasAnyRole` lets the person in through any of them (`Roles` in `common-lib`; shared expressions `STAFF`, `ACADEMIC`, `ADMIN_ONLY`, `FINANCE_DESK`, `PLACEMENT_DESK`).
 - **Two checks, both mandatory.** The role (`@PreAuthorize`) says what kind of caller may use an endpoint; an ownership check in the service says whether it may touch this record. A student reads only their own records; a trainer sees only the batches they teach (checked with batch-service, failing closed when it is unreachable).
+- **Duties change at once.** The token carries the duties and a number (`rv`) that goes up whenever they change; the gateway compares it with Redis on every request and sends an older token to be renewed (`401 PERMISSIONS_CHANGED`), so a duty given or withdrawn applies on the next request, not after 30 minutes. If Redis is down the check is skipped and the 30-minute limit applies.
 - **The gateway is not trusted by services.** It verifies the token, strips any `X-User-*` headers a client sent and adds its own, but those headers are only for logs. Each service re-verifies the JWT itself (`JwtAuthenticationFilter`).
 - **Internal endpoints.** Paths under `/internal/**` return 404 at the gateway (`InternalPathGuardFilter`) and are only reachable service to service.
 - **Frontend visibility is cosmetic.** `nav-items.ts` and `ProtectedRoute` shape the UI; nothing relies on them.

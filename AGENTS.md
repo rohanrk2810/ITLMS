@@ -43,6 +43,7 @@ CI (`.github/workflows/ci.yml`) runs backend tests, the route check, the fronten
 - **One writer per fact.** Services own their tables; others read through Feign or Kafka events, never another service's database. Feign fallbacks return null so a check fails closed.
 - **Flyway only.** Schema changes are a new `V<n>__snake_case.sql`; `ddl-auto` is `validate`. Never edit an applied migration.
 - **Sidebar roles and route roles are two lists.** `frontend/src/components/nav-items.ts` and the `ProtectedRoute roles=` in `frontend/src/App.tsx` must agree. `ProtectedRoute` is a layout route: wrap routes in it, do not pass children.
+- **One person, several roles.** A person has a main role plus optional extra duties (`AppPrincipal.extraRoles`, `state.roles` in the web app). Check with `principal.hasRole(...)` / `isStaff()` on the backend and `hasRole(roles, [...])` in the frontend; never compare `principal.role()` or `user.role` directly for access. See [docs/32-extra-duties.md](docs/32-extra-duties.md).
 - **Two id spaces.** batch-service `trainerId` is admission-service `Trainer.id`, not the identity `User.id`. Create trainers through `POST /api/trainers`, never the bare `POST /api/users`.
 - **`docker compose up --build <svc>` rebuilds the whole dependency chain** from whatever is in each module's `target/`. Run `mvn clean package` first, including infrastructure modules, or a stale jar surfaces.
 - **Record departures** from the PDF in `docs/02-documentation-review.md`, and update the matching doc when a feature changes.

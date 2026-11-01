@@ -5,6 +5,6 @@ import { MyIdCardPage } from './my-id-card-page'
 
 /** One address, two screens: staff run the cards; a student or trainer sees their own. */
 export function IdCardsIndexPage() {
-  const role = useAuthStore((state) => state.user?.role)
-  return hasRole(role, ['ADMIN', 'COORDINATOR']) ? <IdCardManagementPage /> : <MyIdCardPage />
+  const roles = useAuthStore((state) => state.roles)
+  return hasRole(roles, ['ADMIN', 'COORDINATOR']) ? <IdCardManagementPage /> : <MyIdCardPage />
 }

@@ -26,6 +26,12 @@ public interface UserService {
 
     UserResponse updateStatus(Long id, UpdateStatusRequest request);
 
+    /**
+     * Gives a person extra duties besides their main role, or withdraws them (an empty list). Administrator only. The
+     * gateway is told at once, so the change applies on the person's next request.
+     */
+    UserResponse updateDuties(Long id, java.util.List<String> extraRoles);
+
     /** Sets or clears (null) the sidebar items hidden from one student. */
     UserResponse updateMenu(Long id, com.itilms.identity.dto.request.UserMenuRequest request);
 

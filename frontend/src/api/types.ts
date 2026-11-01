@@ -47,6 +47,8 @@ export interface UserResponse {
   createdAt: string
   /** Sidebar paths hidden for this user alone; null follows the institute's student menu. */
   hiddenMenu: string[] | null
+  /** Extra duties an administrator gave this person besides the main role (COORDINATOR, FINANCE, PLACEMENT). */
+  extraRoles: Role[]
 }
 
 export interface AuthResponse {

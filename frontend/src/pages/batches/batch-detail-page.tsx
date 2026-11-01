@@ -40,8 +40,8 @@ export function BatchDetailPage() {
   const { batchId } = useParams<{ batchId: string }>()
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false)
-  const role = useAuthStore((state) => state.user?.role)
-  const canManage = hasRole(role, ['ADMIN', 'COORDINATOR'])
+  const roles = useAuthStore((state) => state.roles)
+  const canManage = hasRole(roles, ['ADMIN', 'COORDINATOR'])
 
   const batchQuery = useQuery({ queryKey: ['batches', batchId], queryFn: () => getBatch(batchId!), enabled: !!batchId })
   const rosterQuery = useQuery({

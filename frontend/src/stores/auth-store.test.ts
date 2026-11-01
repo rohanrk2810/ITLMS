@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import type { UserResponse } from '@/api/types'
 
-import { hasRole, useAuthStore } from './auth-store'
+import { hasRole, rolesOf, useAuthStore } from './auth-store'
 
-const user = { id: 1, fullName: 'Asha Patil', role: 'STUDENT', mustChangePassword: false } as UserResponse
+const user = { id: 1, fullName: 'Asha Patil', role: 'STUDENT', mustChangePassword: false, extraRoles: [] } as unknown as UserResponse
 
 describe('hasRole', () => {
   it('is true only for a listed role', () => {
@@ -19,7 +19,7 @@ describe('hasRole', () => {
 
 describe('auth store', () => {
   beforeEach(() => {
-    useAuthStore.setState({ user: null, accessToken: null, status: 'checking' })
+    useAuthStore.setState({ user: null, roles: [], accessToken: null, status: 'checking' })
   })
 
   it('starts by checking the session', () => {
@@ -42,5 +42,39 @@ describe('auth store', () => {
     expect(state.status).toBe('unauthenticated')
     expect(state.accessToken).toBeNull()
     expect(state.user).toBeNull()
+  })
+})
+
+describe('roles held', () => {
+  const trainer = { id: 7, fullName: 'Ravi', role: 'TRAINER', extraRoles: ['COORDINATOR', 'FINANCE'] } as UserResponse
+
+  it('lists the main role first, then the extra duties', () => {
+    expect(rolesOf(trainer)).toEqual(['TRAINER', 'COORDINATOR', 'FINANCE'])
+    expect(rolesOf({ role: 'STUDENT', extraRoles: [] })).toEqual(['STUDENT'])
+    expect(rolesOf(null)).toEqual([])
+  })
+
+  it('an answer from an older server without the field means no extra duties', () => {
+    expect(rolesOf({ role: 'TRAINER' } as UserResponse)).toEqual(['TRAINER'])
+  })
+
+  it('never lists the main role twice', () => {
+    expect(rolesOf({ role: 'COORDINATOR', extraRoles: ['COORDINATOR', 'FINANCE'] })).toEqual(['COORDINATOR', 'FINANCE'])
+  })
+
+  it('is kept in step with the signed-in person', () => {
+    useAuthStore.getState().setSession('tok', trainer)
+    expect(useAuthStore.getState().roles).toEqual(['TRAINER', 'COORDINATOR', 'FINANCE'])
+    useAuthStore.getState().setUser({ ...trainer, extraRoles: [] })
+    expect(useAuthStore.getState().roles).toEqual(['TRAINER'])
+    useAuthStore.getState().clearSession()
+    expect(useAuthStore.getState().roles).toEqual([])
+  })
+
+  it('hasRole accepts the whole list: any one of them may be the allowed role', () => {
+    expect(hasRole(['TRAINER', 'COORDINATOR'], ['ADMIN', 'COORDINATOR'])).toBe(true)
+    expect(hasRole(['TRAINER', 'FINANCE'], ['ADMIN', 'COORDINATOR'])).toBe(false)
+    expect(hasRole([], ['ADMIN'])).toBe(false)
+    expect(hasRole('TRAINER', ['TRAINER'])).toBe(true)
   })
 })

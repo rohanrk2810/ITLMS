@@ -41,7 +41,7 @@ class UserDeleteTest {
     private final PasswordResetTokenRepository resets = mock(PasswordResetTokenRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final EventPublisher events = mock(EventPublisher.class);
-    private final UserServiceImpl service = new UserServiceImpl(users, tokens, resets, encoder, events);
+    private final UserServiceImpl service = new UserServiceImpl(users, tokens, resets, encoder, events, mock(com.itilms.identity.service.RolesVersionStore.class));
 
     private User student;
 

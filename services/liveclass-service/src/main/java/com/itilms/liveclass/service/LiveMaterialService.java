@@ -84,7 +84,7 @@ public class LiveMaterialService {
         LiveMaterial material = require(id);
         // The owner edits their own; an administrator may also correct one that has been shared.
         boolean allowed = material.getOwnerUserId().equals(me.userId())
-                || (Roles.ADMIN.equals(me.role()) && material.isShared());
+                || (me.isAdmin() && material.isShared());
         if (!allowed) {
             throw new ForbiddenOperationException("This material belongs to another trainer.");
         }
