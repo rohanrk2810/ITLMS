@@ -10,5 +10,6 @@ public enum ExportedReport {
     WATCH_REPORT,
     FEE_POSITION,
     FEE_PLANS,
-    OVERDUE_FEES
+    OVERDUE_FEES,
+    USERS
 }

@@ -96,6 +96,7 @@ export type ExportedReport =
   | 'FEE_POSITION'
   | 'FEE_PLANS'
   | 'OVERDUE_FEES'
+  | 'USERS'
 
 /** Notes in the audit log that a spreadsheet was downloaded. Never blocks or fails the download itself. */
 export async function noteDownload(report: ExportedReport, rows: number, detail?: string): Promise<void> {

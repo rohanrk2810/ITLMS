@@ -8,6 +8,7 @@ import type { LeadResponse } from '@/api/leads'
 import type { StudentProgressReport } from '@/api/progress'
 import type { DashboardSummaryResponse } from '@/api/reporting'
 import type { StudentResponse } from '@/api/students'
+import type { UserResponse } from '@/api/types'
 
 import {
   attendanceReport,
@@ -20,6 +21,7 @@ import {
   progressReport,
   resultsReport,
   studentsReport,
+  usersReport,
 } from './export-rows'
 import type { Report } from './report'
 
@@ -270,5 +272,43 @@ describe('lessonWatchReport', () => {
   it('says when the camera was not watching, so zero face figures are not misread', () => {
     const off = lessonWatchReport([watch(1, 50)], new Map(), { title: 'L', monitored: false })
     expect(off.info).toContainEqual(['Camera monitoring', 'Off'])
+  })
+})
+
+describe('usersReport', () => {
+  const user = (over: Record<string, unknown>) =>
+    ({
+      id: 1, fullName: 'Ravi Kulkarni', email: 'r@x.test', phone: '9800000001', role: 'TRAINER', roleDisplayName: 'Trainer',
+      status: 'ACTIVE', profileCode: 'EMP-3', lastLoginAt: '2026-11-01T08:15:00Z', createdAt: '2026-09-02T00:00:00Z',
+      extraRoles: ['COORDINATOR', 'FINANCE'], hiddenMenu: null, ...over,
+    }) as unknown as UserResponse
+
+  it('lists each account with its main role and the extra duties it holds', () => {
+    const report = usersReport([user({}), user({ id: 2, fullName: 'Asha Patil', role: 'STUDENT', roleDisplayName: 'Student', extraRoles: [], status: 'INACTIVE', lastLoginAt: null })])
+    expectRectangular(report)
+    expect(report.title).toBe('User accounts')
+    expect(report.rows[0]).toEqual(expect.arrayContaining(['Ravi Kulkarni', 'Trainer', 'COORDINATOR, FINANCE', 'EMP-3', '2026-11-01 08:15']))
+    expect(report.rows[1][report.header.indexOf('Extra duties')]).toBe('')
+    expect(report.rows[1][report.header.indexOf('Last sign-in')]).toBe('')
+  })
+
+  it('counts the accounts that can sign in, and says which filter it covers', () => {
+    const report = usersReport([user({}), user({ id: 2, status: 'BLOCKED' })], { role: 'TRAINER', query: 'ravi' })
+    expect(report.info).toContainEqual(['Accounts', '2'])
+    expect(report.info).toContainEqual(['Active', '1'])
+    expect(report.info).toContainEqual(['Role', 'TRAINER'])
+    expect(report.info).toContainEqual(['Search', 'ravi'])
+  })
+
+  it('carries nothing secret: no hash, token or menu setting is in any column', () => {
+    const report = usersReport([user({ passwordHash: 'x', hiddenMenu: ['/app/files'] })])
+    const text = JSON.stringify([report.header, report.rows]).toLowerCase()
+    expect(text).not.toContain('password')
+    expect(text).not.toContain('token')
+    expect(text).not.toContain('/app/files')
+  })
+
+  it('an older answer without the duties field still lists the account', () => {
+    expect(usersReport([user({ extraRoles: undefined })]).rows[0][4]).toBe('')
   })
 })
