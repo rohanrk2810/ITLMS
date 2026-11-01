@@ -42,7 +42,8 @@ function formatSize(bytes: number): string {
 
 export function FilesPage() {
   const role = useAuthStore((state) => state.user?.role)
-  const isStaff = hasRole(role, ['ADMIN', 'COORDINATOR'])
+  const roles = useAuthStore((state) => state.roles)
+  const isStaff = hasRole(roles, ['ADMIN', 'COORDINATOR'])
   const categories = role ? CATEGORIES_BY_ROLE[role] : []
 
   return (

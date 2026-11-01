@@ -1,11 +1,11 @@
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Menu, Plus, Trash2 } from 'lucide-react'
+import { KeyRound, Menu, Plus, ShieldPlus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { type CreateTrainerInput, type TrainerResponse, createTrainer } from '@/api/trainers'
-import { type CreateUserInput, createUser, deleteUser, resetUserPassword, searchUsers, updateUserMenu, updateUserStatus } from '@/api/users'
+import { type CreateUserInput, createUser, deleteUser, resetUserPassword, searchUsers, updateUserDuties, updateUserMenu, updateUserStatus } from '@/api/users'
 import { NAV_ITEMS } from '@/components/nav-items'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useBranding } from '@/lib/use-branding'
@@ -33,7 +33,7 @@ export function UsersPage() {
   const [role, setRole] = useState('')
   const [query, setQuery] = useState('')
   const queryClient = useQueryClient()
-  const isAdmin = hasRole(useAuthStore((state) => state.user?.role), ['ADMIN'])
+  const isAdmin = hasRole(useAuthStore((state) => state.roles), ['ADMIN'])
 
   const usersQuery = useQuery({
     queryKey: ['users', 'search', role, query],
@@ -105,7 +105,14 @@ export function UsersPage() {
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.fullName}</TableCell>
                 <TableCell>{user.email}</TableCell>
-                <TableCell>{user.roleDisplayName}</TableCell>
+                <TableCell>
+                  {user.roleDisplayName}
+                  {(user.extraRoles ?? []).map((duty) => (
+                    <Badge key={duty} variant="secondary" className="ml-1.5">
+                      + {DUTIES.find((d) => d.role === duty)?.label ?? duty}
+                    </Badge>
+                  ))}
+                </TableCell>
                 <TableCell>
                   {isAdmin ? (
                     <select
@@ -136,6 +143,7 @@ export function UsersPage() {
                       Reset password
                     </Button>
                     {user.role === 'STUDENT' && <StudentMenuDialog user={user} />}
+                    {user.role !== 'STUDENT' && user.role !== 'ADMIN' && <DutiesDialog user={user} />}
                     <DeleteUserDialog user={user} />
                   </TableCell>
                 )}
@@ -390,6 +398,91 @@ function StudentMenuDialog({ user }: { user: UserResponse }) {
             </label>
           ))}
         </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/** The duties an administrator can add to a main role. Admin and Student cannot be added; Trainer needs a trainer profile. */
+const DUTIES: { role: string; label: string; what: string }[] = [
+  { role: 'COORDINATOR', label: 'Coordinator', what: 'Admissions, students, batches, courses, course requests, users, announcements, reports and downloads.' },
+  { role: 'FINANCE', label: 'Finance', what: 'Fees, payments, receipts and the finance desk.' },
+  { role: 'PLACEMENT', label: 'Placement', what: 'Companies, job openings, applications and resumes.' },
+]
+
+function DutiesDialog({ user }: { user: UserResponse }) {
+  const [open, setOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(user.extraRoles ?? []))
+  const choices = DUTIES.filter((d) => d.role !== user.role)
+
+  const mutation = useMutation({
+    mutationFn: () => updateUserDuties(user.id, choices.filter((d) => chosen.has(d.role)).map((d) => d.role)),
+    onSuccess: (saved) => {
+      const extras = saved.extraRoles ?? []
+      toast.success(
+        extras.length > 0
+          ? `${user.fullName} now also has: ${extras.map((r) => DUTIES.find((d) => d.role === r)?.label ?? r).join(', ')}.`
+          : `${user.fullName} has no extra duties now.`,
+      )
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+      setOpen(false)
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not save the duties.')),
+  })
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) setChosen(new Set(user.extraRoles ?? []))
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost">
+          <ShieldPlus className="size-3.5" />
+          Duties
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Duties of {user.fullName}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Main role: <b>{user.roleDisplayName}</b>. It stays as it is. What you tick below is added to it, and unticking
+          takes it away again.
+        </p>
+        <div className="flex flex-col gap-3">
+          {choices.map((duty) => (
+            <label key={duty.role} className="flex items-start gap-2 text-sm">
+              <Checkbox
+                checked={chosen.has(duty.role)}
+                onCheckedChange={(on) =>
+                  setChosen((current) => {
+                    const next = new Set(current)
+                    if (on === true) next.add(duty.role)
+                    else next.delete(duty.role)
+                    return next
+                  })
+                }
+              />
+              <span>
+                {duty.label}
+                <span className="block text-xs text-muted-foreground">{duty.what}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">Applies to {user.firstName}&apos;s very next click, a change either way. It is recorded in the audit log.</p>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel

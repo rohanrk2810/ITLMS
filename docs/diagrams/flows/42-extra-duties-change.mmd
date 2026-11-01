@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    actor A as Administrator
+    actor R as Ravi (trainer)
+    participant B as Ravi's browser
+    participant G as Gateway
+    participant RD as Redis
+    participant I as identity-service
+    participant K as Kafka
+    participant NO as notification-service
+    participant S as Any service
+
+    Note over A,I: The administrator gives Ravi the Coordinator duty
+    A->>I: PUT /api/users/7/duties {extraRoles: [COORDINATOR]} (ADMIN only)
+    I->>I: refuse a student, an admin, TRAINER, or the main role repeated
+    I->>I: save extra_roles, roles_version 0 -> 1
+    I->>RD: SET rv:7 = 1
+    I->>K: user-updated (with the extra duties)
+    K->>NO: directory keeps the duties, so role notifications reach Ravi
+    I->>K: audit.recorded (USER_DUTIES_CHANGED), notification "Your duties changed"
+    I-->>A: Ravi, now with + Coordinator
+
+    Note over R,S: Ravi keeps working with a token issued before the change (rv = 0)
+    R->>B: clicks anything
+    B->>G: request with the old token
+    G->>G: verify signature and expiry
+    G->>RD: GET rv:7
+    RD-->>G: 1
+    G-->>B: 401 PERMISSIONS_CHANGED (1 is newer than 0)
+    B->>G: POST /api/auth/refresh (the app does this by itself)
+    G->>I: forward
+    I->>I: read the person from the database
+    I-->>B: new token with xr = [COORDINATOR], rv = 1, and the user with extraRoles
+    B->>B: store.roles = [TRAINER, COORDINATOR], the sidebar and guards follow
+    B->>G: the same request again, new token
+    G->>RD: GET rv:7 (1 = 1, current)
+    G->>S: forward
+    S->>S: hasAnyRole(ADMIN, COORDINATOR) matches the COORDINATOR authority
+    S-->>B: the answer a coordinator gets
+
+    Note over A,I: Withdrawn the same way: roles_version 1 -> 2, the next request is renewed without the duty
+    Note over G,RD: If Redis cannot be reached the check is skipped; the 30-minute token limit still applies

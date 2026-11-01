@@ -28,6 +28,7 @@ export function userFor(role: Role, overrides: Record<string, unknown> = {}) {
     lastLoginAt: null,
     createdAt: '2026-10-01T00:00:00Z',
     hiddenMenu: null,
+    extraRoles: [],
     ...overrides,
   }
 }

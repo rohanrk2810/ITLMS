@@ -51,6 +51,15 @@ export async function updateUserMenu(id: number | string, hidden: string[] | nul
   return data
 }
 
+/**
+ * Admin only. Gives a person extra duties besides their main role (a trainer who also coordinates), or withdraws
+ * them with an empty list. It applies to that person's very next request.
+ */
+export async function updateUserDuties(id: number | string, extraRoles: string[]): Promise<UserResponse> {
+  const { data } = await apiClient.put<UserResponse>(`/api/users/${id}/duties`, { extraRoles })
+  return data
+}
+
 /** ACTIVE, INACTIVE or BLOCKED. A reason is required - this is audited (Doc S12). */
 export async function updateUserStatus(
   id: number | string,

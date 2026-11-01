@@ -23,8 +23,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 
 export function ManageCoursesPage() {
   const [query, setQuery] = useState('')
-  const role = useAuthStore((state) => state.user?.role)
-  const canCreate = hasRole(role, ['ADMIN', 'COORDINATOR'])
+  const roles = useAuthStore((state) => state.roles)
+  const canCreate = hasRole(roles, ['ADMIN', 'COORDINATOR'])
 
   const coursesQuery = useQuery({
     queryKey: ['courses', 'manage', query],

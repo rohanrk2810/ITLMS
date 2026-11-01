@@ -36,7 +36,8 @@ const HOST_ROLES = ['ADMIN', 'COORDINATOR', 'TRAINER'] as const
 export function ClassReviewPage() {
   const { classSessionId } = useParams<{ classSessionId: string }>()
   const user = useAuthStore((s) => s.user)
-  const isHost = !!user && hasRole(user.role, HOST_ROLES)
+  const rolesHeld = useAuthStore((s) => s.roles)
+  const isHost = !!user && hasRole(rolesHeld, HOST_ROLES)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const [session, setSession] = useState<LiveSessionResponse | null>(null)

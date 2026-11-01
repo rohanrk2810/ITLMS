@@ -25,7 +25,8 @@ public class DirectoryService {
 
     @Transactional
     public void userChanged(UserCreatedEvent event) {
-        recipients.upsertProfile(event.userId(), event.email(), event.fullName(), event.role());
+        String extras = event.extraRoles().isEmpty() ? null : String.join(",", event.extraRoles());
+        recipients.upsertProfile(event.userId(), event.email(), event.fullName(), event.role(), extras);
     }
 
     @Transactional

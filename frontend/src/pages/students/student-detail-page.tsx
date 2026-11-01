@@ -28,7 +28,8 @@ export function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>()
   const queryClient = useQueryClient()
   const role = useAuthStore((state) => state.user?.role)
-  const canEdit = hasRole(role, ['ADMIN', 'COORDINATOR'])
+  const roles = useAuthStore((state) => state.roles)
+  const canEdit = hasRole(roles, ['ADMIN', 'COORDINATOR'])
 
   const query = useQuery({
     queryKey: ['students', studentId],

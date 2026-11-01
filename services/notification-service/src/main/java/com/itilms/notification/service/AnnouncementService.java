@@ -112,7 +112,7 @@ public class AnnouncementService {
             return PageResponse.from(announcements.findAllByOrderByCreatedAtDescIdDesc(pageable),
                     a -> AnnouncementResponse.from(a, true));
         }
-        return PageResponse.from(announcements.visibleTo(me.userId(), me.role(), Instant.now(), pageable),
+        return PageResponse.from(announcements.visibleTo(me.userId(), rolesOf(me), Instant.now(), pageable),
                 a -> AnnouncementResponse.from(a, me.userId().equals(a.getCreatedBy())));
     }
 
@@ -133,7 +133,7 @@ public class AnnouncementService {
     boolean addressedTo(Announcement a, AppPrincipal me) {
         return switch (a.getAudience()) {
             case ALL -> true;
-            case ROLE -> a.getTargetRole().equals(me.role());
+            case ROLE -> me.hasRole(a.getTargetRole());
             case BATCH -> members.existsByBatchIdAndUserIdAndActiveTrue(a.getTargetId(), me.userId());
             case COURSE -> members.existsByCourseIdAndUserIdAndActiveTrue(a.getTargetId(), me.userId());
         };
@@ -186,6 +186,14 @@ public class AnnouncementService {
     }
 
     private static boolean isStaff(AppPrincipal me) {
-        return Roles.ADMIN.equals(me.role()) || Roles.COORDINATOR.equals(me.role());
+        return me.isStaff();
+    }
+
+    /** The main role and every extra duty: an announcement to a role reaches everyone who holds it. */
+    static java.util.List<String> rolesOf(AppPrincipal me) {
+        java.util.List<String> all = new java.util.ArrayList<>();
+        all.add(me.role());
+        all.addAll(me.extraRoles());
+        return all;
     }
 }

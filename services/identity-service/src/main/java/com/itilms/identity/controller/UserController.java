@@ -108,6 +108,16 @@ public class UserController {
         return userService.updateStatus(id, request);
     }
 
+    @Operation(summary = "Give or withdraw extra duties",
+            description = "Administrator only. A trainer can also be a coordinator, for example. The change applies on the "
+                    + "person's very next request. An empty list withdraws every extra duty.")
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @PutMapping("/{id}/duties")
+    public UserResponse updateDuties(@PathVariable Long id,
+                                     @jakarta.validation.Valid @RequestBody com.itilms.identity.dto.request.UserDutiesRequest request) {
+        return userService.updateDuties(id, request.extraRoles());
+    }
+
     @Operation(summary = "Choose which sidebar items one student sees",
             description = "Replaces the institute's student menu for this student. A null list removes the personal "
                     + "setting so they follow the institute's menu again.")

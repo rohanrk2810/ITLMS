@@ -13,6 +13,8 @@ export type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
 
 interface AuthState {
   user: UserResponse | null
+  /** The main role and every extra duty, in one list. Pages that decide what to show read this, not `user.role`. */
+  roles: Role[]
   accessToken: string | null
   status: AuthStatus
   setSession: (accessToken: string, user: UserResponse) => void
@@ -20,15 +22,27 @@ interface AuthState {
   clearSession: () => void
 }
 
+/** The main role first, then the extra duties; empty when nobody is signed in. */
+export function rolesOf(user: Pick<UserResponse, 'role' | 'extraRoles'> | null | undefined): Role[] {
+  return user ? [user.role, ...(user.extraRoles ?? []).filter((r) => r !== user.role)] : []
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  roles: [],
   accessToken: null,
   status: 'checking',
-  setSession: (accessToken, user) => set({ accessToken, user, status: 'authenticated' }),
-  setUser: (user) => set({ user }),
-  clearSession: () => set({ accessToken: null, user: null, status: 'unauthenticated' }),
+  setSession: (accessToken, user) => set({ accessToken, user, roles: rolesOf(user), status: 'authenticated' }),
+  setUser: (user) => set({ user, roles: rolesOf(user) }),
+  clearSession: () => set({ accessToken: null, user: null, roles: [], status: 'unauthenticated' }),
 }))
 
-export function hasRole(role: Role | undefined, allowed: readonly Role[]): boolean {
-  return !!role && allowed.includes(role)
+/**
+ * Whether someone holds any of the allowed roles. Pass the full list (`state.roles`), so a person with an extra duty
+ * (a trainer who also coordinates) gets what that duty allows; a single role string still works.
+ */
+export function hasRole(held: Role | readonly Role[] | undefined, allowed: readonly Role[]): boolean {
+  if (!held) return false
+  const roles = typeof held === 'string' ? [held] : held
+  return roles.some((r) => allowed.includes(r))
 }

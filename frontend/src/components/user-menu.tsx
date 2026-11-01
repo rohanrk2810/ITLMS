@@ -49,7 +49,7 @@ export function UserMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-          {user.roleDisplayName}
+          {dutiesLine(user)}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={handleLogout}>
@@ -59,4 +59,10 @@ export function UserMenu() {
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
+
+/** "Trainer" or "Trainer + Coordinator": the main role and the extra duties an administrator gave. */
+function dutiesLine(user: { roleDisplayName: string; extraRoles?: string[] }): string {
+  const extras = (user.extraRoles ?? []).map((r) => r.charAt(0) + r.slice(1).toLowerCase())
+  return [user.roleDisplayName, ...extras].join(' + ')
 }

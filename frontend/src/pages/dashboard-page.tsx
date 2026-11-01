@@ -24,7 +24,8 @@ const ROLE_BLURB: Record<string, string> = {
 
 export function DashboardPage() {
   const user = useAuthStore((state) => state.user)
-  const showInstituteSummary = hasRole(user?.role, ['ADMIN', 'COORDINATOR'])
+  const roles = useAuthStore((state) => state.roles)
+  const showInstituteSummary = hasRole(roles, ['ADMIN', 'COORDINATOR'])
   const unplaced = useUnplacedStudent()
   const hidden = useUiConfig().dashboard.hidden
   const shows = (id: string) => !hidden.includes(id)

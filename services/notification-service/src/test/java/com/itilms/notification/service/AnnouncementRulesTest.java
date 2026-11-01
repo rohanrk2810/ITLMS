@@ -140,4 +140,26 @@ class AnnouncementRulesTest {
 
         assertThatThrownBy(() -> service.withdraw(9L)).isInstanceOf(ForbiddenOperationException.class);
     }
+
+    @Test
+    @DisplayName("an announcement to a role reaches someone who holds it as an extra duty, and still their main role")
+    void extraDutiesCountForRoleAnnouncements() {
+        AppPrincipal trainerWhoAlsoKeepsFees = new AppPrincipal(7L, "r@x.in", "Ravi", "TRAINER", 3L, java.util.List.of("FINANCE"));
+        Announcement toFinance = Announcement.builder().title("t").message("m").audience(Audience.ROLE).targetRole("FINANCE").build();
+        Announcement toTrainers = Announcement.builder().title("t").message("m").audience(Audience.ROLE).targetRole("TRAINER").build();
+        Announcement toPlacement = Announcement.builder().title("t").message("m").audience(Audience.ROLE).targetRole("PLACEMENT").build();
+
+        assertThat(service.addressedTo(toFinance, trainerWhoAlsoKeepsFees)).isTrue();
+        assertThat(service.addressedTo(toTrainers, trainerWhoAlsoKeepsFees)).isTrue();
+        assertThat(service.addressedTo(toPlacement, trainerWhoAlsoKeepsFees)).isFalse();
+    }
+
+    @Test
+    @DisplayName("the list asks for every role the person holds, not only the main one")
+    void listAsksForEveryRole() {
+        AppPrincipal p = new AppPrincipal(7L, "r@x.in", "Ravi", "TRAINER", 3L, java.util.List.of("FINANCE", "PLACEMENT"));
+
+        assertThat(AnnouncementService.rolesOf(p)).containsExactly("TRAINER", "FINANCE", "PLACEMENT");
+        assertThat(AnnouncementService.rolesOf(new AppPrincipal(1L, "a@x.in", "A", "STUDENT", 1L))).containsExactly("STUDENT");
+    }
 }

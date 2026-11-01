@@ -30,6 +30,10 @@ public class JwtVerifier {
     public static final String CLAIM_ROLE = "role";
     public static final String CLAIM_PROFILE_ID = "pid";
     public static final String CLAIM_TOKEN_TYPE = "typ";
+    /** Extra duties an administrator gave the person, as a list of role names. */
+    public static final String CLAIM_EXTRA_ROLES = "xr";
+    /** Changes each time the person's duties change; the gateway compares it with the current number. */
+    public static final String CLAIM_ROLES_VERSION = "rv";
 
     public static final String TYPE_ACCESS = "ACCESS";
     public static final String TYPE_REFRESH = "REFRESH";
@@ -80,7 +84,16 @@ public class JwtVerifier {
                 claims.get(CLAIM_EMAIL, String.class),
                 claims.get(CLAIM_NAME, String.class),
                 claims.get(CLAIM_ROLE, String.class),
-                profileId == null ? null : profileId.longValue());
+                profileId == null ? null : profileId.longValue(),
+                extraRoles(claims));
+    }
+
+    private static java.util.List<String> extraRoles(Claims claims) {
+        Object raw = claims.get(CLAIM_EXTRA_ROLES);
+        if (!(raw instanceof java.util.Collection<?> values)) {
+            return java.util.List.of();
+        }
+        return values.stream().filter(String.class::isInstance).map(String.class::cast).toList();
     }
 
     public Claims parse(String token) {

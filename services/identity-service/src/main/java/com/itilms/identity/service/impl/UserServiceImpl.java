@@ -51,6 +51,7 @@ public class UserServiceImpl implements UserService {
     private final com.itilms.identity.repository.PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EventPublisher events;
+    private final com.itilms.identity.service.RolesVersionStore rolesVersions;
 
     @Override
     @Transactional(readOnly = true)
@@ -163,9 +164,63 @@ public class UserServiceImpl implements UserService {
 
         // Other services cache the display name; tell them it moved.
         events.publishAfterCommit(KafkaTopics.USER_UPDATED,
-                UserCreatedEvent.of(user.getId(), user.getEmail(), user.getPhone(),
-                        user.fullName(), user.getRole().name()));
+                UserCreatedEvent.withDuties(user.getId(), user.getEmail(), user.getPhone(),
+                        user.fullName(), user.getRole().name(), user.extraRoleList()));
 
+        return UserResponse.from(user);
+    }
+
+    /** The only duties that can be added to a main role; ADMIN, STUDENT and TRAINER (which needs a trainer profile) cannot. */
+    static final java.util.Set<String> GRANTABLE = java.util.Set.of("COORDINATOR", "FINANCE", "PLACEMENT");
+    private static final java.util.List<String> GRANTABLE_ORDER = java.util.List.of("COORDINATOR", "FINANCE", "PLACEMENT");
+
+    @Override
+    @Transactional
+    public UserResponse updateDuties(Long id, java.util.List<String> requested) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        if (user.getDeletedAt() != null) {
+            throw new BusinessRuleException("This account has been deleted.");
+        }
+        if (user.getRole() == UserRole.STUDENT || user.getRole() == UserRole.ADMIN) {
+            throw new BusinessRuleException(user.getRole() == UserRole.STUDENT
+                    ? "A student cannot be given extra duties."
+                    : "An administrator already has every duty.");
+        }
+
+        java.util.Set<String> wanted = new java.util.LinkedHashSet<>();
+        for (String raw : requested == null ? java.util.List.<String>of() : requested) {
+            String role = raw == null ? "" : raw.trim().toUpperCase();
+            if (!GRANTABLE.contains(role)) {
+                throw new BusinessRuleException("'" + raw + "' cannot be given as an extra duty. Choose from: "
+                        + String.join(", ", GRANTABLE_ORDER) + ".");
+            }
+            if (role.equals(user.getRole().name())) {
+                throw new BusinessRuleException("This person's main role is already " + role + ".");
+            }
+            wanted.add(role);
+        }
+        java.util.List<String> after = GRANTABLE_ORDER.stream().filter(wanted::contains).toList();
+        java.util.List<String> before = user.extraRoleList();
+        if (before.equals(after)) {
+            return UserResponse.from(user);
+        }
+
+        user.changeExtraRoles(after);
+        userRepository.save(user);
+        boolean told = rolesVersions.publish(user.getId(), user.getRolesVersion());
+
+        events.audit(SERVICE_NAME, "USER_DUTIES_CHANGED", "User", id,
+                Map.of("extraRoles", before), Map.of("extraRoles", after, "gatewayTold", told));
+        java.util.List<String> added = after.stream().filter(r -> !before.contains(r)).toList();
+        java.util.List<String> removed = before.stream().filter(r -> !after.contains(r)).toList();
+        String message = (added.isEmpty() ? "" : "You now also have: " + String.join(", ", added) + ". ")
+                + (removed.isEmpty() ? "" : "No longer yours: " + String.join(", ", removed) + ".");
+        // Services that notify by role (new students, fee overdue...) must now count this person in, or out.
+        events.publishAfterCommit(KafkaTopics.USER_UPDATED,
+                UserCreatedEvent.withDuties(user.getId(), user.getEmail(), user.getPhone(), user.fullName(),
+                        user.getRole().name(), after));
+        events.notifyUsers(java.util.List.of(user.getId()), "DUTIES", "Your duties changed", message.trim(), "/student/dashboard");
         return UserResponse.from(user);
     }
 

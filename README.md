@@ -300,6 +300,7 @@ A running cloud VM costs money. When you no longer need it, delete the **resourc
 | [docs/27-design-system.md](docs/27-design-system.md) | Colour tokens, components, layout, forms, theming, accessibility |
 | [docs/28-prd.md](docs/28-prd.md) | Product requirements: users, scope with requirement ids, non-functional needs, open questions |
 | [docs/29-code-style.md](docs/29-code-style.md) | Backend and frontend conventions, testing, commits, documentation |
+| [docs/32-extra-duties.md](docs/32-extra-duties.md) | One person with several jobs (a trainer who also coordinates): who can give it, how it applies at once, what it covers |
 | [docs/31-downloads.md](docs/31-downloads.md) | What can be downloaded (students, leads, attendance, results, dashboard, progress reports), who may, and what is logged |
 | [docs/30-id-cards.md](docs/30-id-cards.md) | Identity cards for students, trainers and staff: issuing, photos, printing, public check |
 | [AGENTS.md](AGENTS.md) | Guide for AI coding agents and new developers: layout, commands, rules that are easy to break |

@@ -71,6 +71,7 @@ Success looks like:
 - R-62 Notifications (in-app, announcements by audience and category, email through an outbox that never loses a message).
 - R-63 Files with type and size rules and access control.
 - R-64 Institute dashboard, audit log, and downloads: the audit log as CSV/Excel/PDF; students, leads, batch attendance, test results, dashboard figures and a student's progress report as CSV, the progress report also as a printed PDF; downloads are noted in the audit log ([31-downloads.md](31-downloads.md)).
+- R-68 Extra duties: an administrator can give a person duties besides their main role (a trainer who also coordinates, a coordinator who also keeps the fees) and take them back; both take effect at the person's next request ([32-extra-duties.md](32-extra-duties.md)).
 - R-65 Branding and customization by the admin ([27-design-system.md](27-design-system.md), [13-branding.md](13-branding.md)).
 - R-66 Windows desktop app for secure tests.
 - R-67 Identity cards for students, trainers and staff: issued by ADMIN or COORDINATOR with a photo, printed one at a time or on A4 sheets, a QR code that opens a public check, withdrawn and replaced when lost ([30-id-cards.md](30-id-cards.md)).

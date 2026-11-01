@@ -125,4 +125,20 @@ class FileAccessRulesTest {
         assertThat(FileAccessRules.canActOnBehalfOf(FINANCE, FileCategory.RECEIPT)).isTrue();
         assertThat(FileAccessRules.canActOnBehalfOf(FINANCE, FileCategory.DOCUMENT)).isFalse();
     }
+
+    @Test
+    void anExtraFinanceOrPlacementDutyGivesThatDutysFileRights() {
+        AppPrincipal trainerWhoAlsoKeepsFees = new AppPrincipal(7L, "r@x.in", "Ravi", "TRAINER", 3L, java.util.List.of("FINANCE"));
+        AppPrincipal trainerWhoAlsoPlaces = new AppPrincipal(8L, "p@x.in", "Pooja", "TRAINER", 4L, java.util.List.of("PLACEMENT"));
+        AppPrincipal plainTrainer = new AppPrincipal(9L, "t@x.in", "Tara", "TRAINER", 5L);
+
+        assertThat(FileAccessRules.canUpload(trainerWhoAlsoKeepsFees, FileCategory.RECEIPT)).isTrue();
+        assertThat(FileAccessRules.canRead(trainerWhoAlsoKeepsFees, FileCategory.RECEIPT, STUDENT.userId())).isTrue();
+        assertThat(FileAccessRules.canRead(trainerWhoAlsoPlaces, FileCategory.RESUME, STUDENT.userId())).isTrue();
+
+        assertThat(FileAccessRules.canUpload(plainTrainer, FileCategory.RECEIPT)).isFalse();
+        assertThat(FileAccessRules.canRead(plainTrainer, FileCategory.RECEIPT, STUDENT.userId())).isFalse();
+        assertThat(FileAccessRules.canRead(plainTrainer, FileCategory.RESUME, STUDENT.userId())).isFalse();
+        assertThat(FileAccessRules.canRead(trainerWhoAlsoKeepsFees, FileCategory.RESUME, STUDENT.userId())).isFalse();
+    }
 }

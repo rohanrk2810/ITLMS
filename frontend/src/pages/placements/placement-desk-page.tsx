@@ -13,7 +13,7 @@ import { JobsPanel } from '@/pages/placements/jobs-panel'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 export function PlacementDeskPage() {
-  const canEdit = hasRole(useAuthStore((state) => state.user?.role), ['ADMIN', 'PLACEMENT'])
+  const canEdit = hasRole(useAuthStore((state) => state.roles), ['ADMIN', 'PLACEMENT'])
 
   return (
     <div className="flex flex-col gap-6">

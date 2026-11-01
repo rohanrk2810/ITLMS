@@ -39,7 +39,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 export function AssignmentDetailPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
   const role = useAuthStore((state) => state.user?.role)
-  const isAcademic = hasRole(role, ['ADMIN', 'COORDINATOR', 'TRAINER'])
+  const roles = useAuthStore((state) => state.roles)
+  const isAcademic = hasRole(roles, ['ADMIN', 'COORDINATOR', 'TRAINER'])
   const isAdmin = role === 'ADMIN'
   const navigate = useNavigate()
   const queryClient = useQueryClient()

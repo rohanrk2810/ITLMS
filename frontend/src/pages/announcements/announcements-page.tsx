@@ -32,7 +32,7 @@ const AUDIENCES = ['ALL', 'ROLE', 'BATCH', 'COURSE'] as const
 const ROLES: Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT', 'PLACEMENT', 'FINANCE']
 
 export function AnnouncementsPage() {
-  const canCreate = hasRole(useAuthStore((state) => state.user?.role), ['ADMIN', 'COORDINATOR', 'TRAINER'])
+  const canCreate = hasRole(useAuthStore((state) => state.roles), ['ADMIN', 'COORDINATOR', 'TRAINER'])
   const queryClient = useQueryClient()
 
   const query = useQuery({ queryKey: ['announcements', 'list'], queryFn: () => listAnnouncements() })

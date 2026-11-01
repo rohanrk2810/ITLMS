@@ -34,7 +34,9 @@ public record UserResponse(
         Instant lastLoginAt,
         Instant createdAt,
         @Schema(description = "Sidebar paths hidden for this user alone; null means follow the institute's menu")
-        List<String> hiddenMenu
+        List<String> hiddenMenu,
+        @Schema(description = "Extra duties given by an administrator, besides the main role: COORDINATOR, FINANCE, PLACEMENT")
+        List<String> extraRoles
 ) {
 
     public static UserResponse from(User user) {
@@ -54,6 +56,7 @@ public record UserResponse(
                 user.getLastLoginAt(),
                 user.getCreatedAt(),
                 user.getHiddenMenu() == null ? null
-                        : Arrays.stream(user.getHiddenMenu().split(",")).filter(p -> !p.isBlank()).toList());
+                        : Arrays.stream(user.getHiddenMenu().split(",")).filter(p -> !p.isBlank()).toList(),
+                user.extraRoleList());
     }
 }

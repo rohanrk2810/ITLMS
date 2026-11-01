@@ -29,6 +29,10 @@ public class Recipient {
     @Column(length = 20)
     private String role;
 
+    /** Extra duties, comma-separated; a notification to a role reaches the people who hold it this way too. */
+    @Column(name = "extra_roles", length = 100)
+    private String extraRoles;
+
     @Column(nullable = false)
     private boolean active;
 

@@ -13,6 +13,18 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     locations: classpath:db/migration
+  # The same Redis the gateway uses for rate limiting. Identity only writes one small key per change of duties.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 1s
+
+management:
+  health:
+    # A Redis outage must not make sign-in unhealthy: the change of duties still saves, it just reaches the gateway late.
+    redis:
+      enabled: false
 
 itilms:
   docs:
