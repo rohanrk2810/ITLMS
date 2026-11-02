@@ -9,6 +9,8 @@ docker compose up -d --no-deps identity-service
 On a public server turn the human check on first ([docs/22](22-human-check-captcha.md)).
 
 ## What happens when a new student appears
+
+*The student's details are taken first.* Registration and the staff Admit dialog both require the full profile (date of birth, gender, education, address, PIN, guardian) before the login account is created. The student adds their own ID card photo once on **My profile**; after that only staff can change it ([docs/30](30-id-cards.md)).
 1. **Staff are told.** admission-service sends a notification to ADMIN and COORDINATOR, *"New student: Name"*, with a link that opens the student. This happens for a student who registered themselves and for one an admin admitted **without** a batch. A student admitted with a batch is already placed and needs no notice.
 2. **The student sees only the course list** until they are placed. The sidebar shows **Dashboard** and **Courses**, and the dashboard explains the next step. The check is `GET /api/batches/mine/placed` (batch-service): *has this student ever had an enrolment, in any status*. It is deliberately not "has an active batch", so a student whose batch ended keeps certificates, placements and the rest. If the check cannot be read the student is treated as placed, so a failed lookup never locks anyone out. Other pages stay reachable by URL; a student who is not placed has no data on them.
 3. **The student asks for a course.** On a course page, **Request to join** (optionally a preferred batch and a message). Staff get a *New course request* notification.

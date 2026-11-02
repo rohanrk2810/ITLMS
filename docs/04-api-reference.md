@@ -67,7 +67,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | Method | Path | Role | Does |
 |---|---|---|---|
 | POST | /api/auth/login | public | Sign in with email or phone; returns access + refresh token |
-| POST | /api/auth/register | public | Self-registration — **403 unless `itilms.security.self-registration-enabled` is set** (R5, off by default) |
+| POST | /api/auth/register | public | Self-registration — **403 unless `itilms.security.self-registration-enabled` is set** (R5, off by default). Body carries `details` (date of birth, gender, education, address, PIN, guardian: required; college, graduation year, emergency contact: optional); the profile is opened complete from it |
 | POST | /api/auth/refresh | public | Rotates the refresh token; reusing an already-rotated token revokes the whole session family |
 | POST | /api/auth/logout | public | Revokes one refresh token |
 | POST | /api/auth/logout-all | any signed-in user | Revokes every session |
@@ -117,7 +117,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | PUT | /api/leads/{id} | ADMIN, COORDINATOR, PLACEMENT | Update a lead |
 | POST | /api/leads/{id}/followups | ADMIN, COORDINATOR, PLACEMENT | Log a follow-up (A2) |
 | GET | /api/leads/{id}/followups | ADMIN, COORDINATOR, PLACEMENT | Follow-up history |
-| POST | /api/leads/{id}/convert | ADMIN, COORDINATOR, PLACEMENT | Admit the lead — creates the student profile and, via Feign, the identity account |
+| POST | /api/leads/{id}/convert | ADMIN, COORDINATOR, PLACEMENT | Admit the lead — creates the student profile and, via Feign, the identity account. Body must carry `profile` (the same required details as registration), so the profile is complete when the account is made |
 
 ### `StudentController` — `/api/students`
 | Method | Path | Role | Does |
@@ -128,6 +128,9 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | GET | /api/students/{id} | ADMIN, COORDINATOR, PLACEMENT, FINANCE, TRAINER | Get a student — **L2:** any trainer, not just one teaching this student |
 | POST | /api/students | STAFF | Admit a student directly (bypassing the lead flow) |
 | PUT | /api/students/{id} | STAFF | Update a profile |
+| PUT | /api/students/me/photo | STUDENT | Add my photo for the ID card (multipart `file`, JPEG or PNG up to 256 KB). **Once only** — 422 if a photo exists; after that only staff can replace it |
+| PUT | /api/students/{id}/photo | STAFF | Add or replace a student's photo (same limits). Audited |
+| GET | /api/students/{id}/photo | STAFF, or the student themselves | The photo (`403` for anyone else, `404` when none). `StudentResponse.hasPhoto` says whether one exists |
 | PATCH | /api/students/{id}/status | STAFF | Change standing (ACTIVE/ALUMNI/DROPPED/SUSPENDED) |
 | GET | /api/students/stats/counts | ADMIN, COORDINATOR, FINANCE, PLACEMENT | Counts by standing |
 | POST | /api/students/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many student ids |
@@ -477,7 +480,7 @@ A student's complete record and progress report, put together from the services 
 ### `ReportController` — `/api/reports`
 | Method | Path | Role | Does |
 |---|---|---|---|
-| GET | /api/reports/audit-logs/export | ADMIN_ONLY | CSV / Excel / PDF export, capped at `max-export-rows` |
+| GET | /api/reports/audit-logs/export | ADMIN_ONLY | CSV / Excel / PDF export, capped at `max-export-rows`. Optional `columns` (comma-separated header names: Time, Service, Actor, Role, Action, Entity type, Entity id) keeps only those columns |
 
 ---
 
