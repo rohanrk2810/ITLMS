@@ -97,7 +97,16 @@ Owns leads, student and trainer profiles, and their documents. `user_id` columns
 | date_of_birth, gender, highest_education, college, graduation_year, address_line, city, state, pincode, guardian_name, guardian_phone, emergency_contact | | |
 | admission_date, admission_source | | |
 | status | VARCHAR(20) | CHECK: ACTIVE, ALUMNI, DROPPED, SUSPENDED |
+| has_photo | BOOLEAN | NOT NULL, default false (V2). Whether `student_photos` holds a picture; the student may add it once, then only staff can replace it |
 | remarks, created_at, updated_at, created_by, updated_by | | |
+
+### `student_photos` - V2
+| Column | Type | Notes |
+|---|---|---|
+| student_id | BIGINT | **PK, FK ->** students.id, `ON DELETE CASCADE` |
+| photo | BYTEA | JPEG or PNG, at most 256 KB; kept apart so a student list never loads image bytes |
+| content_type | VARCHAR(40) | read from the file's first bytes |
+| updated_by, updated_at | | who last set it (the student or staff) |
 
 ### `trainers` (Doc S6.3)
 | Column | Type | Notes |
