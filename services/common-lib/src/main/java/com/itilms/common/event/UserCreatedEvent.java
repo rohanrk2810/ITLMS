@@ -28,7 +28,9 @@ public record UserCreatedEvent(
         String role,
         boolean selfRegistered,
         /** Extra duties given by an administrator; absent (null) in events sent before they existed. */
-        java.util.List<String> extraRoles
+        java.util.List<String> extraRoles,
+        /** What the student typed on the registration form; null for every other kind of account. */
+        StudentDetails studentDetails
 ) implements DomainEvent {
 
     public UserCreatedEvent {
@@ -38,7 +40,7 @@ public record UserCreatedEvent(
     /** Without extra duties. */
     public UserCreatedEvent(String eventId, Instant occurredAt, Long userId, String email, String phone,
                             String fullName, String role, boolean selfRegistered) {
-        this(eventId, occurredAt, userId, email, phone, fullName, role, selfRegistered, java.util.List.of());
+        this(eventId, occurredAt, userId, email, phone, fullName, role, selfRegistered, java.util.List.of(), null);
     }
 
 
@@ -51,11 +53,18 @@ public record UserCreatedEvent(
     public static UserCreatedEvent withDuties(Long userId, String email, String phone, String fullName, String role,
                                               java.util.List<String> extraRoles) {
         return new UserCreatedEvent(DomainEvent.newId(), Instant.now(), userId, email, phone, fullName, role, false,
-                extraRoles);
+                extraRoles, null);
     }
 
     /** An account the person created through public sign-up. */
     public static UserCreatedEvent selfRegistered(Long userId, String email, String phone, String fullName, String role) {
         return new UserCreatedEvent(DomainEvent.newId(), Instant.now(), userId, email, phone, fullName, role, true);
+    }
+
+    /** A student's own sign-up through the registration form, with the details they filled in. */
+    public static UserCreatedEvent selfRegistered(Long userId, String email, String phone, String fullName, String role,
+                                                  StudentDetails details) {
+        return new UserCreatedEvent(DomainEvent.newId(), Instant.now(), userId, email, phone, fullName, role, true,
+                java.util.List.of(), details);
     }
 }

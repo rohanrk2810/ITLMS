@@ -4,7 +4,7 @@ import { Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
-import { type StudentResponse, updateStudent } from '@/api/students'
+import { type StudentResponse, updateMyProfile, updateStudent } from '@/api/students'
 import { getUser, updateUser } from '@/api/users'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -39,7 +39,16 @@ function blank(value: string) {
  * Staff correct a student's record. The profile fields save for any staff member; name, email and phone live on the
  * login account, which only an administrator may change, so those are offered to administrators alone.
  */
-export function EditStudentDialog({ student, isAdmin }: { student: StudentResponse; isAdmin: boolean }) {
+export function EditStudentDialog({
+  student,
+  isAdmin,
+  self = false,
+}: {
+  student: StudentResponse
+  isAdmin: boolean
+  /** The student editing their own record: saves through /me and never touches the account fields. */
+  self?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<FormState | null>(null)
   const queryClient = useQueryClient()
@@ -90,7 +99,8 @@ export function EditStudentDialog({ student, isAdmin }: { student: StudentRespon
           phone: blank(f.phone),
         })
       }
-      return updateStudent(student.id, {
+      const save = self ? updateMyProfile : (input: Parameters<typeof updateMyProfile>[0]) => updateStudent(student.id, input)
+      return save({
         dateOfBirth: blank(f.dateOfBirth),
         gender: blank(f.gender),
         highestEducation: blank(f.highestEducation),
@@ -110,6 +120,7 @@ export function EditStudentDialog({ student, isAdmin }: { student: StudentRespon
       toast.success('Student updated')
       setOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['my-profile'] })
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not update the student.')),
   })

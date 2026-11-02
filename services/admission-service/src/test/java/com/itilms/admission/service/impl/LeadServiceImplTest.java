@@ -35,6 +35,7 @@ import com.itilms.admission.dto.request.ConvertLeadRequest;
 import com.itilms.admission.dto.request.CreateLeadRequest;
 import com.itilms.admission.dto.request.CreateStudentRequest;
 import com.itilms.admission.dto.request.PublicEnquiryRequest;
+import com.itilms.admission.dto.request.StudentProfileRequest;
 import com.itilms.admission.dto.request.UpdateLeadRequest;
 import com.itilms.admission.dto.response.AdmissionResultResponse;
 import com.itilms.admission.dto.response.LeadResponse;
@@ -58,6 +59,10 @@ import com.itilms.common.security.AppPrincipal;
 /** The enquiry-to-admission pipeline: what a counselor may do to a lead, and what admitting one sets in motion. */
 @ExtendWith(MockitoExtension.class)
 class LeadServiceImplTest {
+
+    private static final StudentProfileRequest PROFILE = new StudentProfileRequest(
+            java.time.LocalDate.of(2003, 5, 1), "FEMALE", "B.Sc", "Fergusson", 2024,
+            "12 MG Road", "Pune", "Maharashtra", "411001", "Ramesh Patil", "9800000009", null);
 
     @Mock LeadRepository leadRepository;
     @Mock LeadFollowupRepository followupRepository;
@@ -276,7 +281,7 @@ class LeadServiceImplTest {
     @DisplayName("Admitting a lead")
     class Convert {
 
-        private final ConvertLeadRequest terms = new ConvertLeadRequest(3L, 4L, new BigDecimal("45000"), new BigDecimal("5000"), 3, null);
+        private final ConvertLeadRequest terms = new ConvertLeadRequest(3L, 4L, new BigDecimal("45000"), new BigDecimal("5000"), 3, null, PROFILE);
 
         private StudentResponse admitted() {
             Student student = Student.builder().id(88L).userId(99L).studentCode("STU-2026-000001")
@@ -299,6 +304,8 @@ class LeadServiceImplTest {
             assertThat(student.getValue().lastName()).isEqualTo("Sharma");
             assertThat(student.getValue().email()).isEqualTo("p@test.local");
             assertThat(student.getValue().remarks()).contains("lead #50").contains("Wants evening batch");
+            assertThat(student.getValue().guardianName()).as("details typed at admission reach the profile").isEqualTo("Ramesh Patil");
+            assertThat(student.getValue().pincode()).isEqualTo("411001");
             assertThat(admission.getValue().courseId()).isEqualTo(3L);
             assertThat(admission.getValue().batchId()).isEqualTo(4L);
             assertThat(admission.getValue().totalFee()).isEqualByComparingTo("45000");
@@ -331,7 +338,7 @@ class LeadServiceImplTest {
             when(leadRepository.findById(50L)).thenReturn(Optional.of(lead(LeadStatus.INTERESTED, "p@test.local")));
             when(studentService.create(any(), any(), any())).thenReturn(admitted());
 
-            service.convert(50L, new ConvertLeadRequest(3L, null, new BigDecimal("45000"), null, null, null));
+            service.convert(50L, new ConvertLeadRequest(3L, null, new BigDecimal("45000"), null, null, null, PROFILE));
 
             ArgumentCaptor<AdmissionTerms> admission = ArgumentCaptor.forClass(AdmissionTerms.class);
             verify(studentService).create(any(), any(), admission.capture());
@@ -352,7 +359,7 @@ class LeadServiceImplTest {
         void aDiscountLargerThanTheFeeIsRefused() {
             when(leadRepository.findById(50L)).thenReturn(Optional.of(lead(LeadStatus.INTERESTED, "p@test.local")));
 
-            assertThatThrownBy(() -> service.convert(50L, new ConvertLeadRequest(3L, 4L, new BigDecimal("1000"), new BigDecimal("1001"), 1, null)))
+            assertThatThrownBy(() -> service.convert(50L, new ConvertLeadRequest(3L, 4L, new BigDecimal("1000"), new BigDecimal("1001"), 1, null, PROFILE)))
                     .isInstanceOf(BusinessRuleException.class).hasMessageContaining("discount");
             verify(studentService, never()).create(any(), any(), any());
         }

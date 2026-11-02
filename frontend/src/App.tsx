@@ -115,6 +115,9 @@ const JobDetailIndexPage = lazy(() =>
 
 const FilesPage = lazy(() => import('@/pages/files/files-page').then((m) => ({ default: m.FilesPage })))
 
+const MyProfilePage = lazy(() =>
+  import('@/pages/students/my-profile-page').then((m) => ({ default: m.MyProfilePage })),
+)
 const MyProgressPage = lazy(() =>
   import('@/pages/progress/my-progress-page').then((m) => ({ default: m.MyProgressPage })),
 )
@@ -176,6 +179,7 @@ const BUILT_PATHS = new Set([
   '/app/id-cards',
   '/app/course-requests',
   '/app/my-progress',
+  '/app/my-profile',
 ])
 
 function PageFallback() {
@@ -263,6 +267,7 @@ export default function App() {
 
                   <Route element={<ProtectedRoute roles={['STUDENT']} />}>
                     <Route path="/app/my-progress" element={<MyProgressPage />} />
+                    <Route path="/app/my-profile" element={<MyProfilePage />} />
                   </Route>
 
                   <Route element={<ProtectedRoute roles={COURSE_REQUEST_ROLES} />}>

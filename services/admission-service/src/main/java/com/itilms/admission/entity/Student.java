@@ -114,6 +114,11 @@ public class Student extends AuditableEntity {
     @Column(columnDefinition = "text")
     private String remarks;
 
+    /** The photo sits in student_photos; this flag keeps list screens from loading it to find out. */
+    @Column(name = "has_photo", nullable = false)
+    @Builder.Default
+    private boolean hasPhoto = false;
+
     /** Refreshes the copied identity fields after a UserUpdatedEvent. */
     public void syncIdentity(String fullName, String email, String phone) {
         this.fullName = fullName;

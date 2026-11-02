@@ -117,6 +117,9 @@ public class IdCardServiceImpl implements IdCardService {
         int year = today.getYear();
         card.setCardNo("%s-%d-%04d".formatted(card.getPersonType().prefix(), year, cards.nextSequence()));
         cards.save(card);
+        if (card.getPersonType() == IdCardPersonType.STUDENT) {
+            copyStudentPhoto(card);
+        }
 
         if (card.getUserId() != null) {
             events.notifyUsers(List.of(card.getUserId()), "ID_CARD", "Your ID card is ready",
@@ -287,6 +290,26 @@ public class IdCardServiceImpl implements IdCardService {
             previous.revoke("Replaced by a new card", issuer.userId(), Instant.now());
             cards.save(previous);
         }
+    }
+
+    /**
+     * A student's card carries the photo they gave at admission, so nobody has to upload it again.
+     * It is copied, not linked: the card keeps the face it was printed with until it is reissued.
+     */
+    private void copyStudentPhoto(IdCard card) {
+        var response = admissionClient.studentPhoto(card.getPersonId());
+        byte[] bytes = response == null ? null : response.getBody();
+        if (bytes == null || bytes.length == 0 || sniff(bytes) == null) {
+            return;
+        }
+        IdCardPhoto photo = new IdCardPhoto();
+        photo.setCardId(card.getId());
+        photo.setPhoto(bytes);
+        photo.setContentType(sniff(bytes));
+        photo.setUpdatedAt(Instant.now());
+        photos.save(photo);
+        card.setHasPhoto(true);
+        cards.save(card);
     }
 
     private AdmissionClient.Student student(Long id) {

@@ -173,10 +173,20 @@ function ConvertDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [form, setForm] = useState<Partial<ConvertLeadInput>>({ installments: 1 })
+  const [profile, setProfile] = useState<Record<string, string>>({})
   const navigate = useNavigate()
 
   const mutation = useMutation({
-    mutationFn: () => convertLead(leadId, form as ConvertLeadInput),
+    mutationFn: () =>
+      convertLead(leadId, {
+        ...form,
+        profile: {
+          ...profile,
+          college: profile.college?.trim() || undefined,
+          graduationYear: profile.graduationYear?.trim() ? Number(profile.graduationYear) : undefined,
+          emergencyContact: profile.emergencyContact?.trim() || undefined,
+        },
+      } as ConvertLeadInput),
     onSuccess: (result) => {
       toast.success(result.message)
       onOpenChange(false)
@@ -184,6 +194,21 @@ function ConvertDialog({
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not complete the admission.')),
   })
+
+  function pf(key: string, label: string, props: { type?: string; required?: boolean } = {}) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`p-${key}`}>{label}</Label>
+        <Input
+          id={`p-${key}`}
+          type={props.type}
+          required={props.required ?? true}
+          value={profile[key] ?? ''}
+          onChange={(event) => setProfile({ ...profile, [key]: event.target.value })}
+        />
+      </div>
+    )
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -198,7 +223,7 @@ function ConvertDialog({
           Admit
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Admit this lead</DialogTitle>
         </DialogHeader>
@@ -251,6 +276,36 @@ function ConvertDialog({
               value={form.installments ?? 1}
               onChange={(event) => setForm({ ...form, installments: Number(event.target.value) })}
             />
+          </div>
+          <Separator />
+          <p className="text-sm font-medium">Student details (the login is created after these are filled)</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {pf('dateOfBirth', 'Date of birth', { type: 'date' })}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="p-gender">Gender</Label>
+              <select
+                id="p-gender"
+                required
+                value={profile.gender ?? ''}
+                onChange={(event) => setProfile({ ...profile, gender: event.target.value })}
+                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              >
+                <option value="">Select</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            {pf('highestEducation', 'Highest education')}
+            {pf('college', 'College (optional)', { required: false })}
+            {pf('graduationYear', 'Graduation year (optional)', { type: 'number', required: false })}
+            <div className="sm:col-span-2">{pf('addressLine', 'Address')}</div>
+            {pf('city', 'City')}
+            {pf('state', 'State')}
+            {pf('pincode', 'PIN code')}
+            {pf('guardianName', 'Guardian name')}
+            {pf('guardianPhone', 'Guardian phone')}
+            {pf('emergencyContact', 'Emergency contact (optional)', { required: false })}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>

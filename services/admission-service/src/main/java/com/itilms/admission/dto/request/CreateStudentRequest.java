@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -37,12 +38,15 @@ public record CreateStudentRequest(
         @Pattern(regexp = "^[0-9+\\- ]{8,20}$", message = "Enter a valid phone number")
         String phone,
 
+        @NotNull(message = "Date of birth is required")
         @Past(message = "Date of birth must be in the past")
         LocalDate dateOfBirth,
 
+        @NotBlank(message = "Gender is required")
         @Schema(allowableValues = {"MALE", "FEMALE", "OTHER"})
         String gender,
 
+        @NotBlank(message = "Highest education is required")
         @Size(max = 160)
         String highestEducation,
 
@@ -53,22 +57,28 @@ public record CreateStudentRequest(
         @Max(value = 2100, message = "Enter a valid graduation year")
         Integer graduationYear,
 
+        @NotBlank(message = "Address is required")
         @Size(max = 255)
         String addressLine,
 
+        @NotBlank(message = "City is required")
         @Size(max = 80)
         String city,
 
+        @NotBlank(message = "State is required")
         @Size(max = 80)
         String state,
 
-        @Pattern(regexp = "^$|^[0-9]{4,10}$", message = "Enter a valid PIN code")
+        @NotBlank(message = "PIN code is required")
+        @Pattern(regexp = "^[0-9]{4,10}$", message = "Enter a valid PIN code")
         String pincode,
 
+        @NotBlank(message = "Guardian name is required")
         @Size(max = 120)
         String guardianName,
 
-        @Pattern(regexp = "^$|^[0-9+\\- ]{8,20}$", message = "Enter a valid guardian phone number")
+        @NotBlank(message = "Guardian phone number is required")
+        @Pattern(regexp = "^[0-9+\\- ]{8,20}$", message = "Enter a valid guardian phone number")
         String guardianPhone,
 
         @Pattern(regexp = "^$|^[0-9+\\- ]{8,20}$", message = "Enter a valid emergency contact")

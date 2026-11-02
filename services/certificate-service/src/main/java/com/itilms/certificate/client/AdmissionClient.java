@@ -5,6 +5,9 @@ import java.util.List;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.stereotype.Component;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -19,6 +22,10 @@ public interface AdmissionClient {
 
     record Student(Long id, Long userId, String studentCode, String fullName, String status) {
     }
+
+    /** The photo the student gave at admission. A 404 (no photo yet) or an unreachable service comes back as null. */
+    @GetMapping("/api/students/{id}/photo")
+    ResponseEntity<byte[]> studentPhoto(@PathVariable("id") Long studentId);
 
     @PostMapping("/api/trainers/internal/lookup")
     List<Trainer> lookupTrainers(@RequestBody List<Long> trainerIds);
@@ -37,6 +44,12 @@ public interface AdmissionClient {
                 public List<Student> lookup(List<Long> studentIds) {
                     log.warn("admission-service unreachable looking up {} student(s)", studentIds.size(), cause);
                     return List.of();
+                }
+
+                @Override
+                public ResponseEntity<byte[]> studentPhoto(Long studentId) {
+                    log.debug("No photo for student {}: admission-service answered with an error", studentId, cause);
+                    return null;
                 }
 
                 @Override
