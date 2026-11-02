@@ -16,6 +16,20 @@ import { useCaptcha } from '@/lib/use-captcha'
 /** Doc S8.1, S11: public self-registration always creates a STUDENT account. Staff accounts come from POST /api/users. */
 export function RegisterPage() {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '' })
+  const [details, setDetails] = useState({
+    dateOfBirth: '',
+    gender: '',
+    highestEducation: '',
+    college: '',
+    graduationYear: '',
+    addressLine: '',
+    city: '',
+    state: '',
+    pincode: '',
+    guardianName: '',
+    guardianPhone: '',
+    emergencyContact: '',
+  })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   // Self-registration is off by default (itilms.security.self-registration-enabled).
   // Set once the backend actually refuses, rather than guessed in advance.
@@ -24,10 +38,22 @@ export function RegisterPage() {
   const captcha = useCaptcha()
 
   const mutation = useMutation({
-    mutationFn: () => register(form, captcha.token),
+    mutationFn: () =>
+      register(
+        {
+          ...form,
+          details: {
+            ...details,
+            college: details.college.trim() || undefined,
+            graduationYear: details.graduationYear.trim() ? Number(details.graduationYear) : undefined,
+            emergencyContact: details.emergencyContact.trim() || undefined,
+          },
+        },
+        captcha.token,
+      ),
     onSuccess: () => {
-      toast.success('Account created')
-      void navigate('/app', { replace: true })
+      toast.success('Account created. Add your photo for the ID card.')
+      void navigate('/app/my-profile', { replace: true })
     },
     onError: (error) => {
       if (axios.isAxiosError<ApiErrorResponse>(error)) {
@@ -47,6 +73,27 @@ export function RegisterPage() {
   function update<K extends keyof typeof form>(key: K, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }))
     setFieldErrors((prev) => ({ ...prev, [key]: '' }))
+  }
+
+  function updateDetail(key: keyof typeof details, value: string) {
+    setDetails((prev) => ({ ...prev, [key]: value }))
+    setFieldErrors((prev) => ({ ...prev, [`details.${key}`]: '' }))
+  }
+
+  function detail(key: keyof typeof details, label: string, props: { type?: string; required?: boolean } = {}) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`d-${key}`}>{label}</Label>
+        <Input
+          id={`d-${key}`}
+          type={props.type}
+          required={props.required ?? true}
+          value={details[key]}
+          onChange={(event) => updateDetail(key, event.target.value)}
+        />
+        {fieldErrors[`details.${key}`] && <p className="text-xs text-destructive">{fieldErrors[`details.${key}`]}</p>}
+      </div>
+    )
   }
 
   function handleSubmit(event: FormEvent) {
@@ -124,6 +171,42 @@ export function RegisterPage() {
               required
             />
             {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
+          </div>
+          <p className="mt-2 text-sm font-medium">Personal details</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {detail('dateOfBirth', 'Date of birth', { type: 'date' })}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="d-gender">Gender</Label>
+              <select
+                id="d-gender"
+                required
+                value={details.gender}
+                onChange={(event) => updateDetail('gender', event.target.value)}
+                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              >
+                <option value="">Select</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+              {fieldErrors['details.gender'] && <p className="text-xs text-destructive">{fieldErrors['details.gender']}</p>}
+            </div>
+            {detail('highestEducation', 'Highest education')}
+            {detail('college', 'College', { required: false })}
+            {detail('graduationYear', 'Graduation year', { type: 'number', required: false })}
+          </div>
+          <p className="mt-2 text-sm font-medium">Address</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">{detail('addressLine', 'Address')}</div>
+            {detail('city', 'City')}
+            {detail('state', 'State')}
+            {detail('pincode', 'PIN code')}
+          </div>
+          <p className="mt-2 text-sm font-medium">Guardian</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {detail('guardianName', 'Guardian name')}
+            {detail('guardianPhone', 'Guardian phone')}
+            {detail('emergencyContact', 'Emergency contact (optional)', { required: false })}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">Password</Label>

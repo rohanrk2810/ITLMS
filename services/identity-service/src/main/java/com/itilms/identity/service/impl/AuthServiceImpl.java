@@ -187,7 +187,8 @@ public class AuthServiceImpl implements AuthService {
         // the account exists but has no academic record attached to it.
         events.publishAfterCommit(KafkaTopics.USER_CREATED,
                 UserCreatedEvent.selfRegistered(user.getId(), user.getEmail(), user.getPhone(),
-                        user.fullName(), user.getRole().name()));
+                        user.fullName(), user.getRole().name(),
+                        request.details() == null ? null : request.details().toEvent()));
 
         events.publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED,
                 NotificationRequestedEvent.toUsersWithEmail(

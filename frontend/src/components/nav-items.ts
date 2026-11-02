@@ -14,6 +14,7 @@ import {
   Megaphone,
   ShieldCheck,
   TrendingUp,
+  UserRound,
   UserPlus,
   Users,
   Video,
@@ -41,6 +42,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: BookOpen,
     roles: ['ADMIN', 'COORDINATOR', 'TRAINER', 'STUDENT'],
   },
+  { label: 'My profile', to: '/app/my-profile', icon: UserRound, roles: ['STUDENT'] },
   { label: 'My progress', to: '/app/my-progress', icon: TrendingUp, roles: ['STUDENT'] },
   {
     label: 'Course requests',

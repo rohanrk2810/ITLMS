@@ -35,6 +35,7 @@ export interface StudentResponse {
   status: string
   remarks: string | null
   createdAt: string
+  hasPhoto: boolean
 }
 
 export async function searchStudents(params: {
@@ -88,5 +89,38 @@ export async function updateStudentStatus(
 /** Every student with the full profile, for a staff export. The server records the export in the audit log. */
 export async function exportStudents(params: { status?: string; query?: string }): Promise<StudentResponse[]> {
   const { data } = await apiClient.get<StudentResponse[]>('/api/students/export', { params })
+  return data
+}
+
+/** The student's own photo, once. The server refuses a second upload; after that only staff can replace it. */
+export async function uploadMyPhoto(file: File): Promise<StudentResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.put<StudentResponse>('/api/students/me/photo', form)
+  return data
+}
+
+/** Staff add or replace a student's photo. */
+export async function uploadStudentPhoto(id: number | string, file: File): Promise<StudentResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.put<StudentResponse>(`/api/students/${id}/photo`, form)
+  return data
+}
+
+/** The photo as an object URL (the request carries the token, so a plain <img src> cannot be used). Revoke it when done. */
+export async function studentPhotoObjectUrl(id: number | string): Promise<string> {
+  const { data } = await apiClient.get<Blob>(`/api/students/${id}/photo`, { responseType: 'blob' })
+  return URL.createObjectURL(data)
+}
+
+export async function getMyProfile(): Promise<StudentResponse> {
+  const { data } = await apiClient.get<StudentResponse>('/api/students/me')
+  return data
+}
+
+/** A student correcting their own address, guardian and education details. */
+export async function updateMyProfile(input: StudentProfileInput): Promise<StudentResponse> {
+  const { data } = await apiClient.put<StudentResponse>('/api/students/me', input)
   return data
 }

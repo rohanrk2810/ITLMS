@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -40,7 +41,12 @@ public record ConvertLeadRequest(
         Integer installments,
 
         @Schema(description = "Defaults to today")
-        LocalDate admissionDate
+        LocalDate admissionDate,
+
+        @Schema(description = "The student's full details; the login account is created only once these are in")
+        @NotNull(message = "The student's details are required")
+        @Valid
+        StudentProfileRequest profile
 ) {
 
     public BigDecimal discountOrZero() {

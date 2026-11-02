@@ -32,7 +32,8 @@ public record StudentResponse(
         String admissionSource,
         String status,
         String remarks,
-        Instant createdAt
+        Instant createdAt,
+        boolean hasPhoto
 ) {
 
     public static StudentResponse from(Student student) {
@@ -59,6 +60,7 @@ public record StudentResponse(
                 student.getAdmissionSource() == null ? null : student.getAdmissionSource().name(),
                 student.getStatus().name(),
                 student.getRemarks(),
-                student.getCreatedAt());
+                student.getCreatedAt(),
+                student.isHasPhoto());
     }
 }

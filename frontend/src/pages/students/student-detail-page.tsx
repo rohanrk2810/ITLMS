@@ -1,13 +1,16 @@
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Upload } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { getStudentProgress } from '@/api/progress'
-import { getStudent, updateStudentStatus } from '@/api/students'
+import { getStudent, updateStudentStatus, uploadStudentPhoto } from '@/api/students'
+import { StudentPhoto } from '@/components/student-photo'
 import { ProgressReportView } from '@/components/progress-report'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
@@ -37,6 +40,18 @@ export function StudentDetailPage() {
     enabled: !!studentId,
   })
 
+  const [photoVersion, setPhotoVersion] = useState(0)
+  const photoInput = useRef<HTMLInputElement>(null)
+  const photoMutation = useMutation({
+    mutationFn: (file: File) => uploadStudentPhoto(studentId!, file),
+    onSuccess: () => {
+      toast.success('Photo saved')
+      setPhotoVersion((v) => v + 1)
+      void queryClient.invalidateQueries({ queryKey: ['students', studentId] })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not save the photo.')),
+  })
+
   const statusMutation = useMutation({
     mutationFn: (status: string) => updateStudentStatus(studentId!, status, `Changed via admin console`),
     onSuccess: () => {
@@ -58,11 +73,35 @@ export function StudentDetailPage() {
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{student.fullName}</h1>
-          <p className="text-muted-foreground">
-            {student.studentCode} &middot; {student.email} &middot; {student.phone}
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-1.5">
+            <StudentPhoto studentId={student.id} hasPhoto={student.hasPhoto} version={photoVersion} className="size-20" />
+            {canEdit && (
+              <>
+                <input
+                  ref={photoInput}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ''
+                    if (file) photoMutation.mutate(file)
+                  }}
+                />
+                <Button size="sm" variant="outline" onClick={() => photoInput.current?.click()} disabled={photoMutation.isPending}>
+                  <Upload className="size-3.5" />
+                  {student.hasPhoto ? 'Change photo' : 'Add photo'}
+                </Button>
+              </>
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold">{student.fullName}</h1>
+            <p className="text-muted-foreground">
+              {student.studentCode} &middot; {student.email} &middot; {student.phone}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
         {canEdit && <EditStudentDialog student={student} isAdmin={role === 'ADMIN'} />}

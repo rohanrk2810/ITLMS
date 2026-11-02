@@ -58,3 +58,9 @@ A staff card has no login attached, so it is printed by the office and is not sh
 - Only the front of the card is drawn. A back with an address or rules would be a second drawing.
 - The list is capped at 300 cards; use the search to reach older ones.
 - Drawn by `IdCardPdfRenderer` with the zxing core library (QR) and OpenPDF.
+
+## Student photo and full registration details
+
+- Registration (the public form) and the staff "Admit" dialog now require the full profile: date of birth, gender, education, address, PIN code and guardian. College, graduation year and emergency contact are optional. Self-registration carries the details on `UserCreatedEvent.studentDetails`; Google/WhatsApp sign-ups cannot ask, so those students fill them in on **My profile**.
+- The student adds their own photo once on **My profile** (`PUT /api/students/me/photo`, JPEG or PNG up to 256 KB). After that only ADMIN or COORDINATOR can replace it (`PUT /api/students/{id}/photo`, "Change photo" on the student page). Stored in admission-service `student_photos` (migration V2).
+- Issuing a student ID card copies that photo onto the card, so nobody uploads it twice. A card keeps the photo it was issued with; reissue the card after staff change the photo.

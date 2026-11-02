@@ -1,3 +1,4 @@
+import type { StudentDetailsInput } from './auth'
 import { apiClient } from './client'
 import type { PageResponse } from './types'
 
@@ -53,6 +54,8 @@ export interface ConvertLeadInput {
   discount?: number
   installments?: number
   admissionDate?: string
+  /** The student's full details; the login account is created only with them. */
+  profile: StudentDetailsInput
 }
 
 export interface AdmissionResultResponse {

@@ -7,6 +7,23 @@ export interface RegisterInput {
   email: string
   phone: string
   password: string
+  /** Everything the institute keeps on file; the account is created only with it. */
+  details: StudentDetailsInput
+}
+
+export interface StudentDetailsInput {
+  dateOfBirth: string
+  gender: string
+  highestEducation: string
+  college?: string
+  graduationYear?: number
+  addressLine: string
+  city: string
+  state: string
+  pincode: string
+  guardianName: string
+  guardianPhone: string
+  emergencyContact?: string
 }
 
 /** Whether the "verify you are human" check is on, and the public key for its widget. */

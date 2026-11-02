@@ -117,7 +117,8 @@ try {
   r = await api('GET', '/api/batches/internal/1/enrolled/1', admin);
   check('Internal endpoint is not reachable through the gateway', r.status === 404, `got ${r.status}`);
 
-  r = await api('POST', '/api/auth/register', null, { firstName: 'Self', lastName: 'Signup', email: `self${run}@test.local`, phone: `98${run}11`, password: 'Passw0rdX' });
+  r = await api('POST', '/api/auth/register', null, { firstName: 'Self', lastName: 'Signup', email: `self${run}@test.local`, phone: `98${run}11`, password: 'Passw0rdX',
+    details: { dateOfBirth: '2004-05-01', gender: 'FEMALE', highestEducation: 'B.Sc', addressLine: '12 MG Road', city: 'Pune', state: 'Maharashtra', pincode: '411001', guardianName: 'Parent Signup', guardianPhone: '9800000000' } });
   check('Self-registration is closed by default', r.status === 403, `got ${r.status}`);
 
   r = await api('POST', '/api/liveclass/webhook', null, '{"event":"room_started"}');

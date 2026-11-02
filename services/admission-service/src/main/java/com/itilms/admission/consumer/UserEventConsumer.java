@@ -4,6 +4,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.itilms.admission.entity.Gender;
 import com.itilms.admission.entity.LeadSource;
 import com.itilms.admission.entity.Student;
 import com.itilms.admission.entity.StudentStatus;
@@ -13,6 +14,7 @@ import com.itilms.common.event.DomainEvent;
 import com.itilms.common.event.KafkaTopics;
 import com.itilms.common.event.NotificationRequestedEvent;
 import com.itilms.common.event.ProfileLinkedEvent;
+import com.itilms.common.event.StudentDetails;
 import com.itilms.common.event.UserCreatedEvent;
 import com.itilms.common.util.Codes;
 
@@ -68,7 +70,7 @@ public class UserEventConsumer {
         }
 
         long sequence = studentRepository.nextCodeSequence(java.time.Year.now().getValue());
-        Student student = studentRepository.save(Student.builder()
+        Student student = Student.builder()
                 .userId(event.userId())
                 .studentCode(Codes.studentCode(sequence))
                 .fullName(event.fullName())
@@ -76,7 +78,9 @@ public class UserEventConsumer {
                 .phone(event.phone())
                 .admissionSource(LeadSource.SELF_REGISTRATION)
                 .status(StudentStatus.ACTIVE)
-                .build());
+                .build();
+        applyDetails(student, event.studentDetails());
+        student = studentRepository.save(student);
 
         log.info("Created profile {} ({}) for self-registered user {}",
                 student.getId(), student.getStudentCode(), event.userId());
@@ -97,6 +101,29 @@ public class UserEventConsumer {
                     NotificationRequestedEvent.toRole(role, "NEW_STUDENT", "New student: " + student.getFullName(),
                             message, "/admin/students/" + student.getId()));
         }
+    }
+
+    /** The details typed on the registration form. Absent for Google and WhatsApp sign-ups, which cannot ask. */
+    private static void applyDetails(Student student, StudentDetails details) {
+        if (details == null) {
+            return;
+        }
+        student.setDateOfBirth(details.dateOfBirth());
+        student.setGender(details.gender() == null ? null : Gender.valueOf(details.gender().trim().toUpperCase()));
+        student.setHighestEducation(trim(details.highestEducation()));
+        student.setCollege(trim(details.college()));
+        student.setGraduationYear(details.graduationYear());
+        student.setAddressLine(trim(details.addressLine()));
+        student.setCity(trim(details.city()));
+        student.setState(trim(details.state()));
+        student.setPincode(trim(details.pincode()));
+        student.setGuardianName(trim(details.guardianName()));
+        student.setGuardianPhone(trim(details.guardianPhone()));
+        student.setEmergencyContact(trim(details.emergencyContact()));
+    }
+
+    private static String trim(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /** Keeps the denormalised name, email and phone in step with the account. */

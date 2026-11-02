@@ -292,11 +292,13 @@ public class LeadServiceImpl implements LeadService {
         }
 
         var name = splitName(lead.getName());
+        var profile = request.profile();
         var studentRequest = new CreateStudentRequest(
                 name.first(), name.last(), lead.getEmail(), lead.getPhone(),
-                null, null, null, null, null,
-                null, null, null, null,
-                null, null, null,
+                profile.dateOfBirth(), profile.gender(), profile.highestEducation(), profile.college(),
+                profile.graduationYear(),
+                profile.addressLine(), profile.city(), profile.state(), profile.pincode(),
+                profile.guardianName(), profile.guardianPhone(), profile.emergencyContact(),
                 request.admissionDateOrToday(), buildRemark(lead));
 
         var terms = new StudentService.AdmissionTerms(

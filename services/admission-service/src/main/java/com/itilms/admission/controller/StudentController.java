@@ -6,7 +6,9 @@ import java.util.Map;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,15 +20,19 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.itilms.admission.dto.request.CreateStudentRequest;
 import com.itilms.admission.dto.request.UpdateStudentRequest;
 import com.itilms.admission.dto.response.StudentResponse;
 import com.itilms.admission.dto.response.StudentSummaryResponse;
 import com.itilms.admission.entity.LeadSource;
+import com.itilms.admission.service.StudentPhotoService;
 import com.itilms.admission.service.StudentService;
 import com.itilms.common.dto.PageResponse;
+import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.security.AppPrincipal;
 import com.itilms.common.security.Roles;
 import com.itilms.common.security.SecurityUtils;
@@ -52,6 +58,7 @@ import lombok.RequiredArgsConstructor;
 public class StudentController {
 
     private final StudentService studentService;
+    private final StudentPhotoService photoService;
 
     @Operation(summary = "Export every student", description = "ADMIN or COORDINATOR. The full profile of up to 20,000 "
             + "students (newest first), for a spreadsheet. Audited.")
@@ -88,6 +95,44 @@ public class StudentController {
                                     @Valid @RequestBody UpdateStudentRequest request) {
         StudentResponse mine = studentService.getByUserId(principal.userId());
         return studentService.update(mine.id(), request);
+    }
+
+    @Operation(summary = "Add my photo",
+            description = "The signed-in student adds the photo for their ID card, once. After that only staff can "
+                    + "replace it. JPEG or PNG up to 256 KB.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PutMapping(value = "/me/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public StudentResponse addMyPhoto(@AuthenticationPrincipal AppPrincipal principal,
+                                      @RequestPart("file") MultipartFile file) {
+        photoService.setOwn(principal.userId(), readBytes(file));
+        return studentService.getByUserId(principal.userId());
+    }
+
+    @Operation(summary = "Replace a student's photo", description = "ADMIN or COORDINATOR. JPEG or PNG up to 256 KB.")
+    @PreAuthorize(Roles.STAFF)
+    @PutMapping(value = "/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public StudentResponse setPhoto(@PathVariable Long id, @RequestPart("file") MultipartFile file) {
+        photoService.setByStaff(id, readBytes(file));
+        return studentService.get(id);
+    }
+
+    @Operation(summary = "A student's photo", description = "Staff, or the student the photo belongs to.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{id}/photo")
+    public ResponseEntity<byte[]> photo(@PathVariable Long id) {
+        StudentPhotoService.Photo photo = photoService.get(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .contentType(MediaType.parseMediaType(photo.contentType()))
+                .body(photo.bytes());
+    }
+
+    private static byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (java.io.IOException e) {
+            throw new BusinessRuleException("The photo could not be read. Try again.");
+        }
     }
 
     @Operation(summary = "Get a student")
