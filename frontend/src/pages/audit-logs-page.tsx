@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import { type AuditLogFilter, exportAuditLogs, searchAuditLogs } from '@/api/reporting'
+import { ColumnDialog, initialPicks, saveColumns } from '@/components/column-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,13 +14,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const FORMATS: Array<'CSV' | 'XLSX' | 'PDF'> = ['CSV', 'XLSX', 'PDF']
 
+// The columns of the file the server builds (ReportExportServiceImpl), by the names it expects.
+const COLUMNS = ['Time', 'Service', 'Actor', 'Role', 'Action', 'Entity type', 'Entity id']
+const COLUMNS_KEY = 'audit-log'
+
 export function AuditLogsPage() {
   const [filter, setFilter] = useState<AuditLogFilter>({})
 
   const query = useQuery({ queryKey: ['audit-logs', filter], queryFn: () => searchAuditLogs(filter) })
 
+  // The format waiting for the person to choose columns.
+  const [choosing, setChoosing] = useState<{ format: 'CSV' | 'XLSX' | 'PDF'; picked: boolean[] } | null>(null)
+
   const exportMutation = useMutation({
-    mutationFn: (format: 'CSV' | 'XLSX' | 'PDF') => exportAuditLogs(filter, format),
+    mutationFn: ({ format, columns }: { format: 'CSV' | 'XLSX' | 'PDF'; columns: string[] }) =>
+      exportAuditLogs(filter, format, columns),
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not export the audit trail.')),
   })
 
@@ -41,7 +50,7 @@ export function AuditLogsPage() {
               key={format}
               size="sm"
               variant="outline"
-              onClick={() => exportMutation.mutate(format)}
+              onClick={() => setChoosing({ format, picked: initialPicks(COLUMNS_KEY, COLUMNS) })}
               disabled={exportMutation.isPending}
             >
               <Download className="size-3.5" />
@@ -50,6 +59,21 @@ export function AuditLogsPage() {
           ))}
         </div>
       </div>
+
+      <ColumnDialog
+        open={choosing !== null}
+        headers={COLUMNS}
+        picked={choosing?.picked ?? []}
+        onPickedChange={(picked) => setChoosing((c) => (c ? { ...c, picked } : c))}
+        onClose={() => setChoosing(null)}
+        onConfirm={() => {
+          if (!choosing) return
+          const columns = COLUMNS.filter((_, i) => choosing.picked[i])
+          saveColumns(COLUMNS_KEY, columns)
+          exportMutation.mutate({ format: choosing.format, columns })
+          setChoosing(null)
+        }}
+      />
 
       <div className="flex flex-wrap gap-2">
         <Input

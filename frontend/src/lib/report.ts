@@ -61,6 +61,8 @@ export const VERY_WIDE_COLUMNS = 14
 export function reportHtml(report: Report, letterhead: Letterhead, madeOn: string): string {
   const e = escapeHtml
   const logo = letterhead.logoUrl ? `<img class="logo" src="${e(letterhead.logoUrl)}" alt="" />` : ''
+  // Faint, centred behind the table on every printed page (a fixed element repeats on each page when printed).
+  const watermark = letterhead.logoUrl ? `<img class="watermark" src="${e(letterhead.logoUrl)}" alt="" />` : ''
   const infoTables: string[] = []
   for (let i = 0; i < report.info.length; i += CHUNK) {
     const part = report.info.slice(i, i + CHUNK)
@@ -91,6 +93,7 @@ export function reportHtml(report: Report, letterhead: Letterhead, madeOn: strin
   body { margin: 0; font: 11pt/1.35 "Times New Roman", Georgia, serif; color: #000; }
   .letterhead { display: flex; align-items: center; gap: 18px; padding-bottom: 10px; }
   .logo { max-height: 70px; max-width: 150px; object-fit: contain; }
+  .watermark { position: fixed; top: 50%; left: 50%; width: 55%; max-height: 55%; object-fit: contain; transform: translate(-50%, -50%); opacity: 0.08; z-index: -1; pointer-events: none; }
   .name { font-size: 22pt; font-weight: 700; line-height: 1.1; }
   .tagline { font-size: 12pt; color: #555; }
   .lines { font-size: 9.5pt; color: #333; margin-top: 2px; }
@@ -113,6 +116,7 @@ export function reportHtml(report: Report, letterhead: Letterhead, madeOn: strin
 </style>
 </head>
 <body>
+  ${watermark}
   <div class="letterhead">
     ${logo}
     <div>
@@ -131,4 +135,20 @@ export function reportHtml(report: Report, letterhead: Letterhead, madeOn: strin
   <div class="foot">${report.rows.filter((r) => !isSectionRow(r)).length} row(s). Made on ${e(madeOn)}.</div>
 </body>
 </html>`
+}
+
+/**
+ * The same report with only the chosen columns, in their original order. `keep` holds column positions.
+ * A section row ("# Attendance") keeps its heading even when the first column is dropped, so a report with
+ * sections still reads as one.
+ */
+export function pickColumns(report: Report, keep: number[]): Report {
+  const wanted = [...new Set(keep)].sort((a, b) => a - b)
+  return {
+    ...report,
+    header: wanted.map((i) => report.header[i] ?? ''),
+    rows: report.rows.map((row) =>
+      isSectionRow(row) ? [row[0], ...wanted.slice(1).map(() => '')] : wanted.map((i) => row[i]),
+    ),
+  }
 }

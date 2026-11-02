@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Branding } from '@/api/branding'
 
-import { type Letterhead, type Report, escapeHtml, letterheadOf, reportHtml } from './report'
+import { type Letterhead, type Report, escapeHtml, letterheadOf, pickColumns, reportHtml } from './report'
 
 const letterhead: Letterhead = {
   name: 'GH Raisoni College of Engineering and Management',
@@ -42,6 +42,11 @@ describe('reportHtml (the printed page)', () => {
     expect(html).toContain('<thead><tr><th>Student</th><th>Attendance %</th></tr></thead>')
     expect(html).toContain('<td>Asha Patil</td><td class="num">90</td>')
     expect(html).toContain('2 row(s). Made on 1 November 2026.')
+  })
+
+  it('puts the logo behind the table as a watermark, and none when there is no logo', () => {
+    expect(html).toContain('<img class="watermark" src="https://api.example.edu/api/public/branding/logo"')
+    expect(reportHtml(report, { ...letterhead, logoUrl: null }, 'x')).not.toContain('watermark" src')
   })
 
   it('breaks more than six facts over several small tables', () => {
@@ -114,5 +119,28 @@ describe('letterheadOf', () => {
   it('falls back to a plain name when the settings have not loaded', () => {
     const l = letterheadOf(undefined, null, 'Learning Management System')
     expect(l).toEqual({ name: 'Learning Management System', tagline: null, lines: [], logoUrl: null })
+  })
+})
+
+describe('pickColumns', () => {
+  const base: Report = {
+    title: 'Leads', info: [], fileName: 'leads',
+    header: ['Name', 'Phone', 'Email', 'Source'],
+    rows: [['Asha', '9800000001', 'a@x.test', 'WALK_IN'], ['Ravi', '9800000002', 'r@x.test', 'WEBSITE']],
+  }
+
+  it('keeps only the chosen columns, in their original order', () => {
+    const out = pickColumns(base, [3, 0, 1])
+    expect(out.header).toEqual(['Name', 'Phone', 'Source'])
+    expect(out.rows).toEqual([['Asha', '9800000001', 'WALK_IN'], ['Ravi', '9800000002', 'WEBSITE']])
+  })
+
+  it('leaves the title and facts alone', () => {
+    expect(pickColumns(base, [0]).title).toBe('Leads')
+  })
+
+  it('keeps the heading of a section row when the first column is dropped', () => {
+    const sectioned: Report = { ...base, header: ['Item', 'Value'], rows: [['# Attendance', ''], ['Overall %', 80]] }
+    expect(pickColumns(sectioned, [1]).rows).toEqual([['# Attendance'], [80]])
   })
 })

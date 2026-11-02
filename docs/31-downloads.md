@@ -66,3 +66,8 @@ A button that makes and downloads a copy of the whole database would put every p
 - A logo in the audit log files: the server writes the name and address, not the picture.
 - A whole-institute progress report for every student at once.
 - Attendance by date range or by session across batches.
+
+## Choosing columns and the watermark
+
+- Every download button first asks **Choose the columns** (all ticked to start). Only the ticked columns go into the Excel, PDF and CSV file. The choice is remembered per report in the browser. The audit log download sends the same choice to the server (`columns=` on `GET /api/reports/audit-logs/export`).
+- The printed PDF carries the institute logo as a faint watermark behind the table on every page. Excel and CSV have no watermark, and the audit log PDF (built by the server) has no logo yet.

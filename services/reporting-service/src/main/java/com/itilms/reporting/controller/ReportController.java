@@ -43,7 +43,8 @@ public class ReportController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Export the audit trail", description = "Same filters as GET /api/audit-logs.")
+    @Operation(summary = "Export the audit trail", description = "Same filters as GET /api/audit-logs. Optional columns= (repeat or comma-separate the header names) "
+                    + "keeps only those columns.")
     @PreAuthorize(Roles.ADMIN_ONLY)
     @GetMapping("/audit-logs/export")
     public ResponseEntity<byte[]> exportAuditLogs(
@@ -53,9 +54,10 @@ public class ReportController {
             @RequestParam(required = false) Long actorUserId,
             @RequestParam(required = false) Instant from,
             @RequestParam(required = false) Instant to,
-            @RequestParam(defaultValue = "CSV") ExportFormat format) {
+            @RequestParam(defaultValue = "CSV") ExportFormat format,
+            @RequestParam(required = false) java.util.List<String> columns) {
         var filter = new AuditLogFilter(serviceName, action, entityType, actorUserId, from, to);
-        var file = exportService.exportAuditLogs(filter, format);
+        var file = exportService.exportAuditLogs(filter, format, columns);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(file.filename()).build().toString())
