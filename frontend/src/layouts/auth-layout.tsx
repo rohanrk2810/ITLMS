@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { assetUrl } from '@/api/branding'
 import { BrandMark } from '@/components/brand-mark'
@@ -11,6 +11,8 @@ export function AuthLayout() {
   const { status } = useAuthStore()
   const { branding } = useBranding()
   const { login } = useUiConfig()
+  // The registration form carries a full profile, so it gets a wide card instead of a long narrow one.
+  const width = useLocation().pathname.endsWith('/register') ? 'max-w-3xl' : 'max-w-sm'
 
   if (status === 'authenticated') {
     return <Navigate to="/app" replace />
@@ -26,8 +28,8 @@ export function AuthLayout() {
       <div
         className={
           background
-            ? 'flex w-full max-w-sm flex-col items-center gap-4 rounded-xl bg-background/95 p-4 shadow-lg backdrop-blur-sm'
-            : 'flex w-full max-w-sm flex-col items-center gap-6'
+            ? `flex w-full ${width} flex-col items-center gap-4 rounded-xl bg-background/95 p-4 shadow-lg backdrop-blur-sm`
+            : `flex w-full ${width} flex-col items-center gap-6`
         }
       >
         <div className="flex items-center gap-2 text-lg font-semibold">
