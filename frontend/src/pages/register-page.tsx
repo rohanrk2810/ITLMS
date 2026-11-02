@@ -127,7 +127,7 @@ export function RegisterPage() {
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="firstName">First name</Label>
               <Input
@@ -149,6 +149,7 @@ export function RegisterPage() {
               {fieldErrors.lastName && <p className="text-xs text-destructive">{fieldErrors.lastName}</p>}
             </div>
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -172,8 +173,9 @@ export function RegisterPage() {
             />
             {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
           </div>
+          </div>
           <p className="mt-2 text-sm font-medium">Personal details</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             {detail('dateOfBirth', 'Date of birth', { type: 'date' })}
             <div className="flex flex-col gap-2">
               <Label htmlFor="d-gender">Gender</Label>
@@ -196,14 +198,14 @@ export function RegisterPage() {
             {detail('graduationYear', 'Graduation year', { type: 'number', required: false })}
           </div>
           <p className="mt-2 text-sm font-medium">Address</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">{detail('addressLine', 'Address')}</div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="sm:col-span-3">{detail('addressLine', 'Address')}</div>
             {detail('city', 'City')}
             {detail('state', 'State')}
             {detail('pincode', 'PIN code')}
           </div>
           <p className="mt-2 text-sm font-medium">Guardian</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             {detail('guardianName', 'Guardian name')}
             {detail('guardianPhone', 'Guardian phone')}
             {detail('emergencyContact', 'Emergency contact (optional)', { required: false })}
