@@ -87,4 +87,15 @@ class ReportExportServiceImplTest {
         verify(repository).findAll(org.mockito.ArgumentMatchers.<Specification<AuditLog>>any(), pageCaptor.capture());
         assertThat(pageCaptor.getValue().getPageSize()).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("Only the chosen columns are exported, in the report's order")
+    void onlyTheChosenColumnsAreExported() {
+        ReportExportService.ExportedFile file = service.exportAuditLogs(NO_FILTER, ExportFormat.CSV,
+                java.util.List.of("Action", "Actor"));
+
+        String csv = new String(file.content(), StandardCharsets.UTF_8);
+        assertThat(csv).contains("Actor").contains("Action").contains("admin@x").contains("PASSWORD_RESET");
+        assertThat(csv).doesNotContain("identity-service").doesNotContain("Entity type");
+    }
 }

@@ -5,9 +5,10 @@ import { toast } from 'sonner'
 import { assetUrl } from '@/api/branding'
 import { apiErrorMessage } from '@/api/client'
 import { type ExportedReport, noteDownload } from '@/api/reporting'
+import { ColumnDialog, initialPicks, saveColumns } from '@/components/column-dialog'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { type Report, letterheadOf } from '@/lib/report'
+import { type Report, letterheadOf, pickColumns } from '@/lib/report'
 import { printReport, saveCsv, saveXlsx } from '@/lib/report-output'
 import { useBranding } from '@/lib/use-branding'
 
@@ -32,6 +33,8 @@ export function ExportMenu({
   variant?: 'outline' | 'ghost' | 'secondary'
 }) {
   const [busy, setBusy] = useState(false)
+  // A built report waiting for the person to choose its columns.
+  const [choosing, setChoosing] = useState<{ kind: Kind; built: Report; picked: boolean[] } | null>(null)
   const { branding, name } = useBranding()
 
   async function run(kind: Kind) {
@@ -42,14 +45,11 @@ export function ExportMenu({
         toast.info('There is nothing to download yet.')
         return
       }
-      const letterhead = letterheadOf(branding, assetUrl(branding?.logoUrl ?? null), name)
-      if (kind === 'xlsx') await saveXlsx(built, letterhead)
-      else if (kind === 'csv') saveCsv(built)
-      else await printReport(built, letterhead)
-      toast.success(kind === 'pdf' ? 'In the print window, choose "Save as PDF" or a printer.' : `Downloaded ${built.rows.length} row${built.rows.length === 1 ? '' : 's'}`)
-      if (report) {
-        void noteDownload(report, built.rows.length, detail)
+      if (built.header.length < 2) {
+        await deliver(kind, built)
+        return
       }
+      setChoosing({ kind, built, picked: initialPicks(built.fileName, built.header) })
     } catch (error) {
       toast.error(apiErrorMessage(error, 'Could not prepare the report.'))
     } finally {
@@ -57,7 +57,35 @@ export function ExportMenu({
     }
   }
 
+  async function confirm() {
+    if (!choosing) return
+    const { kind, built, picked } = choosing
+    const keep = picked.flatMap((on, i) => (on ? [i] : []))
+    saveColumns(built.fileName, keep.map((i) => built.header[i]))
+    setChoosing(null)
+    setBusy(true)
+    try {
+      await deliver(kind, pickColumns(built, keep))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not prepare the report.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deliver(kind: Kind, built: Report) {
+    const letterhead = letterheadOf(branding, assetUrl(branding?.logoUrl ?? null), name)
+    if (kind === 'xlsx') await saveXlsx(built, letterhead)
+    else if (kind === 'csv') saveCsv(built)
+    else await printReport(built, letterhead)
+    toast.success(kind === 'pdf' ? 'In the print window, choose "Save as PDF" or a printer.' : `Downloaded ${built.rows.length} row${built.rows.length === 1 ? '' : 's'}`)
+    if (report) {
+      void noteDownload(report, built.rows.length, detail)
+    }
+  }
+
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant={variant} size="sm" disabled={busy} className="no-print">
@@ -78,5 +106,14 @@ export function ExportMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <ColumnDialog
+      open={choosing !== null}
+      headers={choosing?.built.header ?? []}
+      picked={choosing?.picked ?? []}
+      onPickedChange={(picked) => setChoosing((c) => (c ? { ...c, picked } : c))}
+      onConfirm={() => void confirm()}
+      onClose={() => setChoosing(null)}
+    />
+    </>
   )
 }

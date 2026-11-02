@@ -71,9 +71,14 @@ export async function searchAuditLogs(
 }
 
 /** Same filters as the search above; capped at itilms.reporting.max-export-rows on the server. */
-export async function exportAuditLogs(filter: AuditLogFilter, format: 'CSV' | 'XLSX' | 'PDF'): Promise<void> {
+export async function exportAuditLogs(
+  filter: AuditLogFilter,
+  format: 'CSV' | 'XLSX' | 'PDF',
+  /** Header names to keep; all columns when left out. */
+  columns?: string[],
+): Promise<void> {
   const response = await apiClient.get('/api/reports/audit-logs/export', {
-    params: { ...filter, format },
+    params: { ...filter, format, columns: columns?.length ? columns.join(',') : undefined },
     responseType: 'blob',
   })
   const disposition = response.headers['content-disposition'] as string | undefined

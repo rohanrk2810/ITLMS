@@ -33,20 +33,35 @@ public class ReportExportServiceImpl implements ReportExportService {
 
     @Override
     @Transactional(readOnly = true)
-    public ExportedFile exportAuditLogs(AuditLogFilter filter, ExportFormat format) {
+    public ExportedFile exportAuditLogs(AuditLogFilter filter, ExportFormat format, List<String> columns) {
         Specification<AuditLog> spec = AuditLogSpecifications.build(filter);
         // Doc S15: an unbounded export is a denial of service dressed as a feature request.
         PageRequest capped = PageRequest.of(0, props.getMaxExportRows(), Sort.by(Sort.Direction.DESC, "occurredAt"));
-        List<List<String>> rows = repository.findAll(spec, capped).getContent().stream().map(this::toRow).toList();
+        List<List<String>> all = repository.findAll(spec, capped).getContent().stream().map(this::toRow).toList();
+
+        List<Integer> keep = chosen(columns);
+        List<String> headers = keep.stream().map(HEADERS::get).toList();
+        List<List<String>> rows = all.stream().map(row -> keep.stream().map(row::get).toList()).toList();
 
         String base = "audit-log-" + LocalDate.now();
         return switch (format) {
-            case CSV -> new ExportedFile(TabularExporter.csv(HEADERS, rows), base + ".csv", "text/csv");
-            case XLSX -> new ExportedFile(TabularExporter.excel("Audit log", institute.get(), HEADERS, rows), base + ".xlsx",
+            case CSV -> new ExportedFile(TabularExporter.csv(headers, rows), base + ".csv", "text/csv");
+            case XLSX -> new ExportedFile(TabularExporter.excel("Audit log", institute.get(), headers, rows), base + ".xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            case PDF -> new ExportedFile(TabularExporter.pdf("Audit log", institute.get(), HEADERS, rows), base + ".pdf",
+            case PDF -> new ExportedFile(TabularExporter.pdf("Audit log", institute.get(), headers, rows), base + ".pdf",
                     "application/pdf");
         };
+    }
+
+    /** Positions of the wanted columns in report order. Nothing named (or nothing recognised) means all of them. */
+    private static List<Integer> chosen(List<String> columns) {
+        List<Integer> keep = new java.util.ArrayList<>();
+        for (int i = 0; i < HEADERS.size(); i++) {
+            if (columns == null || columns.isEmpty() || columns.contains(HEADERS.get(i))) {
+                keep.add(i);
+            }
+        }
+        return keep.isEmpty() ? java.util.stream.IntStream.range(0, HEADERS.size()).boxed().toList() : keep;
     }
 
     private List<String> toRow(AuditLog log) {
