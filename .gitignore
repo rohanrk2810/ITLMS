@@ -33,3 +33,6 @@ Thumbs.db
 frontend/playwright-report/
 frontend/test-results/
 frontend/blob-report/
+
+# Flutter mobile app lives in its own git repo
+mobile/
