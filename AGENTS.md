@@ -17,6 +17,7 @@ Stack: Java 21, Spring Boot 3.5, Spring Cloud (Gateway, Eureka, Config), Postgre
 | `config-repo/` | Per-service YAML served by the config server |
 | `frontend/` | React app (`src/api` one module per backend service, `src/pages`, `src/components`, `src/lib`) |
 | `desktop/` | Electron wrapper used for secure tests |
+| `mobile/` | SutraVidya Android app (Flutter). Its own git repo (ITAndro), ignored here: [docs/33-mobile-app.md](docs/33-mobile-app.md) |
 | `deploy/` | Docker Compose (`deploy/docker`), Nginx, Kafka, LiveKit, Postgres, k6 load tests, `scripts/` |
 | `docs/` | Architecture, ERD, API, security, design system, PRD, test plan, deployment, feature write-ups |
 

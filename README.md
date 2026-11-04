@@ -30,6 +30,7 @@ Built from `IT_Institute_LMS_Complete_Project_Documentation.pdf`, with two delib
 | **Class delivery options** | Per session: built-in live room, embedded Jitsi, or a Google Meet / Zoom link ([docs/20](docs/20-class-delivery-options.md)) |
 | **Video lesson monitoring** | Opt-in per lesson: camera check with a face oval, auto-pause when the face is missing, completion only by watching 90% (no Mark as complete button), and who-watched-how-much ([docs/21](docs/21-video-lesson-monitoring.md)) |
 | **Human check (captcha)** | Optional Cloudflare Turnstile on sign-in, registration and forgot-password, verified on the server ([docs/22](docs/22-human-check-captcha.md)) |
+| **Android app** | SutraVidya for Android: native sign-in, then the full website inside the app, with camera, microphone, uploads and downloads ([docs/33](docs/33-mobile-app.md)); source in its own repo, `mobile/` |
 | **Accounts and branding** | Single active login per user, admin-set branding and sign-in background, language choice ([docs/12](docs/12-single-active-login.md), [docs/13](docs/13-branding.md), [docs/17](docs/17-language-choice.md)) |
 
 ## Architecture, in brief
@@ -300,6 +301,7 @@ A running cloud VM costs money. When you no longer need it, delete the **resourc
 | [docs/27-design-system.md](docs/27-design-system.md) | Colour tokens, components, layout, forms, theming, accessibility |
 | [docs/28-prd.md](docs/28-prd.md) | Product requirements: users, scope with requirement ids, non-functional needs, open questions |
 | [docs/29-code-style.md](docs/29-code-style.md) | Backend and frontend conventions, testing, commits, documentation |
+| [docs/33-mobile-app.md](docs/33-mobile-app.md) | The Android app: design, sign-in handover, build and release |
 | [docs/32-extra-duties.md](docs/32-extra-duties.md) | One person with several jobs (a trainer who also coordinates): who can give it, how it applies at once, what it covers |
 | [docs/31-downloads.md](docs/31-downloads.md) | What can be downloaded (students, leads, attendance, results, dashboard, progress reports), who may, and what is logged |
 | [docs/30-id-cards.md](docs/30-id-cards.md) | Identity cards for students, trainers and staff: issuing, photos, printing, public check |

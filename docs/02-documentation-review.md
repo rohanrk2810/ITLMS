@@ -103,6 +103,8 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 
 ## 5. Known limitations
 
+- **Android app (2026-11-03):** the PDF has no mobile client. The app is a native sign-in plus the whole website in a WebView ([33-mobile-app.md](33-mobile-app.md)), so it never lags behind the web. The secure-test lock-down (screen pinning) and a native LiveKit room are not part of it; secure tests stay on the Windows desktop app.
+
 | ID | Limitation | Planned fix |
 |---|---|---|
 | **L1** | §4.1 limits trainers to their own batches. In course-service, a trainer can read progress for *any* batch, because course-service does not know which trainer teaches which batch (that is batch-service's data). | Check the trainer's batches through batch-service, the same way liveclass-service already does. |
