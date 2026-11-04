@@ -74,6 +74,7 @@ Success looks like:
 - R-68 Extra duties: an administrator can give a person duties besides their main role (a trainer who also coordinates, a coordinator who also keeps the fees) and take them back; both take effect at the person's next request ([32-extra-duties.md](32-extra-duties.md)).
 - R-65 Branding and customization by the admin ([27-design-system.md](27-design-system.md), [13-branding.md](13-branding.md)).
 - R-66 Windows desktop app for secure tests.
+- R-69 Android app (SutraVidya): sign in on the phone, then the whole website inside the app, so every web feature is there; camera, microphone, file upload and download work ([33-mobile-app.md](33-mobile-app.md)).
 - R-67 Identity cards for students, trainers and staff: issued by ADMIN or COORDINATOR with a photo, printed one at a time or on A4 sheets, a QR code that opens a public check, withdrawn and replaced when lost ([30-id-cards.md](30-id-cards.md)).
 
 ## 4. Non-functional requirements
@@ -96,7 +97,6 @@ Recorded in [02-documentation-review.md](02-documentation-review.md): microservi
 
 - Kubernetes manifests (Docker Compose is the supported deployment).
 - Online payment gateway for fees (payments are recorded by finance staff).
-- A native mobile app.
 - Remote control of a student's own computer (not possible from a browser; see "Open questions").
 
 ## 7. Open questions

@@ -33,6 +33,7 @@ Start with [../README.md](../README.md) for what the system is and how to run it
 | [09](09-test-portal.md), [10](10-student-progress-report.md), [18](18-microphone-option.md) | Test portal, progress report, microphone option |
 | [11](11-live-recording-and-content-protection.md), [15](15-live-class-monitoring.md), [23](23-live-class-subtitles-and-ending.md) | Live recording, monitoring, subtitles and ending a class |
 | [20](20-class-delivery-options.md), [21](21-video-lesson-monitoring.md) | Class delivery options, video-lesson monitoring |
+| [33](33-mobile-app.md) | Android app (SutraVidya): what it is, how it signs in, build and release |
 | [12](12-single-active-login.md), [13](13-branding.md), [22](22-human-check-captcha.md), [32](32-extra-duties.md) | Single login, branding, human check, extra duties |
 | [14](14-certificate-workflow.md), [24](24-new-students-and-fees.md), [30](30-id-cards.md), [31](31-downloads.md) | Certificates, new students and fees, ID cards, downloads and reports |
 
