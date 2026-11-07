@@ -93,6 +93,12 @@ Auth pages use `layouts/auth-layout.tsx` with the institute's login background.
 
 1. Page component in `src/pages/<area>/`, lazy-loaded in `App.tsx`.
 2. Title block (title plus one muted sentence), then content in cards.
-3. Query with TanStack Query; show `Skeleton`, the empty sentence, and errors via toast.
+3. Query with TanStack Query; show `Skeleton`, `EmptyState` (icon, title, hint) for an empty list, and errors via toast. A crash while rendering is caught by `ErrorBoundary` in `App.tsx` (Try again / Reload page), so a failed screen never turns into a blank page.
 4. Add the menu item and its roles in `nav-items.ts` and the same roles on the route.
 5. Check light and dark, and a narrow window.
+
+## Name and text size
+
+- Until the institute's branding loads, or if the server is down, the name shown is `SutraVidya` (`DEFAULT_NAME` in `use-branding.ts`, and the `<title>` in `index.html`).
+- The portal's text-size setting (Customize, `fontScale`) applies inside the app only. `AuthLayout` resets the root size, so sign-in, register and reset-password stay at the normal size.
+- Any component that renders a `<Link>` must sit inside `<BrowserRouter>`; one placed outside it crashes the whole app to a blank page (this happened with the cookie notice).
