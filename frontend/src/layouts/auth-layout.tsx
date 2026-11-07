@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { assetUrl } from '@/api/branding'
 import { BrandMark } from '@/components/brand-mark'
+import { LegalLinks } from '@/components/legal-links'
 import { useBranding } from '@/lib/use-branding'
 import { useUiConfig } from '@/lib/ui-config'
 import { useAuthStore } from '@/stores/auth-store'
@@ -40,6 +41,7 @@ export function AuthLayout() {
           <Outlet />
         </div>
         {login.footer && <p className="text-center text-xs text-muted-foreground">{login.footer}</p>}
+        <LegalLinks />
       </div>
     </div>
   )

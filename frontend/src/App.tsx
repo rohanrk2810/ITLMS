@@ -5,6 +5,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import type { Role } from '@/api/types'
 import { bootstrapSession } from '@/api/auth'
 import { BrandingEffect } from '@/components/branding-effect'
+import { CookieBanner } from '@/components/cookie-banner'
+import { ErrorBoundary } from '@/components/error-boundary'
 import { FieldErrorHighlighter } from '@/components/field-error-highlighter'
 import { NAV_ITEMS } from '@/components/nav-items'
 import { Toaster } from '@/components/ui/sonner'
@@ -30,6 +32,7 @@ const DashboardPage = lazy(() => import('@/pages/dashboard-page').then((m) => ({
 const ChangePasswordPage = lazy(() =>
   import('@/pages/change-password-page').then((m) => ({ default: m.ChangePasswordPage })),
 )
+const LegalPage = lazy(() => import('@/pages/legal/legal-page').then((m) => ({ default: m.LegalPage })))
 const ForbiddenPage = lazy(() => import('@/pages/forbidden-page').then((m) => ({ default: m.ForbiddenPage })))
 const NotFoundPage = lazy(() => import('@/pages/not-found-page').then((m) => ({ default: m.NotFoundPage })))
 
@@ -219,6 +222,7 @@ export default function App() {
       <FieldErrorHighlighter />
       <SessionBootstrap>
         <BrowserRouter>
+          <ErrorBoundary>
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<RootRedirect />} />
@@ -226,6 +230,11 @@ export default function App() {
               {/* Public: anyone with a certificate ID and code can check it, signed in or not. */}
               <Route path="/verify/:certificateNo" element={<VerifyCertificatePage />} />
               <Route path="/verify-id/:cardNo" element={<VerifyIdCardPage />} />
+
+              <Route path="/privacy" element={<LegalPage slug="privacy" />} />
+              <Route path="/terms" element={<LegalPage slug="terms" />} />
+              <Route path="/cookies" element={<LegalPage slug="cookies" />} />
+              <Route path="/refund" element={<LegalPage slug="refund" />} />
 
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
@@ -338,8 +347,10 @@ export default function App() {
               <Route path="*" element={<CatchAll />} />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
         </BrowserRouter>
         <Toaster />
+        <CookieBanner />
       </SessionBootstrap>
     </QueryClientProvider>
   )

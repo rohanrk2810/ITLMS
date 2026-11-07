@@ -19,6 +19,7 @@ import {
 import { searchStudents } from '@/api/students'
 import { listTrainers } from '@/api/trainers'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -124,7 +125,7 @@ export function IdCardManagementPage() {
 
       {query.isLoading && <Skeleton className="h-48" />}
       {query.isSuccess && query.data.length === 0 && (
-        <p className="text-sm text-muted-foreground">No cards yet. Use "Issue a card".</p>
+        <EmptyState title="No cards yet" hint={'Use "Issue a card" to create one.'} />
       )}
       {query.isSuccess && query.data.length > 0 && (
         <div className="overflow-x-auto rounded-md border">

@@ -23,6 +23,7 @@ import {
 } from '@/api/courses'
 import { uploadFile } from '@/api/files'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -313,7 +314,7 @@ export function CourseEditorPage() {
               </CardContent>
             </Card>
           ))}
-          {modules.length === 0 && <p className="text-sm text-muted-foreground">No modules yet.</p>}
+          {modules.length === 0 && <EmptyState title="No modules yet" hint="Add a module to start building this course." />}
         </div>
       </div>
     </div>
