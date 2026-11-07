@@ -25,6 +25,7 @@ import {
 import { CODE_LANGUAGES, type CodeLanguageCode, codeLanguageLabel, runCode } from '@/api/code'
 import { apiErrorMessage } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -177,7 +178,7 @@ export function QuizEditorPage() {
               </CardContent>
             </Card>
           ))}
-          {quiz.questions?.length === 0 && <p className="text-sm text-muted-foreground">No questions yet.</p>}
+          {quiz.questions?.length === 0 && <EmptyState title="No questions yet" hint="Add the first question below." />}
         </div>
       </div>
 

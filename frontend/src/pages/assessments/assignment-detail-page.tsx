@@ -19,6 +19,7 @@ import {
 import { apiErrorMessage } from '@/api/client'
 import { downloadFile, uploadFile } from '@/api/files'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -296,7 +297,7 @@ function SubmissionsList({ assignmentId }: { assignmentId: number }) {
         </Card>
       ))}
       {query.isSuccess && query.data.length === 0 && (
-        <p className="text-sm text-muted-foreground">No submissions yet.</p>
+        <EmptyState title="No submissions yet" hint="Student work appears here once they submit." />
       )}
     </div>
   )

@@ -8,6 +8,7 @@ import { register } from '@/api/auth'
 import { apiErrorMessage } from '@/api/client'
 import type { ApiErrorResponse } from '@/api/types'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +31,7 @@ export function RegisterPage() {
     guardianPhone: '',
     emergencyContact: '',
   })
+  const [agreed, setAgreed] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   // Self-registration is off by default (itilms.security.self-registration-enabled).
   // Set once the backend actually refuses, rather than guessed in advance.
@@ -223,8 +225,26 @@ export function RegisterPage() {
             {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
             <p className="text-xs text-muted-foreground">At least 8 characters, with upper case, lower case and a digit.</p>
           </div>
+          <div className="flex items-start gap-2">
+            <Checkbox id="agree" checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} className="mt-0.5" />
+            <Label htmlFor="agree" className="block text-sm font-normal leading-snug">
+              I have read and agree to the{' '}
+              <Link to="/terms" target="_blank" className="underline">
+                Terms and Conditions
+              </Link>{' '}
+              and the{' '}
+              <Link to="/privacy" target="_blank" className="underline">
+                Privacy Policy
+              </Link>
+              , and I consent to my details and photo being used as described there. If I am under 18, my parent or guardian agrees.
+            </Label>
+          </div>
           {captcha.widget}
-          <Button type="submit" className="mt-2" disabled={mutation.isPending || (captcha.enabled && !captcha.token)}>
+          <Button
+            type="submit"
+            className="mt-2"
+            disabled={mutation.isPending || !agreed || (captcha.enabled && !captcha.token)}
+          >
             {mutation.isPending ? 'Creating account...' : 'Create account'}
           </Button>
         </form>
