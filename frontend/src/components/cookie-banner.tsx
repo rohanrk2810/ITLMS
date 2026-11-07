@@ -34,10 +34,10 @@ export function CookieBanner() {
     <div
       role="region"
       aria-label="Cookie notice"
-      className="fixed inset-x-0 bottom-0 z-50 border-t bg-background p-4 shadow-lg"
+      className="fixed inset-x-0 bottom-0 z-50 border-t bg-background px-4 py-2 shadow-lg"
     >
-      <div className="mx-auto flex max-w-3xl flex-col items-start gap-3 sm:flex-row sm:items-center">
-        <p className="text-sm">
+      <div className="mx-auto flex max-w-3xl flex-col items-start gap-2 sm:flex-row sm:items-center">
+        <p className="text-xs">
           We use only essential cookies and browser storage to keep you signed in, protect forms and remember your theme.
           See our{' '}
           <Link to="/cookies" className="underline">
@@ -49,7 +49,7 @@ export function CookieBanner() {
           </Link>
           .
         </p>
-        <Button size="sm" onClick={accept} className="shrink-0">
+        <Button size="sm" onClick={accept} className="h-7 shrink-0 px-3 text-xs">
           Got it
         </Button>
       </div>

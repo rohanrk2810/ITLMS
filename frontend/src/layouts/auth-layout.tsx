@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { assetUrl } from '@/api/branding'
@@ -11,9 +12,19 @@ import { useAuthStore } from '@/stores/auth-store'
 export function AuthLayout() {
   const { status } = useAuthStore()
   const { branding } = useBranding()
-  const { login } = useUiConfig()
+  const { login, theme } = useUiConfig()
+  const fontScale = theme.fontScale
   // The registration form carries a full profile, so it gets a wide card instead of a long narrow one.
   const width = useLocation().pathname.endsWith('/register') ? 'max-w-3xl' : 'max-w-sm'
+
+  // The portal's text-size setting is for the app itself; sign-in and register keep the normal size.
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.fontSize = ''
+    return () => {
+      root.style.fontSize = fontScale === 100 ? '' : `${fontScale}%`
+    }
+  }, [fontScale])
 
   if (status === 'authenticated') {
     return <Navigate to="/app" replace />
