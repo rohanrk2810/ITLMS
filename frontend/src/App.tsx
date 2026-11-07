@@ -348,9 +348,9 @@ export default function App() {
             </Routes>
           </Suspense>
           </ErrorBoundary>
+          <CookieBanner />
         </BrowserRouter>
         <Toaster />
-        <CookieBanner />
       </SessionBootstrap>
     </QueryClientProvider>
   )
