@@ -14,6 +14,57 @@ export interface RoleMenu {
   labels?: Record<string, string>
 }
 
+export interface SiteItem {
+  title: string
+  text: string
+}
+export interface SiteStat {
+  value: string
+  label: string
+}
+export interface Testimonial {
+  name: string
+  role: string
+  text: string
+}
+
+/** What the public front page says. Anything left empty (or a list never edited) shows the built-in wording. */
+export interface SiteConfig {
+  heroBadge: string
+  heroTitle: string
+  heroText: string
+  stats?: SiteStat[]
+  aboutIntro: string
+  aboutPoints?: string[]
+  features?: SiteItem[]
+  steps?: SiteItem[]
+  testimonials: Testimonial[]
+  /** Section ids to leave out of the page (see {@link SITE_SECTIONS}). */
+  hidden: string[]
+}
+
+export const SITE_SECTIONS = [
+  { id: 'about', label: 'About' },
+  { id: 'courses', label: 'Courses' },
+  { id: 'why', label: 'Why us' },
+  { id: 'how', label: 'How it works' },
+  { id: 'testimonials', label: 'Student feedback' },
+  { id: 'enquiry', label: 'Enquiry form' },
+  { id: 'contact', label: 'Contact' },
+] as const
+
+/** The saved JSON is capped at 20,000 characters by the server; these limits keep the website well inside it. */
+export const SITE_LIMITS = { stats: 4, points: 6, features: 9, steps: 6, testimonials: 6 }
+
+export const DEFAULT_SITE: SiteConfig = {
+  heroBadge: '',
+  heroTitle: '',
+  heroText: '',
+  aboutIntro: '',
+  testimonials: [],
+  hidden: [],
+}
+
 export interface UiConfig {
   theme: {
     /** Used until a person picks light or dark for themselves with the toggle. */
@@ -35,6 +86,8 @@ export interface UiConfig {
   /** Dashboard blocks to hide, by id (see {@link DASHBOARD_BLOCKS}). */
   dashboard: { hidden: string[] }
   login: { welcome: string; footer: string }
+  /** The public front page's wording. */
+  site: SiteConfig
   /** Words shown differently everywhere on screen: { "Student": "Learner", "Batch": "Class" }. */
   terms: Record<string, string>
 }
@@ -44,6 +97,7 @@ export const DEFAULT_UI_CONFIG: UiConfig = {
   menus: {},
   dashboard: { hidden: [] },
   login: { welcome: '', footer: '' },
+  site: DEFAULT_SITE,
   terms: {},
 }
 
@@ -133,6 +187,48 @@ const stringMap = (value: unknown): Record<string, string> =>
     ? Object.fromEntries(Object.entries(value).filter(([k, v]) => k.trim() && typeof v === 'string' && v.trim()))
     : {}
 
+const text = (value: unknown, max: number): string => (typeof value === 'string' ? value.slice(0, max) : '')
+
+function items(value: unknown, limit: number): SiteItem[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value
+    .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+    .map((v) => ({ title: text(v.title, 60), text: text(v.text, 200) }))
+    .filter((v) => v.title.trim() || v.text.trim())
+    .slice(0, limit)
+}
+
+function parseSite(value: unknown): SiteConfig {
+  const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
+  const stats = Array.isArray(raw.stats)
+    ? raw.stats
+        .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+        .map((v) => ({ value: text(v.value, 12), label: text(v.label, 30) }))
+        .filter((v) => v.value.trim() || v.label.trim())
+        .slice(0, SITE_LIMITS.stats)
+    : undefined
+  const points = Array.isArray(raw.aboutPoints)
+    ? raw.aboutPoints.map((p) => text(p, 160)).filter((p) => p.trim()).slice(0, SITE_LIMITS.points)
+    : undefined
+  const testimonials = (Array.isArray(raw.testimonials) ? raw.testimonials : [])
+    .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+    .map((v) => ({ name: text(v.name, 60), role: text(v.role, 80), text: text(v.text, 300) }))
+    .filter((v) => v.name.trim() && v.text.trim())
+    .slice(0, SITE_LIMITS.testimonials)
+  return {
+    heroBadge: text(raw.heroBadge, 40),
+    heroTitle: text(raw.heroTitle, 80),
+    heroText: text(raw.heroText, 240),
+    stats,
+    aboutIntro: text(raw.aboutIntro, 200),
+    aboutPoints: points,
+    features: items(raw.features, SITE_LIMITS.features),
+    steps: items(raw.steps, SITE_LIMITS.steps),
+    testimonials,
+    hidden: strings(raw.hidden),
+  }
+}
+
 /** Reads the stored JSON, ignoring anything that is missing or the wrong shape. Never throws. */
 export function parseUiConfig(text: string | null | undefined): UiConfig {
   let raw: Record<string, unknown> = {}
@@ -163,6 +259,7 @@ export function parseUiConfig(text: string | null | undefined): UiConfig {
     menus,
     dashboard: { hidden: strings((raw.dashboard as Record<string, unknown> | undefined)?.hidden) },
     login: { welcome: typeof login.welcome === 'string' ? login.welcome : '', footer: typeof login.footer === 'string' ? login.footer : '' },
+    site: parseSite(raw.site),
     terms: stringMap(raw.terms),
   }
 }

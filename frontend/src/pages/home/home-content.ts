@@ -24,6 +24,8 @@ export const FEATURES: Feature[] = [
   { icon: BriefcaseIcon, title: 'Placement support', text: 'Resume help, interview preparation and job openings shared with our students.' },
 ]
 
+export const FEATURE_ICONS: LucideIcon[] = FEATURES.map((feature) => feature.icon)
+
 export const STEPS = [
   { title: 'Enquire', text: 'Tell us what you want to learn. A counsellor calls you back.' },
   { title: 'Get guidance', text: 'Pick the right course and batch for your goal and your time.' },
@@ -31,13 +33,19 @@ export const STEPS = [
   { title: 'Certificate and career', text: 'Finish, get a verifiable certificate, and move on to placement help.' },
 ]
 
+/** Each link belongs to a section the admin can hide; the id is the section's id. */
 export const NAV = [
-  { href: '#about', label: 'About' },
-  { href: '#courses', label: 'Courses' },
-  { href: '#why', label: 'Why us' },
-  { href: '#how', label: 'How it works' },
-  { href: '#contact', label: 'Contact' },
+  { id: 'about', href: '#about', label: 'About' },
+  { id: 'courses', href: '#courses', label: 'Courses' },
+  { id: 'why', href: '#why', label: 'Why us' },
+  { id: 'how', href: '#how', label: 'How it works' },
+  { id: 'testimonials', href: '#testimonials', label: 'Feedback' },
+  { id: 'contact', href: '#contact', label: 'Contact' },
 ]
+
+export const DEFAULT_HERO_BADGE = 'Admissions open'
+export const DEFAULT_HERO_TEXT = 'Live classes, hands-on projects, regular tests and a certificate you can prove, all in one place.'
+export const DEFAULT_ABOUT_INTRO = 'A place to learn IT skills properly and get ready for work.'
 
 export const DEFAULT_TAGLINE = 'Learn skills that get you hired.'
 

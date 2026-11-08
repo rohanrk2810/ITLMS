@@ -46,3 +46,38 @@ describe('parseUiConfig', () => {
     expect(config.menus.STUDENT?.labels).toEqual({ '/app/files': 'Documents' })
   })
 })
+
+describe('website content', () => {
+  it('is empty by default, so the page keeps its built-in wording', () => {
+    const { site } = parseUiConfig('{}')
+    expect(site.heroTitle).toBe('')
+    expect(site.features).toBeUndefined()
+    expect(site.testimonials).toEqual([])
+    expect(site.hidden).toEqual([])
+  })
+
+  it('keeps edited text, drops blanks and caps the lists', () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ name: `S${i}`, text: 'Good' }))
+    const { site } = parseUiConfig(
+      JSON.stringify({
+        site: {
+          heroTitle: 'Learn. Build. Get hired.',
+          stats: [{ value: '500+', label: 'Students' }, { value: '', label: '' }],
+          features: [{ title: 'Live', text: 'Classes' }, { title: '', text: '' }],
+          testimonials: [...many, { name: '', text: 'no name' }],
+          hidden: ['about'],
+        },
+      }),
+    )
+    expect(site.heroTitle).toBe('Learn. Build. Get hired.')
+    expect(site.stats).toEqual([{ value: '500+', label: 'Students' }])
+    expect(site.features).toEqual([{ title: 'Live', text: 'Classes' }])
+    expect(site.testimonials).toHaveLength(6)
+    expect(site.hidden).toEqual(['about'])
+  })
+
+  it('ignores a site section of the wrong shape', () => {
+    expect(parseUiConfig('{"site":"oops"}').site.heroTitle).toBe('')
+    expect(parseUiConfig('{"site":{"stats":"x","features":5}}').site.stats).toBeUndefined()
+  })
+})

@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BrandingPage } from '@/pages/branding-page'
+import { WebsiteTab } from '@/pages/website-tab'
 import { BRANDING_KEY, useBranding } from '@/lib/use-branding'
 import {
   ALWAYS_SHOWN,
@@ -64,12 +65,14 @@ const selectClass = 'h-9 rounded-md border bg-transparent px-3 text-sm'
 const TABS = [
   { id: 'institute', label: 'Institute' },
   { id: 'portal', label: 'Portal' },
+  { id: 'website', label: 'Website' },
 ] as const
 
 /** ADMIN: the institute's identity (name, logo, signatory) and the portal's look, in one place. */
 export function CustomizePage() {
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') === 'portal' ? 'portal' : 'institute'
+  const requested = params.get('tab')
+  const tab = requested === 'portal' || requested === 'website' ? requested : 'institute'
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
@@ -94,7 +97,7 @@ export function CustomizePage() {
           </button>
         ))}
       </div>
-      {tab === 'institute' ? <BrandingPage /> : <PortalTab />}
+      {tab === 'institute' ? <BrandingPage /> : tab === 'website' ? <WebsiteTab /> : <PortalTab />}
     </div>
   )
 }
@@ -444,7 +447,7 @@ function PortalTab() {
         <Button disabled={save.isPending} onClick={() => save.mutate(cfg)}>
           {save.isPending ? 'Saving...' : 'Save'}
         </Button>
-        <Button variant="outline" onClick={() => setCfg(DEFAULT_UI_CONFIG)}>
+        <Button variant="outline" onClick={() => setCfg({ ...DEFAULT_UI_CONFIG, site: cfg.site })}>
           Reset everything
         </Button>
       </div>
