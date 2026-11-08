@@ -35,6 +35,7 @@ Start with [../README.md](../README.md) for what the system is and how to run it
 | [20](20-class-delivery-options.md), [21](21-video-lesson-monitoring.md) | Class delivery options, video-lesson monitoring |
 | [33](33-mobile-app.md) | Android app (SutraVidya): what it is, how it signs in, build and release |
 | [34](34-legal-pages.md) | Privacy, terms, cookie and refund pages, cookie notice, register consent |
+| [35](35-public-website.md) | The public front page: courses, features, enquiry form, Login button |
 | [12](12-single-active-login.md), [13](13-branding.md), [22](22-human-check-captcha.md), [32](32-extra-duties.md) | Single login, branding, human check, extra duties |
 | [14](14-certificate-workflow.md), [24](24-new-students-and-fees.md), [30](30-id-cards.md), [31](31-downloads.md) | Certificates, new students and fees, ID cards, downloads and reports |
 
