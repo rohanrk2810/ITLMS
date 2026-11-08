@@ -4,14 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { env } from '@/lib/env'
 import { getSiteConfig } from '@/api/branding'
 
-export type Lang = 'en' | 'mr'
-
-/** A piece of text in both languages. Anything left empty falls back to the built-in wording or the other language. */
-export interface T {
-  en: string
-  mr: string
-}
-export const emptyT = (): T => ({ en: '', mr: '' })
+/** A piece of text. Anything left empty falls back to the built-in wording. */
+export type T = string
+export const emptyT = (): T => ''
 
 export interface Item {
   title: T
@@ -68,7 +63,6 @@ export interface SiteConfig {
   /** A Google Maps address: the embed address (Share > Embed a map) or an ordinary share link. */
   mapUrl: string
   announcement: { enabled: boolean; text: T; link: string }
-  languageSwitch: boolean
   /** Section ids to leave out of the page. */
   hidden: string[]
 }
@@ -119,7 +113,6 @@ export const DEFAULT_SITE: SiteConfig = {
   whatsappMessage: emptyT(),
   mapUrl: '',
   announcement: { enabled: false, text: emptyT(), link: '' },
-  languageSwitch: false,
   hidden: [],
 }
 
@@ -129,11 +122,9 @@ type Raw = Record<string, unknown>
 const obj = (v: unknown): Raw => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Raw) : {})
 const arr = (v: unknown): Raw[] => (Array.isArray(v) ? v.filter((x): x is Raw => !!x && typeof x === 'object') : [])
 const str = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '')
-const tx = (v: unknown, max: number): T => {
-  const o = obj(v)
-  return { en: str(o.en, max), mr: str(o.mr, max) }
-}
-const hasText = (t: T) => t.en !== '' || t.mr !== ''
+/** Text is stored as a plain string. Content saved while two languages existed ({ en, mr }) still reads: the English is kept. */
+const tx = (v: unknown, max: number): T => (typeof v === 'string' ? str(v, max) : str(obj(v).en, max))
+const hasText = (t: T) => t !== ''
 const imageId = (v: unknown): string => (typeof v === 'string' && /^\d{1,12}$/.test(v) ? v : typeof v === 'number' && Number.isInteger(v) && v > 0 ? String(v) : '')
 const cap = <X>(list: X[], n: number): X[] => list.slice(0, n)
 
@@ -259,16 +250,13 @@ export function parseSite(text: string | null | undefined): SiteConfig {
       text: tx(announcement.text, 160),
       link: safeUrl(announcement.link),
     },
-    // Off unless the administrator turns the English/Marathi button on.
-    languageSwitch: raw.languageSwitch === true,
     hidden: Array.isArray(raw.hidden) ? (raw.hidden as unknown[]).filter((h): h is string => typeof h === 'string') : [],
   }
 }
 
-/** The text for a language, or the other language if only that one was written, or the fallback. */
-export function pick(t: T | undefined, lang: Lang, fallback = ''): string {
-  if (!t) return fallback
-  return t[lang] || fallback || t[lang === 'en' ? 'mr' : 'en']
+/** The text, or the standard wording when it was left empty. */
+export function pick(t: T | undefined, fallback = ''): string {
+  return t || fallback
 }
 
 export function siteImageUrl(id: string): string {

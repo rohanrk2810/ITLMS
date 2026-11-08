@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label'
 import { shrinkImage } from '@/lib/image'
 import {
   DEFAULT_SITE,
-  type Lang,
   SERVER_LIMIT,
   SITE_LIMITS,
   SITE_SECTIONS,
@@ -23,7 +22,6 @@ import {
   cleanMapUrl,
   emptyT,
   parseSite,
-  pick,
   siteImageUrl,
 } from '@/lib/site-config'
 import {
@@ -42,9 +40,9 @@ function toForm(site: SiteConfig): SiteConfig {
   return {
     ...site,
     stats: site.stats ?? [],
-    aboutPoints: site.aboutPoints ?? DEFAULT_ABOUT_POINTS.map((p) => ({ ...p })),
-    features: site.features ?? DEFAULT_FEATURES.map((f) => ({ title: { ...f.title }, text: { ...f.text } })),
-    steps: site.steps ?? DEFAULT_STEPS.map((f) => ({ title: { ...f.title }, text: { ...f.text } })),
+    aboutPoints: site.aboutPoints ?? [...DEFAULT_ABOUT_POINTS],
+    features: site.features ?? DEFAULT_FEATURES.map((f) => ({ ...f })),
+    steps: site.steps ?? DEFAULT_STEPS.map((f) => ({ ...f })),
   }
 }
 
@@ -56,13 +54,10 @@ function move<X>(list: X[], index: number, by: -1 | 1): X[] {
   return next
 }
 
-const OTHER: Record<Lang, Lang> = { en: 'mr', mr: 'en' }
-
-/** One text, edited in the chosen language; the other language is shown as a hint so the two stay in step. */
+/** One piece of text. Left empty, the page keeps its standard wording. */
 function TField({
   label,
   value,
-  lang,
   max,
   onChange,
   hint,
@@ -70,20 +65,13 @@ function TField({
 }: {
   label: string
   value: T
-  lang: Lang
   max: number
   onChange: (v: T) => void
   hint?: string
   multiline?: boolean
 }) {
   const id = `f-${label.replace(/\W+/g, '-')}-${Math.abs(hashOf(label + max))}`
-  const common = {
-    id,
-    maxLength: max,
-    value: value[lang],
-    placeholder: value[OTHER[lang]] ? `${OTHER[lang] === 'en' ? 'English' : 'मराठी'}: ${value[OTHER[lang]]}`.slice(0, 80) : undefined,
-    onChange: (e: { target: { value: string } }) => onChange({ ...value, [lang]: e.target.value }),
-  }
+  const common = { id, maxLength: max, value, onChange: (e: { target: { value: string } }) => onChange(e.target.value) }
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -230,7 +218,6 @@ export function WebsiteTab() {
   const courses = useQuery({ queryKey: ['public-courses'], queryFn: getPublicCourses, staleTime: 5 * 60_000 })
   const [form, setForm] = useState<SiteConfig>(toForm(DEFAULT_SITE))
   const [loaded, setLoaded] = useState(false)
-  const [editLang, setLang] = useState<Lang>('en')
   const [dropped, setDropped] = useState<string[]>([])
 
   useEffect(() => {
@@ -256,12 +243,9 @@ export function WebsiteTab() {
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not save.')),
   })
 
-  // With the language button off the site is English only, so there is nothing to switch.
-  const lang: Lang = form.languageSwitch ? editLang : 'en'
   const set = <K extends keyof SiteConfig>(key: K, value: SiteConfig[K]) => setForm((prev) => ({ ...prev, [key]: value }))
   const drop = (id: string) => setDropped((prev) => (prev.includes(id) ? prev : [...prev, id]))
   const list = courses.data?.content ?? []
-  const lbl = lang === 'en' ? 'English' : 'मराठी'
 
   if (stored.isLoading) return <p className="text-sm text-muted-foreground">Loading...</p>
 
@@ -279,18 +263,6 @@ export function WebsiteTab() {
         </Button>
       </div>
 
-      {form.languageSwitch && (
-        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border bg-background/95 p-3 backdrop-blur">
-          <span className="text-sm font-medium">Writing in:</span>
-          {(['en', 'mr'] as const).map((l) => (
-            <Button key={l} type="button" size="sm" variant={lang === l ? 'default' : 'outline'} onClick={() => setLang(l)}>
-              {l === 'en' ? 'English' : 'मराठी'}
-            </Button>
-          ))}
-          <span className="text-xs text-muted-foreground">Visitors can switch language. Whatever you leave empty shows the standard wording.</span>
-        </div>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Announcement bar</CardTitle>
@@ -301,7 +273,7 @@ export function WebsiteTab() {
             <Checkbox checked={form.announcement.enabled} onCheckedChange={(on) => set('announcement', { ...form.announcement, enabled: on === true })} />
             Show it
           </label>
-          <TField label={`Text (${lbl})`} value={form.announcement.text} lang={lang} max={160} onChange={(v) => set('announcement', { ...form.announcement, text: v })} />
+          <TField label={`Text`} value={form.announcement.text} max={160} onChange={(v) => set('announcement', { ...form.announcement, text: v })} />
           <Plain label="Link (optional)" value={form.announcement.link} max={300} placeholder="https://..." onChange={(v) => set('announcement', { ...form.announcement, link: v })} hint="A web address, or a page of this site such as /register." />
         </CardContent>
       </Card>
@@ -311,9 +283,9 @@ export function WebsiteTab() {
           <CardTitle className="text-base">Top of the page</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <TField label={`Small label (${lbl})`} value={form.heroBadge} lang={lang} max={40} onChange={(v) => set('heroBadge', v)} hint={`Standard: ${pick(DEFAULT_HERO_BADGE, lang)}`} />
-          <TField label={`Headline under the institute name (${lbl})`} value={form.heroTitle} lang={lang} max={80} onChange={(v) => set('heroTitle', v)} hint={`Standard: the tagline from the Institute tab, else "${pick(DEFAULT_HERO_TITLE, lang)}"`} />
-          <TField label={`Sentence below (${lbl})`} value={form.heroText} lang={lang} max={240} onChange={(v) => set('heroText', v)} hint={`Standard: ${pick(DEFAULT_HERO_TEXT, lang)}`} />
+          <TField label={`Small label`} value={form.heroBadge} max={40} onChange={(v) => set('heroBadge', v)} hint={`Standard: ${DEFAULT_HERO_BADGE}`} />
+          <TField label={`Headline under the institute name`} value={form.heroTitle} max={80} onChange={(v) => set('heroTitle', v)} hint={`Standard: the tagline from the Institute tab, else "${DEFAULT_HERO_TITLE}"`} />
+          <TField label={`Sentence below`} value={form.heroText} max={240} onChange={(v) => set('heroText', v)} hint={`Standard: ${DEFAULT_HERO_TEXT}`} />
           <Label>Hero picture (optional)</Label>
           <ImageField label="picture" id={form.heroImage} onChange={(id) => set('heroImage', id)} onDrop={drop} />
           <p className="text-xs text-muted-foreground">With a picture the top is split: words on the left, the picture on the right. Without it, the login background is shown faintly behind the words.</p>
@@ -331,7 +303,7 @@ export function WebsiteTab() {
               <div className="flex items-end gap-2">
                 <Input aria-label={`Figure ${i + 1} value`} className="w-28" placeholder="500+" maxLength={12} value={stat.value} onChange={(e) => patch({ value: e.target.value })} />
                 <div className="flex-1">
-                  <TField label={`Figure ${i + 1} label (${lbl})`} value={stat.label} lang={lang} max={30} onChange={(v) => patch({ label: v })} />
+                  <TField label={`Figure ${i + 1} label`} value={stat.label} max={30} onChange={(v) => patch({ label: v })} />
                 </div>
               </div>
             )}
@@ -344,10 +316,10 @@ export function WebsiteTab() {
           <CardTitle className="text-base">About</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <TField label={`Introduction (${lbl})`} value={form.aboutIntro} lang={lang} max={200} onChange={(v) => set('aboutIntro', v)} hint={`Standard: ${pick(DEFAULT_ABOUT_INTRO, lang)}`} />
+          <TField label={`Introduction`} value={form.aboutIntro} max={200} onChange={(v) => set('aboutIntro', v)} hint={`Standard: ${DEFAULT_ABOUT_INTRO}`} />
           <List items={form.aboutPoints ?? []} onChange={(v) => set('aboutPoints', v)} make={emptyT} limit={SITE_LIMITS.points} noun="point">
             {(point, _patch, i) => (
-              <TField label={`Point ${i + 1} (${lbl})`} value={point} lang={lang} max={160} onChange={(v) => set('aboutPoints', (form.aboutPoints ?? []).map((p, n) => (n === i ? v : p)))} />
+              <TField label={`Point ${i + 1}`} value={point} max={160} onChange={(v) => set('aboutPoints', (form.aboutPoints ?? []).map((p, n) => (n === i ? v : p)))} />
             )}
           </List>
         </CardContent>
@@ -400,8 +372,8 @@ export function WebsiteTab() {
           <List items={form.features ?? []} onChange={(v) => set('features', v)} make={() => ({ title: emptyT(), text: emptyT() })} limit={SITE_LIMITS.features} noun="card">
             {(item, patch, i) => (
               <>
-                <TField label={`Card ${i + 1} title (${lbl})`} value={item.title} lang={lang} max={60} onChange={(v) => patch({ title: v })} />
-                <TField label={`Card ${i + 1} text (${lbl})`} value={item.text} lang={lang} max={200} onChange={(v) => patch({ text: v })} />
+                <TField label={`Card ${i + 1} title`} value={item.title} max={60} onChange={(v) => patch({ title: v })} />
+                <TField label={`Card ${i + 1} text`} value={item.text} max={200} onChange={(v) => patch({ text: v })} />
               </>
             )}
           </List>
@@ -417,8 +389,8 @@ export function WebsiteTab() {
           <List items={form.steps ?? []} onChange={(v) => set('steps', v)} make={() => ({ title: emptyT(), text: emptyT() })} limit={SITE_LIMITS.steps} noun="step">
             {(item, patch, i) => (
               <>
-                <TField label={`Step ${i + 1} title (${lbl})`} value={item.title} lang={lang} max={60} onChange={(v) => patch({ title: v })} />
-                <TField label={`Step ${i + 1} text (${lbl})`} value={item.text} lang={lang} max={200} onChange={(v) => patch({ text: v })} />
+                <TField label={`Step ${i + 1} title`} value={item.title} max={60} onChange={(v) => patch({ title: v })} />
+                <TField label={`Step ${i + 1} text`} value={item.text} max={200} onChange={(v) => patch({ text: v })} />
               </>
             )}
           </List>
@@ -435,7 +407,7 @@ export function WebsiteTab() {
             {(item, patch, i) => (
               <>
                 <ImageField label="photo" id={item.image} onDrop={drop} onChange={(id) => patch({ image: id })} />
-                <TField label={`Photo ${i + 1} caption (${lbl})`} value={item.caption} lang={lang} max={80} onChange={(v) => patch({ caption: v })} />
+                <TField label={`Photo ${i + 1} caption`} value={item.caption} max={80} onChange={(v) => patch({ caption: v })} />
               </>
             )}
           </List>
@@ -453,7 +425,7 @@ export function WebsiteTab() {
               <>
                 <ImageField label="photo" id={item.image} maxSide={600} onDrop={drop} onChange={(id) => patch({ image: id })} />
                 <Plain label={`Trainer ${i + 1} name`} value={item.name} max={60} onChange={(v) => patch({ name: v })} />
-                <TField label={`Trainer ${i + 1} role (${lbl})`} value={item.role} lang={lang} max={80} onChange={(v) => patch({ role: v })} hint="For example: Java trainer, 8 years in the industry." />
+                <TField label={`Trainer ${i + 1} role`} value={item.role} max={80} onChange={(v) => patch({ role: v })} hint="For example: Java trainer, 8 years in the industry." />
               </>
             )}
           </List>
@@ -488,8 +460,8 @@ export function WebsiteTab() {
               <>
                 <ImageField label="photo" id={item.image} maxSide={300} onDrop={drop} onChange={(id) => patch({ image: id })} />
                 <Plain label={`Feedback ${i + 1} name`} value={item.name} max={60} onChange={(v) => patch({ name: v })} />
-                <TField label={`Feedback ${i + 1} course or job (${lbl})`} value={item.role} lang={lang} max={80} onChange={(v) => patch({ role: v })} />
-                <TField label={`Feedback ${i + 1} words (${lbl})`} value={item.text} lang={lang} max={300} multiline onChange={(v) => patch({ text: v })} />
+                <TField label={`Feedback ${i + 1} course or job`} value={item.role} max={80} onChange={(v) => patch({ role: v })} />
+                <TField label={`Feedback ${i + 1} words`} value={item.text} max={300} multiline onChange={(v) => patch({ text: v })} />
               </>
             )}
           </List>
@@ -505,8 +477,8 @@ export function WebsiteTab() {
           <List items={form.faqs} onChange={(v) => set('faqs', v)} make={() => ({ q: emptyT(), a: emptyT() })} limit={SITE_LIMITS.faqs} noun="question">
             {(item, patch, i) => (
               <>
-                <TField label={`Question ${i + 1} (${lbl})`} value={item.q} lang={lang} max={160} onChange={(v) => patch({ q: v })} />
-                <TField label={`Answer ${i + 1} (${lbl})`} value={item.a} lang={lang} max={600} multiline onChange={(v) => patch({ a: v })} />
+                <TField label={`Question ${i + 1}`} value={item.q} max={160} onChange={(v) => patch({ q: v })} />
+                <TField label={`Answer ${i + 1}`} value={item.a} max={600} multiline onChange={(v) => patch({ a: v })} />
               </>
             )}
           </List>
@@ -529,7 +501,7 @@ export function WebsiteTab() {
             Show a floating WhatsApp button (needs the WhatsApp number)
           </label>
           <div className="sm:col-span-2">
-            <TField label={`First message the visitor sends (${lbl})`} value={form.whatsappMessage} lang={lang} max={200} onChange={(v) => set('whatsappMessage', v)} hint={`Standard: ${pick(DEFAULT_WHATSAPP_MESSAGE, lang)}`} />
+            <TField label={`First message the visitor sends`} value={form.whatsappMessage} max={200} onChange={(v) => set('whatsappMessage', v)} hint={`Standard: ${DEFAULT_WHATSAPP_MESSAGE}`} />
           </div>
           <div className="sm:col-span-2">
             <Plain
@@ -559,10 +531,6 @@ export function WebsiteTab() {
               {section.label}
             </label>
           ))}
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={form.languageSwitch} onCheckedChange={(on) => set('languageSwitch', on === true)} />
-            Language button (English / मराठी) - off by default; when on, write each text in both languages
-          </label>
         </CardContent>
       </Card>
 

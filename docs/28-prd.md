@@ -78,7 +78,7 @@ Success looks like:
 - R-67 Identity cards for students, trainers and staff: issued by ADMIN or COORDINATOR with a photo, printed one at a time or on A4 sheets, a QR code that opens a public check, withdrawn and replaced when lost ([30-id-cards.md](30-id-cards.md)).
 - R-70 Legal pages and consent: public Privacy, Terms, Cookie and Refund pages linked from every sign-in page, a cookie notice, a Terms and Privacy tick before registering, a friendly empty state and a recoverable error screen instead of a blank page, and the name SutraVidya when the server cannot be reached ([34-legal-pages.md](34-legal-pages.md)).
 - R-71 Public website: a front page with the institute's courses, what it offers, an enquiry form that feeds the leads list, contact details and a Login button ([35-public-website.md](35-public-website.md)).
-- R-72 The administrator runs the website's content: announcement bar, hero text and picture, figures, gallery, trainers, hiring-partner logos, feedback, FAQ, course-card details and pictures, social links, a WhatsApp button, a Google map and an English/Marathi switch ([35-public-website.md](35-public-website.md)).
+- R-72 The administrator runs the website's content: announcement bar, hero text and picture, figures, gallery, trainers, hiring-partner logos, feedback, FAQ, course-card details and pictures, social links, a WhatsApp button and a Google map ([35-public-website.md](35-public-website.md)).
 
 ## 4. Non-functional requirements
 

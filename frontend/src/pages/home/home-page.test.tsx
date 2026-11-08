@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -43,10 +43,10 @@ describe('HomePage', () => {
 
   it('uses the wording the administrator saved, shows real feedback and leaves hidden sections out', async () => {
     const config = JSON.stringify({
-      heroTitle: { en: 'Learn. Build. Get hired.', mr: '' },
-      testimonials: [{ name: 'Asha', role: { en: 'Java Full Stack', mr: '' }, text: { en: 'The tests kept me on track.', mr: '' }, image: '' }],
-      faqs: [{ q: { en: 'Are there evening batches?', mr: '' }, a: { en: 'Yes, from 6 pm.', mr: '' } }],
-      announcement: { enabled: true, text: { en: 'New batch on the 15th', mr: '' }, link: '' },
+      heroTitle: 'Learn. Build. Get hired.',
+      testimonials: [{ name: 'Asha', role: 'Java Full Stack', text: 'The tests kept me on track.', image: '' }],
+      faqs: [{ q: 'Are there evening batches?', a: 'Yes, from 6 pm.' }],
+      announcement: { enabled: true, text: 'New batch on the 15th', link: '' },
       hidden: ['how'],
     })
     const branding = await import('@/api/branding')
@@ -59,18 +59,9 @@ describe('HomePage', () => {
     expect(screen.queryByRole('heading', { name: 'How it works' })).toBeNull()
   })
 
-  it('is English only until the administrator turns the language button on', async () => {
+  it('has no language button: the site is English only', async () => {
     renderHome()
     await screen.findByRole('heading', { name: /Our courses/ })
     expect(screen.queryByRole('button', { name: 'Change language' })).toBeNull()
-  })
-
-  it('switches to Marathi when the language button is on and the visitor asks', async () => {
-    const branding = await import('@/api/branding')
-    vi.mocked(branding.getSiteConfig).mockResolvedValue({ config: JSON.stringify({ languageSwitch: true }) })
-    renderHome()
-    fireEvent.click(await screen.findByRole('button', { name: 'Change language' }))
-    expect(await screen.findByRole('heading', { name: /आमचे कोर्सेस/ })).toBeTruthy()
-    expect(screen.getAllByRole('link', { name: 'लॉगिन' }).length).toBeGreaterThan(0)
   })
 })
