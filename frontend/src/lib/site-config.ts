@@ -147,6 +147,8 @@ export function cleanMapUrl(v: unknown): string {
   let s = typeof v === 'string' ? v.trim() : ''
   const inside = /src\s*=\s*["']([^"']+)["']/i.exec(s)
   if (inside) s = inside[1]
+  // A link pasted without its https:// start (maps.app.goo.gl/...) is still a Google Maps link.
+  if (/^(maps\.app\.goo\.gl\/|goo\.gl\/maps\/|(www\.)?google\.[a-z.]+\/maps)/i.test(s)) s = `https://${s}`
   s = s.slice(0, 700)
   return MAP_EMBED.test(s) || MAP_LINK.test(s) ? s : ''
 }
