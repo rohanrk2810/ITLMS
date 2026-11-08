@@ -20,6 +20,7 @@ import {
   SITE_SECTIONS,
   type SiteConfig,
   type T,
+  cleanMapUrl,
   emptyT,
   parseSite,
   pick,
@@ -239,7 +240,8 @@ export function WebsiteTab() {
     }
   }, [stored.data, loaded])
 
-  const json = JSON.stringify(form)
+  // A pasted <iframe> or share link is reduced to the Google Maps address inside it.
+  const json = JSON.stringify({ ...form, mapUrl: cleanMapUrl(form.mapUrl) })
   const size = json.length
 
   const save = useMutation({
@@ -531,12 +533,12 @@ export function WebsiteTab() {
           </div>
           <div className="sm:col-span-2">
             <Plain
-              label="Google Map address"
+              label="Google Maps link"
               value={form.mapUrl}
-              max={700}
-              placeholder="https://www.google.com/maps/embed?pb=..."
-              onChange={(v) => set('mapUrl', v.trim())}
-              hint='In Google Maps: Share > Embed a map > copy the part inside src="...". Only Google Maps embed addresses are accepted.'
+              max={900}
+              placeholder="https://maps.app.goo.gl/..."
+              onChange={(v) => set('mapUrl', v)}
+              hint="Paste the link from Google Maps > Share. The map is shown from the address in the Institute tab, with an Open in Google Maps button. For an exact pin, use Share > Embed a map and paste the whole thing."
             />
           </div>
         </CardContent>

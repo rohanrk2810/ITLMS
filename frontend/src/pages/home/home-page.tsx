@@ -24,7 +24,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { type Lang, type SiteConfig, phoneDigits, pick, siteImageUrl, useSite } from '@/lib/site-config'
+import { type Lang, type SiteConfig, isMapEmbed, phoneDigits, pick, siteImageUrl, useSite } from '@/lib/site-config'
 import { useBranding } from '@/lib/use-branding'
 import { useNormalTextSize } from '@/lib/use-normal-text-size'
 import { useReveal } from '@/lib/use-reveal'
@@ -362,15 +362,7 @@ function Website() {
                 {branding?.contactEmail && <ContactItem icon={<MailIcon />} label={s.email} value={branding.contactEmail} href={`mailto:${branding.contactEmail}`} />}
                 <ContactItem icon={<ClockIcon />} label={s.student} value={s.studentText} href="/login" />
               </div>
-              {site.mapUrl && (
-                <iframe
-                  src={site.mapUrl}
-                  title="Map"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="h-72 w-full rounded-xl border lg:h-full lg:min-h-72"
-                />
-              )}
+              {site.mapUrl && <MapBlock url={site.mapUrl} address={branding?.address ?? ''} label={s.openMap} />}
             </div>
           </Section>
         )}
@@ -407,6 +399,25 @@ function Website() {
         >
           <MessageCircleIcon className="size-7" />
         </a>
+      )}
+    </div>
+  )
+}
+
+/** The embed address is shown as it is; a share link cannot be embedded, so the map is found from the institute's address. */
+function MapBlock({ url, address, label }: { url: string; address: string; label: string }) {
+  const embed = isMapEmbed(url) ? url : address ? `https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed` : ''
+  return (
+    <div className="flex flex-col gap-2">
+      {embed && (
+        <iframe src={embed} title="Map" loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="h-72 w-full rounded-xl border lg:h-full lg:min-h-72" />
+      )}
+      {!isMapEmbed(url) && (
+        <Button asChild variant="outline">
+          <a href={url} target="_blank" rel="noreferrer noopener">
+            <MapPinIcon /> {label}
+          </a>
+        </Button>
       )}
     </div>
   )

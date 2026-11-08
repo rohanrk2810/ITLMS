@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseSite, pick, safeUrl } from './site-config'
+import { cleanMapUrl, isMapEmbed, parseSite, pick, safeUrl } from './site-config'
 
 describe('parseSite', () => {
   it.each([[null], [undefined], [''], ['nope'], ['[]'], ['7']])('falls back to the defaults for %j', (text) => {
@@ -62,5 +62,21 @@ describe('pick', () => {
     expect(pick({ en: 'Hello', mr: '' }, 'mr', 'standard')).toBe('standard')
     expect(pick({ en: 'Hello', mr: '' }, 'mr')).toBe('Hello')
     expect(pick(undefined, 'en', 'fallback')).toBe('fallback')
+  })
+})
+
+describe('map address', () => {
+  it('takes the address out of a pasted iframe and keeps ordinary Google share links', () => {
+    const iframe = '<iframe src="https://www.google.com/maps/embed?pb=!1m18" width="600" height="450" loading="lazy"></iframe>'
+    expect(cleanMapUrl(iframe)).toBe('https://www.google.com/maps/embed?pb=!1m18')
+    expect(cleanMapUrl('https://maps.app.goo.gl/wciiBgChLTaB2wYH9')).toBe('https://maps.app.goo.gl/wciiBgChLTaB2wYH9')
+    expect(cleanMapUrl('https://www.google.com/maps/place/Pune')).toContain('/maps/place/')
+  })
+
+  it('refuses anything that is not Google Maps', () => {
+    expect(cleanMapUrl('https://evil.example/maps/embed')).toBe('')
+    expect(cleanMapUrl('<iframe src="https://evil.example/x"></iframe>')).toBe('')
+    expect(cleanMapUrl('javascript:alert(1)')).toBe('')
+    expect(isMapEmbed('https://maps.app.goo.gl/x')).toBe(false)
   })
 })
