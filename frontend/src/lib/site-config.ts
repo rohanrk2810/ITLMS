@@ -119,7 +119,7 @@ export const DEFAULT_SITE: SiteConfig = {
   whatsappMessage: emptyT(),
   mapUrl: '',
   announcement: { enabled: false, text: emptyT(), link: '' },
-  languageSwitch: true,
+  languageSwitch: false,
   hidden: [],
 }
 
@@ -246,7 +246,8 @@ export function parseSite(text: string | null | undefined): SiteConfig {
       text: tx(announcement.text, 160),
       link: safeUrl(announcement.link),
     },
-    languageSwitch: raw.languageSwitch !== false,
+    // Off unless the administrator turns the English/Marathi button on.
+    languageSwitch: raw.languageSwitch === true,
     hidden: Array.isArray(raw.hidden) ? (raw.hidden as unknown[]).filter((h): h is string => typeof h === 'string') : [],
   }
 }

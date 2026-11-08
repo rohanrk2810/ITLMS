@@ -8,13 +8,13 @@ Announcement bar (optional), top bar with **Login** and **Register**, hero (with
 
 - **Real data only:** courses come from the public catalogue (`GET /api/courses/public`, published courses); name, tagline, address, phone and email come from branding. Nothing is invented: no figures, reviews or placement numbers unless the administrator types them.
 - **Enquiry form:** posts to `POST /api/leads/enquiry` (public, rate-limited at the gateway) and lands in the admission team's leads list. A hidden honeypot field catches simple bots.
-- **Two languages:** every fixed word and every default text exists in English and Marathi (`home-content.ts`). The visitor's choice is remembered in the browser; the first visit follows the browser's language. The administrator can turn the language button off.
+- **English only by default.** The English/Marathi button is off until the administrator ticks "Language button" in Customize > Website. When it is on, every fixed word and default text exists in both languages (`home-content.ts`), the visitor's choice is remembered in the browser, and the first visit follows the browser's language. When it is off, the site is English whatever the browser's language.
 - **Text size:** like sign-in, the website ignores the portal's text-size setting (`useNormalTextSize`).
 - **Motion:** sections fade in, colour blobs drift and the ticker scrolls; all of it is off for visitors who ask for reduced motion.
 
 ## Editing it (Customize > Website)
 
-Everything above is edited by the administrator without a deploy. The tab has a language switch (English or मराठी): texts are written once per language, and the other language is shown as a hint. Pictures, links and numbers are the same in both. Anything left empty shows the standard wording; a list that was never edited shows the standard list.
+Everything above is edited by the administrator without a deploy. With the language button on, the tab shows a switch (English or मराठी): texts are written once per language, and the other language is shown as a hint. With it off, only English is written. Pictures, links and numbers are the same in both. Anything left empty shows the standard wording; a list that was never edited shows the standard list.
 
 | Part | What can be set |
 |---|---|

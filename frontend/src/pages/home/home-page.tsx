@@ -76,7 +76,7 @@ function Section({ id, title, intro, children, tone }: { id: string; title: stri
 function Website() {
   const { branding, name } = useBranding()
   const site = useSite()
-  const [lang, setLang] = useSiteLang()
+  const [lang, setLang] = useSiteLang(site.languageSwitch)
   const s = strings(lang)
   const [menuOpen, setMenuOpen] = useState(false)
   const courses = useQuery({ queryKey: ['public-courses'], queryFn: getPublicCourses, staleTime: 5 * 60_000 })

@@ -59,7 +59,15 @@ describe('HomePage', () => {
     expect(screen.queryByRole('heading', { name: 'How it works' })).toBeNull()
   })
 
-  it('switches to Marathi when the visitor asks', async () => {
+  it('is English only until the administrator turns the language button on', async () => {
+    renderHome()
+    await screen.findByRole('heading', { name: /Our courses/ })
+    expect(screen.queryByRole('button', { name: 'Change language' })).toBeNull()
+  })
+
+  it('switches to Marathi when the language button is on and the visitor asks', async () => {
+    const branding = await import('@/api/branding')
+    vi.mocked(branding.getSiteConfig).mockResolvedValue({ config: JSON.stringify({ languageSwitch: true }) })
     renderHome()
     fireEvent.click(await screen.findByRole('button', { name: 'Change language' }))
     expect(await screen.findByRole('heading', { name: /आमचे कोर्सेस/ })).toBeTruthy()
