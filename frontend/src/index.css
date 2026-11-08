@@ -196,3 +196,53 @@ textarea:user-invalid,
     display: none !important;
   }
 }
+
+/* Public website: scroll reveal, floating colour blobs and the technology ticker. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@keyframes blob-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, 40px) scale(1.1);
+  }
+}
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.blob {
+  animation: blob-float 14s ease-in-out infinite;
+}
+.blob-slow {
+  animation-duration: 20s;
+}
+.marquee {
+  animation: ticker 30s linear infinite;
+}
+.marquee:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .blob,
+  .marquee {
+    animation: none;
+  }
+}

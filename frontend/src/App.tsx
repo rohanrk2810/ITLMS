@@ -15,7 +15,6 @@ import { AuthLayout } from '@/layouts/auth-layout'
 import { mapActionUrl } from '@/lib/action-url'
 import { PlaceholderPage } from '@/pages/placeholder-page'
 import { ProtectedRoute } from '@/routes/protected-route'
-import { useAuthStore } from '@/stores/auth-store'
 
 // Every page beyond the dashboard is lazy: the main bundle stays small, and
 // a module a visitor's role never opens (say, Finance for a student) is
@@ -32,6 +31,7 @@ const DashboardPage = lazy(() => import('@/pages/dashboard-page').then((m) => ({
 const ChangePasswordPage = lazy(() =>
   import('@/pages/change-password-page').then((m) => ({ default: m.ChangePasswordPage })),
 )
+const HomePage = lazy(() => import('@/pages/home/home-page').then((m) => ({ default: m.HomePage })))
 const LegalPage = lazy(() => import('@/pages/legal/legal-page').then((m) => ({ default: m.LegalPage })))
 const ForbiddenPage = lazy(() => import('@/pages/forbidden-page').then((m) => ({ default: m.ForbiddenPage })))
 const NotFoundPage = lazy(() => import('@/pages/not-found-page').then((m) => ({ default: m.NotFoundPage })))
@@ -189,12 +189,6 @@ function PageFallback() {
   return <div className="p-6 text-sm text-muted-foreground">Loading...</div>
 }
 
-function RootRedirect() {
-  const status = useAuthStore((state) => state.status)
-  if (status === 'checking') return null
-  return <Navigate to={status === 'authenticated' ? '/app' : '/login'} replace />
-}
-
 /**
  * An email or notification link is the frontend origin plus a backend path
  * (`/jobs/40`, `/student/fees`, ...) - it never goes through the bell, which
@@ -225,7 +219,7 @@ export default function App() {
           <ErrorBoundary>
           <Suspense fallback={<PageFallback />}>
             <Routes>
-              <Route path="/" element={<RootRedirect />} />
+              <Route path="/" element={<HomePage />} />
 
               {/* Public: anyone with a certificate ID and code can check it, signed in or not. */}
               <Route path="/verify/:certificateNo" element={<VerifyCertificatePage />} />
