@@ -8,7 +8,7 @@ describe('parseSite', () => {
     expect(site.stats).toBeUndefined()
     expect(site.features).toBeUndefined()
     expect(site.gallery).toEqual([])
-    expect(site.languageSwitch).toBe(true)
+    expect(site.languageSwitch).toBe(false)
     expect(site.courseCards.showDuration).toBe(true)
     expect(site.courseCards.showFee).toBe(false)
   })

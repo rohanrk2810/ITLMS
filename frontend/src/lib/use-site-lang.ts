@@ -14,9 +14,13 @@ function initial(): Lang {
   return typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('mr') ? 'mr' : 'en'
 }
 
-/** The visitor's language for the public website: their last choice, else the browser's, else English. */
-export function useSiteLang(): [Lang, (next: Lang) => void] {
-  const [lang, setLang] = useState<Lang>(initial)
+/**
+ * The visitor's language for the public website: their last choice, else the browser's, else English.
+ * When the language button is off, the site is always English.
+ */
+export function useSiteLang(enabled: boolean): [Lang, (next: Lang) => void] {
+  const [chosen, setLang] = useState<Lang>(initial)
+  const lang: Lang = enabled ? chosen : 'en'
   useEffect(() => {
     document.documentElement.lang = lang
     return () => {

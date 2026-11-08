@@ -229,7 +229,7 @@ export function WebsiteTab() {
   const courses = useQuery({ queryKey: ['public-courses'], queryFn: getPublicCourses, staleTime: 5 * 60_000 })
   const [form, setForm] = useState<SiteConfig>(toForm(DEFAULT_SITE))
   const [loaded, setLoaded] = useState(false)
-  const [lang, setLang] = useState<Lang>('en')
+  const [editLang, setLang] = useState<Lang>('en')
   const [dropped, setDropped] = useState<string[]>([])
 
   useEffect(() => {
@@ -254,6 +254,8 @@ export function WebsiteTab() {
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not save.')),
   })
 
+  // With the language button off the site is English only, so there is nothing to switch.
+  const lang: Lang = form.languageSwitch ? editLang : 'en'
   const set = <K extends keyof SiteConfig>(key: K, value: SiteConfig[K]) => setForm((prev) => ({ ...prev, [key]: value }))
   const drop = (id: string) => setDropped((prev) => (prev.includes(id) ? prev : [...prev, id]))
   const list = courses.data?.content ?? []
@@ -275,15 +277,17 @@ export function WebsiteTab() {
         </Button>
       </div>
 
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border bg-background/95 p-3 backdrop-blur">
-        <span className="text-sm font-medium">Writing in:</span>
-        {(['en', 'mr'] as const).map((l) => (
-          <Button key={l} type="button" size="sm" variant={lang === l ? 'default' : 'outline'} onClick={() => setLang(l)}>
-            {l === 'en' ? 'English' : 'मराठी'}
-          </Button>
-        ))}
-        <span className="text-xs text-muted-foreground">Visitors can switch language. Whatever you leave empty shows the standard wording.</span>
-      </div>
+      {form.languageSwitch && (
+        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border bg-background/95 p-3 backdrop-blur">
+          <span className="text-sm font-medium">Writing in:</span>
+          {(['en', 'mr'] as const).map((l) => (
+            <Button key={l} type="button" size="sm" variant={lang === l ? 'default' : 'outline'} onClick={() => setLang(l)}>
+              {l === 'en' ? 'English' : 'मराठी'}
+            </Button>
+          ))}
+          <span className="text-xs text-muted-foreground">Visitors can switch language. Whatever you leave empty shows the standard wording.</span>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -555,7 +559,7 @@ export function WebsiteTab() {
           ))}
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={form.languageSwitch} onCheckedChange={(on) => set('languageSwitch', on === true)} />
-            Language button (English / मराठी)
+            Language button (English / मराठी) - off by default; when on, write each text in both languages
           </label>
         </CardContent>
       </Card>
