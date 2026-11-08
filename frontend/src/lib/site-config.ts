@@ -65,7 +65,7 @@ export interface SiteConfig {
   social: { whatsapp: string; instagram: string; youtube: string; facebook: string; linkedin: string }
   whatsappButton: boolean
   whatsappMessage: T
-  /** An embed address from Google Maps (Share > Embed a map), as an https address. */
+  /** A Google Maps address: the embed address (Share > Embed a map) or an ordinary share link. */
   mapUrl: string
   announcement: { enabled: boolean; text: T; link: string }
   languageSwitch: boolean
@@ -142,9 +142,22 @@ export function safeUrl(v: unknown, max = 300): string {
   const s = str(v, max)
   return /^(https:\/\/|http:\/\/|\/|#)/i.test(s) ? s : ''
 }
-const embedUrl = (v: unknown): string => {
-  const s = str(v, 700)
-  return /^https:\/\/(www\.google\.com|maps\.google\.com)\/maps\/embed/i.test(s) ? s : ''
+const MAP_EMBED = /^https:\/\/(www\.google\.com|maps\.google\.com)\/maps\/embed/i
+const MAP_LINK = /^https:\/\/(maps\.app\.goo\.gl\/|goo\.gl\/maps\/|(www\.)?google\.[a-z.]+\/maps)/i
+
+/** True for the address Google Maps gives under Share > Embed a map; anything else is an ordinary share link. */
+export const isMapEmbed = (url: string) => MAP_EMBED.test(url)
+
+/**
+ * Pasting the whole `<iframe ...>` that Google gives is fine: its address is taken out of it.
+ * Only Google Maps addresses are kept, either an embed address or an ordinary share link.
+ */
+export function cleanMapUrl(v: unknown): string {
+  let s = typeof v === 'string' ? v.trim() : ''
+  const inside = /src\s*=\s*["']([^"']+)["']/i.exec(s)
+  if (inside) s = inside[1]
+  s = s.slice(0, 700)
+  return MAP_EMBED.test(s) || MAP_LINK.test(s) ? s : ''
 }
 /** Keeps the digits of a phone number, with the country code, for a wa.me link. */
 export const phoneDigits = (v: string) => v.replace(/\D/g, '')
@@ -240,7 +253,7 @@ export function parseSite(text: string | null | undefined): SiteConfig {
     },
     whatsappButton: raw.whatsappButton === true,
     whatsappMessage: tx(raw.whatsappMessage, 200),
-    mapUrl: embedUrl(raw.mapUrl),
+    mapUrl: cleanMapUrl(raw.mapUrl),
     announcement: {
       enabled: announcement.enabled === true,
       text: tx(announcement.text, 160),

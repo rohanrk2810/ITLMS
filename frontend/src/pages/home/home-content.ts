@@ -108,6 +108,7 @@ const STRINGS = {
     rights: 'All rights reserved.',
     switchTo: 'मराठी',
     close: 'Close',
+    openMap: 'Open in Google Maps',
   },
   mr: {
     nav: { about: 'आमच्याबद्दल', courses: 'कोर्सेस', why: 'का आम्ही', how: 'कसं चालतं', gallery: 'फोटो', faculty: 'ट्रेनर', testimonials: 'अभिप्राय', faq: 'प्रश्नोत्तरे', contact: 'संपर्क' },
@@ -164,6 +165,7 @@ const STRINGS = {
     rights: 'सर्व हक्क राखीव.',
     switchTo: 'English',
     close: 'बंद करा',
+    openMap: 'Google Maps मध्ये उघडा',
   },
 } as const
 
