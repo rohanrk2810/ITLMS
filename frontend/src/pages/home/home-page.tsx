@@ -10,7 +10,7 @@ import {
   PhoneIcon,
   XIcon,
 } from 'lucide-react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
@@ -27,16 +27,29 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useBranding } from '@/lib/use-branding'
 import { useNormalTextSize } from '@/lib/use-normal-text-size'
 import { useReveal } from '@/lib/use-reveal'
+import { useUiConfig } from '@/lib/ui-config'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { ABOUT_POINTS, DEFAULT_TAGLINE, FEATURES, NAV, STEPS } from './home-content'
+import {
+  ABOUT_POINTS,
+  DEFAULT_ABOUT_INTRO,
+  DEFAULT_HERO_BADGE,
+  DEFAULT_HERO_TEXT,
+  DEFAULT_TAGLINE,
+  FEATURES,
+  FEATURE_ICONS,
+  NAV,
+  STEPS,
+} from './home-content'
 
 /** The public front page. A signed-in visitor goes straight to the app, as before. */
 export function HomePage() {
   const status = useAuthStore((state) => state.status)
+  // An administrator checking their edits opens /?preview=1 and stays on the page.
+  const preview = useSearchParams()[0].has('preview')
   useNormalTextSize()
   if (status === 'checking') return null
-  if (status === 'authenticated') return <Navigate to="/app" replace />
+  if (status === 'authenticated' && !preview) return <Navigate to="/app" replace />
   return <Website />
 }
 
@@ -57,10 +70,16 @@ function Section({ id, title, intro, children, tone }: { id: string; title: stri
 
 function Website() {
   const { branding, name } = useBranding()
+  const site = useUiConfig().site
+  const show = (id: string) => !site.hidden.includes(id)
+  const nav = NAV.filter((item) => item.id !== 'testimonials' || site.testimonials.length > 0).filter((item) => show(item.id))
+  const features = (site.features ?? FEATURES).map((f, i) => ({ icon: FEATURE_ICONS[i % FEATURE_ICONS.length], title: f.title, text: f.text }))
+  const steps = site.steps ?? STEPS
+  const aboutPoints = site.aboutPoints ?? ABOUT_POINTS
   const [menuOpen, setMenuOpen] = useState(false)
   const courses = useQuery({ queryKey: ['public-courses'], queryFn: getPublicCourses, staleTime: 5 * 60_000 })
   const list = courses.data?.content ?? []
-  const tagline = branding?.tagline || DEFAULT_TAGLINE
+  const tagline = site.heroTitle || branding?.tagline || DEFAULT_TAGLINE
   const hero = assetUrl(branding?.loginBackgroundUrl ?? null)
   const stack = Array.from(new Set(list.flatMap((c) => (c.technologyStack ?? '').split(/[,/|]/).map((t) => t.trim()).filter(Boolean)))).slice(0, 14)
 
@@ -76,7 +95,7 @@ function Website() {
             <BrandMark className="size-7" />
           </a>
           <nav aria-label="Main" className="ml-6 hidden items-center gap-5 text-sm md:flex">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <a key={item.href} href={item.href} className="text-muted-foreground transition-colors hover:text-foreground">
                 {item.label}
               </a>
@@ -104,7 +123,7 @@ function Website() {
         </div>
         {menuOpen && (
           <nav aria-label="Mobile" className="flex flex-col gap-1 border-t px-4 py-2 md:hidden">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="rounded px-2 py-2 text-sm hover:bg-muted">
                 {item.label}
               </a>
@@ -124,14 +143,14 @@ function Website() {
           <div className="blob blob-slow absolute -right-24 top-32 -z-10 size-96 rounded-full bg-accent blur-3xl" aria-hidden="true" />
           <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center">
             <span className="rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-              Admissions open
+              {site.heroBadge || DEFAULT_HERO_BADGE}
             </span>
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
               {name}
               <span className="mt-2 block bg-gradient-to-r from-primary to-foreground bg-clip-text pb-2 leading-[1.2] text-transparent">{tagline}</span>
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground">
-              Live classes, hands-on projects, regular tests and a certificate you can prove, all in one place.
+              {site.heroText || DEFAULT_HERO_TEXT}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <Button asChild size="lg">
@@ -144,12 +163,12 @@ function Website() {
               </Button>
             </div>
             <dl className="mt-6 grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                [courses.data ? String(courses.data.totalElements) : '–', 'Courses'],
-                ['Live', 'Classes'],
-                ['QR', 'Verified certificates'],
-                ['24x7', 'Notes and recordings'],
-              ].map(([value, label]) => (
+              {(site.stats ?? [
+                { value: courses.data ? String(courses.data.totalElements) : '–', label: 'Courses' },
+                { value: 'Live', label: 'Classes' },
+                { value: 'QR', label: 'Verified certificates' },
+                { value: '24x7', label: 'Notes and recordings' },
+              ]).map(({ value, label }) => (
                 <div key={label} className="rounded-xl border bg-background/70 p-4 backdrop-blur">
                   <dt className="sr-only">{label}</dt>
                   <dd className="text-2xl font-bold text-primary">{value}</dd>
@@ -170,81 +189,109 @@ function Website() {
           </div>
         )}
 
-        <Section id="about" title={`About ${name}`} intro="A place to learn IT skills properly and get ready for work.">
-          <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-3">
-            {ABOUT_POINTS.map((point) => (
-              <div key={point} className="flex gap-3 rounded-xl border bg-card p-5">
-                <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-                <p className="text-sm">{point}</p>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="courses" title="Our courses" intro="Pick a course, see what you will learn, and ask us anything." tone="muted">
-          {courses.isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[0, 1, 2].map((n) => (
-                <Skeleton key={n} className="h-48 rounded-xl" />
+        {show('about') && (
+          <Section id="about" title={`About ${name}`} intro={site.aboutIntro || DEFAULT_ABOUT_INTRO}>
+            <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-3">
+              {aboutPoints.map((point) => (
+                <div key={point} className="flex gap-3 rounded-xl border bg-card p-5">
+                  <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+                  <p className="text-sm">{point}</p>
+                </div>
               ))}
             </div>
-          ) : courses.isError ? (
-            <p className="text-center text-sm text-muted-foreground">Courses could not be loaded right now. Please try again in a moment.</p>
-          ) : list.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">New courses are being added. Ask us what is starting next.</p>
-          ) : (
+          </Section>
+        )}
+
+        {show('courses') && (
+          <Section id="courses" title="Our courses" intro="Pick a course, see what you will learn, and ask us anything." tone="muted">
+            {courses.isLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[0, 1, 2].map((n) => (
+                  <Skeleton key={n} className="h-48 rounded-xl" />
+                ))}
+              </div>
+            ) : courses.isError ? (
+              <p className="text-center text-sm text-muted-foreground">Courses could not be loaded right now. Please try again in a moment.</p>
+            ) : list.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground">New courses are being added. Ask us what is starting next.</p>
+            ) : (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {show('why') && (
+          <Section id="why" title="Why learn with us">
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {list.map((course) => (
-                <CourseCard key={course.id} course={course} />
+              {features.map(({ icon: Icon, title, text }) => (
+                <div key={title} className="group rounded-xl border bg-card p-6 transition-all hover:-translate-y-1 hover:shadow-lg">
+                  <span className="mb-4 inline-flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <Icon className="size-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+                </div>
               ))}
             </div>
-          )}
-        </Section>
+          </Section>
+        )}
 
-        <Section id="why" title="Why learn with us">
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="group rounded-xl border bg-card p-6 transition-all hover:-translate-y-1 hover:shadow-lg">
-                <span className="mb-4 inline-flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                  <Icon className="size-5" aria-hidden="true" />
-                </span>
-                <h3 className="font-semibold">{title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{text}</p>
-              </div>
-            ))}
-          </div>
-        </Section>
+        {show('how') && (
+          <Section id="how" title="How it works" tone="muted">
+            <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {steps.map((step, index) => (
+                <li key={step.title} className="relative rounded-xl border bg-card p-6">
+                  <span className="mb-3 inline-flex size-9 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <h3 className="font-semibold">{step.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{step.text}</p>
+                </li>
+              ))}
+            </ol>
+          </Section>
+        )}
 
-        <Section id="how" title="How it works" tone="muted">
-          <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step, index) => (
-              <li key={step.title} className="relative rounded-xl border bg-card p-6">
-                <span className="mb-3 inline-flex size-9 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground">
-                  {index + 1}
-                </span>
-                <h3 className="font-semibold">{step.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{step.text}</p>
-              </li>
-            ))}
-          </ol>
-        </Section>
+        {show('testimonials') && site.testimonials.length > 0 && (
+          <Section id="testimonials" title="What our students say">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {site.testimonials.map((t) => (
+                <figure key={`${t.name}-${t.text.slice(0, 12)}`} className="flex flex-col gap-3 rounded-xl border bg-card p-6">
+                  <blockquote className="text-sm leading-relaxed">&ldquo;{t.text}&rdquo;</blockquote>
+                  <figcaption className="mt-auto text-sm">
+                    <span className="font-semibold">{t.name}</span>
+                    {t.role && <span className="block text-xs text-muted-foreground">{t.role}</span>}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </Section>
+        )}
 
-        <Section id="enquiry" title="Talk to a counsellor" intro="Leave your number and we will call you back. It is free.">
-          <EnquiryForm courses={list} />
-        </Section>
+        {show('enquiry') && (
+          <Section id="enquiry" title="Talk to a counsellor" intro="Leave your number and we will call you back. It is free.">
+            <EnquiryForm courses={list} />
+          </Section>
+        )}
 
-        <Section id="contact" title="Contact us" tone="muted">
-          <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2">
-            {branding?.address && <ContactItem icon={<MapPinIcon />} label="Visit us" value={branding.address} />}
-            {branding?.contactPhone && (
-              <ContactItem icon={<PhoneIcon />} label="Call us" value={branding.contactPhone} href={`tel:${branding.contactPhone}`} />
-            )}
-            {branding?.contactEmail && (
-              <ContactItem icon={<MailIcon />} label="Email us" value={branding.contactEmail} href={`mailto:${branding.contactEmail}`} />
-            )}
-            <ContactItem icon={<ClockIcon />} label="Already a student?" value="Login to your classes, tests and certificates" href="/login" />
-          </div>
-        </Section>
+        {show('contact') && (
+          <Section id="contact" title="Contact us" tone="muted">
+            <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2">
+              {branding?.address && <ContactItem icon={<MapPinIcon />} label="Visit us" value={branding.address} />}
+              {branding?.contactPhone && (
+                <ContactItem icon={<PhoneIcon />} label="Call us" value={branding.contactPhone} href={`tel:${branding.contactPhone}`} />
+              )}
+              {branding?.contactEmail && (
+                <ContactItem icon={<MailIcon />} label="Email us" value={branding.contactEmail} href={`mailto:${branding.contactEmail}`} />
+              )}
+              <ContactItem icon={<ClockIcon />} label="Already a student?" value="Login to your classes, tests and certificates" href="/login" />
+            </div>
+          </Section>
+        )}
       </main>
 
       <footer className="border-t px-4 py-8">

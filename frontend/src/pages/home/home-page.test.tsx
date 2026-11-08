@@ -11,7 +11,7 @@ vi.mock('@/api/public-site', () => ({
   getPublicCourses: () => Promise.resolve({ content: [], totalElements: 0, page: 0, size: 12, totalPages: 0, first: true, last: true }),
   sendEnquiry: () => Promise.resolve(),
 }))
-vi.mock('@/api/branding', async (orig) => ({ ...(await orig<object>()), getBranding: () => Promise.reject(new Error('down')) }))
+vi.mock('@/api/branding', async (orig) => ({ ...(await orig<object>()), getBranding: vi.fn(() => Promise.reject(new Error("down"))) }))
 
 function renderHome() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -32,5 +32,21 @@ describe('HomePage', () => {
     expect(screen.getAllByRole('link', { name: 'Login' }).length).toBeGreaterThan(0)
     expect(screen.getAllByText('SutraVidya').length).toBeGreaterThan(0)
     expect(screen.getByRole('heading', { name: /Talk to a counsellor/ })).toBeTruthy()
+  })
+
+  it('uses the wording the administrator saved, shows real feedback and leaves hidden sections out', async () => {
+    const uiConfig = JSON.stringify({
+      site: {
+        heroTitle: 'Learn. Build. Get hired.',
+        testimonials: [{ name: 'Asha', role: 'Java Full Stack', text: 'The tests kept me on track.' }],
+        hidden: ['how'],
+      },
+    })
+    const branding = await import('@/api/branding')
+    vi.spyOn(branding, 'getBranding').mockResolvedValue({ name: 'Sprint IT Academy', uiConfig } as never)
+    renderHome()
+    expect(await screen.findByText('Learn. Build. Get hired.')).toBeTruthy()
+    expect(screen.getByText(/The tests kept me on track/)).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'How it works' })).toBeNull()
   })
 })
