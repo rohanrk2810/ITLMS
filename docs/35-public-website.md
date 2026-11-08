@@ -1,18 +1,44 @@
 # Public website
 
-`/` is a public front page (`frontend/src/pages/home/`). A visitor who is not signed in sees the site; a signed-in visitor still goes straight to `/app`, so the Android and desktop apps behave as before.
+`/` is a public front page (`frontend/src/pages/home/`). A visitor who is not signed in sees the site; a signed-in visitor still goes straight to `/app`, so the Android and desktop apps behave as before. An administrator checks edits at `/?preview=1`, which stays on the page while signed in.
 
-- **Sections:** top bar with a **Login** and a **Register** button, hero, technology ticker, About, Courses, Why us, How it works, enquiry form, Contact, footer with the four policy links.
-- **Real data only:** courses come from the public catalogue (`GET /api/courses/public`, published courses); name, tagline, address, phone and email come from branding. There are no invented figures, reviews or placement numbers. The built-in wording in `home-content.ts` is general; the admin replaces it from the screen below.
-- **Enquiry form:** posts to `POST /api/leads/enquiry` (public, rate-limited at the gateway) and lands in the admission team's leads list. A hidden honeypot field catches simple bots. No gateway or backend change was needed.
+## What is on the page
+
+Announcement bar (optional), top bar with **Login** and **Register**, hero (with an optional picture beside the words), technology ticker, About, Courses, Why us, How it works, photo gallery, trainers, hiring partners, student feedback, questions and answers, enquiry form, contact (with an optional Google map), footer with social links and the four policy links, and an optional floating WhatsApp button. A section with nothing in it (no photos, no trainers, no feedback, no questions) is left off.
+
+- **Real data only:** courses come from the public catalogue (`GET /api/courses/public`, published courses); name, tagline, address, phone and email come from branding. Nothing is invented: no figures, reviews or placement numbers unless the administrator types them.
+- **Enquiry form:** posts to `POST /api/leads/enquiry` (public, rate-limited at the gateway) and lands in the admission team's leads list. A hidden honeypot field catches simple bots.
+- **Two languages:** every fixed word and every default text exists in English and Marathi (`home-content.ts`). The visitor's choice is remembered in the browser; the first visit follows the browser's language. The administrator can turn the language button off.
 - **Text size:** like sign-in, the website ignores the portal's text-size setting (`useNormalTextSize`).
-- **Motion:** sections fade in on scroll, colour blobs drift and the ticker scrolls; all of it is switched off for visitors who ask for reduced motion.
-- A test (`home-page.test.tsx`) checks the page shows a Login button and the fallback name `SutraVidya` when the branding call fails.
+- **Motion:** sections fade in, colour blobs drift and the ticker scrolls; all of it is off for visitors who ask for reduced motion.
 
 ## Editing it (Customize > Website)
 
-The administrator edits the page without a deploy: the label, headline and sentence at the top, up to 4 figures, the About points, up to 9 "Why us" cards, up to 6 steps, up to 6 student feedback entries, and which sections are shown. Icons are picked automatically in order. Open the website from that tab (`/?preview=1`) to check the result while signed in; without `preview`, a signed-in person is sent to the app.
+Everything above is edited by the administrator without a deploy. The tab has a language switch (English or मराठी): texts are written once per language, and the other language is shown as a hint. Pictures, links and numbers are the same in both. Anything left empty shows the standard wording; a list that was never edited shows the standard list.
 
-- Stored under `site` in the portal customization JSON (`ui_config`), so there is no new table or endpoint. The server accepts at most 20,000 characters for the whole JSON, shared with the portal settings; the list limits above keep the website well inside it, and the tab shows how much is used and blocks saving past the limit.
-- A box left empty, or a list never edited, keeps the built-in wording. With no feedback entries the feedback section is not shown. "Reset everything" on the Portal tab leaves the website text alone.
-- Feedback and figures are whatever the admin types, so they must be real and, for feedback, given with the student's permission.
+| Part | What can be set |
+|---|---|
+| Announcement bar | on or off, text, link |
+| Top of the page | label, headline, sentence, hero picture |
+| Figures | up to 4 (value and label) |
+| About | introduction and up to 6 points |
+| Courses | show duration, show fee, and a picture for each course |
+| Why us, How it works | up to 9 cards, up to 6 steps (icons are picked in order) |
+| Gallery | up to 18 photos with captions |
+| Trainers | up to 12: photo, name, role |
+| Hiring partners | up to 18 logos (or names), only companies that agree to be shown |
+| Student feedback | up to 6: name, photo, course or job, words, only with the student's permission |
+| Questions and answers | up to 14 |
+| Links | WhatsApp number, Instagram, YouTube, Facebook, LinkedIn, the floating WhatsApp button and its first message, a Google Maps embed address |
+| Sections shown | untick to leave a section out |
+
+## How it is stored
+
+- The wording is one JSON document in `institute_settings.site_config` (migration V14), read anonymously through `GET /api/public/branding/site` and saved with `PUT /api/branding/site-config` (administrator only, at most 60,000 characters). It is separate from `ui_config` because every page load downloads that one.
+- Pictures are rows in `site_images` (V14), served by id from `/api/public/branding/site-images/{id}` and cached for a month because the bytes never change under an id. The browser shrinks each picture before sending (about 1,600 pixels, less for logos and portraits); the server accepts PNG, JPEG or WebP up to 2 MB and refuses SVG, and holds at most 120 pictures.
+- A picture taken off the page is deleted from the server only when the page is saved, so leaving the screen without saving never breaks the live page.
+- Reading the JSON on the page never throws: unknown or malformed parts are ignored. Links must be web addresses or paths of this site (so stored text can never become a script), picture ids must be digits, and a map address must be a Google Maps embed address.
+
+## Tests
+
+`home-page.test.tsx` (the Login button, the fallback name `SutraVidya`, the administrator's wording, hidden sections, Marathi), `site-config.test.ts` (parsing, limits, unsafe links, picture ids), and the backend `SiteContentServiceTest` (saving, invalid JSON, picture type and limit, missing pictures).

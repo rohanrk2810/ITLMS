@@ -447,7 +447,7 @@ function PortalTab() {
         <Button disabled={save.isPending} onClick={() => save.mutate(cfg)}>
           {save.isPending ? 'Saving...' : 'Save'}
         </Button>
-        <Button variant="outline" onClick={() => setCfg({ ...DEFAULT_UI_CONFIG, site: cfg.site })}>
+        <Button variant="outline" onClick={() => setCfg(DEFAULT_UI_CONFIG)}>
           Reset everything
         </Button>
       </div>

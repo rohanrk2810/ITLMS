@@ -88,6 +88,10 @@ public class InstituteSettings {
     @Column(name = "ui_config", nullable = false)
     private String uiConfig = "{}";
 
+    /** The public website's wording: a JSON document the browser applies (V14). */
+    @Column(name = "site_config", nullable = false)
+    private String siteConfig = "{}";
+
     /** Bumped on every change; part of the image URLs so browsers refetch after an edit. */
     private long version = 1;
 

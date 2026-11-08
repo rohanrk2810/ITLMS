@@ -45,7 +45,7 @@ Owns accounts, credentials, sessions. Does **not** own student/trainer profiles 
 | expires_at, used_at | | `used_at` makes the token single-use |
 | requested_ip, created_at | | |
 
-### `institute_settings` (V3, V4, V7, V10)
+### `institute_settings` (V3, V4, V7, V10, V14)
 One row only (`id` = 1): each institute runs its own deployment and database.
 | Column | Type | Notes |
 |---|---|---|
@@ -58,6 +58,7 @@ One row only (`id` = 1): each institute runs its own deployment and database.
 | logo_type, favicon_type, login_background_type | | Content type, decided from the file's bytes |
 | student_hidden_menu | TEXT | Comma-separated app paths students do not see (V7) |
 | ui_config | TEXT | **V10.** JSON document of the portal customization: theme, menus per role, hidden dashboard blocks, login text, renamed words. Default `{}`; stored as text, read and applied by the browser |
+| site_config | TEXT | **V14.** JSON document of the public website's wording in English and Marathi (texts, links, picture ids). Kept apart from `ui_config` because every page load downloads that one and only the website reads this |
 | version | BIGINT | Bumped on every change; part of the image URLs |
 | updated_at, updated_by | | |
 
@@ -67,6 +68,18 @@ One row only (`id` = 1): each institute runs its own deployment and database.
 
 Owns leads, student and trainer profiles, and their documents. `user_id` columns are *cross-svc* → identity-service, indexed and unique but not FK-constrained.
 
+
+### `site_images` (V14)
+
+| Column | Type | Notes |
+|---|---|---|
+| id | BIGSERIAL | PK; the website's JSON stores this id |
+| content_type | VARCHAR(40) | Decided from the file's bytes (PNG, JPEG, WebP); SVG is refused |
+| data | BYTEA | The picture, at most 2 MB (the browser shrinks it first) |
+| size_bytes | INTEGER | |
+| created_by, created_at | | The administrator and the time |
+| | | At most 120 pictures; pictures taken off the page are deleted when the page is saved |
+
 ### `leads` (Doc S6.4)
 | Column | Type | Notes |
 |---|---|---|

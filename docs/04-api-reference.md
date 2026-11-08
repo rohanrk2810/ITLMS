@@ -98,6 +98,11 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | PUT | /api/branding | ADMIN_ONLY | Name, tagline, colour, contact and signatory |
 | POST / DELETE | /api/branding/logo, /favicon, /login-background | ADMIN_ONLY | Upload or remove an image |
 | PUT | /api/branding/student-menu | ADMIN_ONLY | Sidebar paths students do not see |
+| GET | /api/public/branding/site | public | The public website's wording as JSON text (English and Marathi texts, links, picture ids) |
+| GET | /api/public/branding/site-images/{id} | public | A website picture's bytes (cached for a month; the bytes never change under an id) |
+| PUT | /api/branding/site-config | ADMIN_ONLY | Save the website's JSON (an object, at most 60,000 characters) |
+| POST | /api/branding/site-images | ADMIN_ONLY | Upload a website picture (PNG, JPEG or WebP, 2 MB at most, 120 in all); returns `{id, url}` |
+| DELETE | /api/branding/site-images/{id} | ADMIN_ONLY | Remove a website picture |
 | PUT | /api/branding/ui-config | ADMIN_ONLY | Portal customization: body `{ "config": "<JSON object as text>" }`, at most 20,000 characters, `400`-class error `INVALID_UI_CONFIG` if it is not a JSON object. Holds the theme (main colour, dark/light look, corners, text size, default mode), menus per role (hidden, order, names), hidden dashboard blocks, login welcome/footer text and renamed words. Audited `BRANDING_UI_CONFIG_UPDATED` |
 
 ---

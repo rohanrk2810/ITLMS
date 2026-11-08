@@ -64,3 +64,26 @@ export async function removeBrandingImage(kind: BrandingImageKind): Promise<Bran
 export function assetUrl(path: string | null): string | null {
   return path ? `${env.apiBaseUrl}${path}` : null
 }
+
+/** Anonymous: the public front page reads its wording here. The text is JSON; see lib/site-config. */
+export async function getSiteConfig(): Promise<{ config: string }> {
+  const { data } = await apiClient.get<{ config: string }>('/api/public/branding/site')
+  return data
+}
+
+export async function updateSiteConfig(config: string): Promise<{ config: string }> {
+  const { data } = await apiClient.put<{ config: string }>('/api/branding/site-config', { config })
+  return data
+}
+
+/** Adds a picture for the website and returns its id (store that in the website content). */
+export async function uploadSiteImage(file: Blob, name = 'photo.jpg'): Promise<{ id: number; url: string }> {
+  const form = new FormData()
+  form.append('file', file, name)
+  const { data } = await apiClient.post<{ id: number; url: string }>('/api/branding/site-images', form)
+  return data
+}
+
+export async function deleteSiteImage(id: string | number): Promise<void> {
+  await apiClient.delete(`/api/branding/site-images/${id}`)
+}
