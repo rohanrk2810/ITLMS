@@ -75,6 +75,8 @@ describe('map address', () => {
     expect(cleanMapUrl(iframe)).toBe('https://www.google.com/maps/embed?pb=!1m18')
     expect(cleanMapUrl('https://maps.app.goo.gl/wciiBgChLTaB2wYH9')).toBe('https://maps.app.goo.gl/wciiBgChLTaB2wYH9')
     expect(cleanMapUrl('https://www.google.com/maps/place/Pune')).toContain('/maps/place/')
+    expect(cleanMapUrl('maps.app.goo.gl/wciiBgChLTaB2wYH9')).toBe('https://maps.app.goo.gl/wciiBgChLTaB2wYH9')
+    expect(cleanMapUrl('http://maps.app.goo.gl/x')).toBe('')
   })
 
   it('refuses anything that is not Google Maps', () => {
