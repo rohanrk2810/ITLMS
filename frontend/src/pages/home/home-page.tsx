@@ -4,7 +4,6 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   ClockIcon,
-  GlobeIcon,
   MailIcon,
   MapPinIcon,
   MenuIcon,
@@ -24,11 +23,10 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { type Lang, type SiteConfig, isMapEmbed, phoneDigits, pick, siteImageUrl, useSite } from '@/lib/site-config'
+import { type SiteConfig, isMapEmbed, phoneDigits, pick, siteImageUrl, useSite } from '@/lib/site-config'
 import { useBranding } from '@/lib/use-branding'
 import { useNormalTextSize } from '@/lib/use-normal-text-size'
 import { useReveal } from '@/lib/use-reveal'
-import { useSiteLang } from '@/lib/use-site-lang'
 import { useAuthStore } from '@/stores/auth-store'
 
 import {
@@ -43,7 +41,7 @@ import {
   FEATURE_ICONS,
   NAV_IDS,
   type Strings,
-  strings,
+  S,
 } from './home-content'
 import { EnquiryForm } from './enquiry-form'
 
@@ -76,8 +74,7 @@ function Section({ id, title, intro, children, tone }: { id: string; title: stri
 function Website() {
   const { branding, name } = useBranding()
   const site = useSite()
-  const [lang, setLang] = useSiteLang(site.languageSwitch)
-  const s = strings(lang)
+  const s = S
   const [menuOpen, setMenuOpen] = useState(false)
   const courses = useQuery({ queryKey: ['public-courses'], queryFn: getPublicCourses, staleTime: 5 * 60_000 })
   const list = courses.data?.content ?? []
@@ -96,24 +93,24 @@ function Website() {
   }
   const nav = NAV_IDS.filter((id) => show(id) && has[id])
 
-  const tagline = pick(site.heroTitle, lang, branding?.tagline || pick(DEFAULT_HERO_TITLE, lang))
-  const features = (site.features ?? DEFAULT_FEATURES).map((f, i) => ({ Icon: FEATURE_ICONS[i % FEATURE_ICONS.length], title: pick(f.title, lang), text: pick(f.text, lang) }))
+  const tagline = pick(site.heroTitle, branding?.tagline || pick(DEFAULT_HERO_TITLE))
+  const features = (site.features ?? DEFAULT_FEATURES).map((f, i) => ({ Icon: FEATURE_ICONS[i % FEATURE_ICONS.length], title: pick(f.title), text: pick(f.text) }))
   const steps = site.steps ?? DEFAULT_STEPS
   const aboutPoints = site.aboutPoints ?? DEFAULT_ABOUT_POINTS
   const hero = site.heroImage ? siteImageUrl(site.heroImage) : assetUrl(branding?.loginBackgroundUrl ?? null)
   const stack = Array.from(new Set(list.flatMap((c) => (c.technologyStack ?? '').split(/[,/|]/).map((x) => x.trim()).filter(Boolean)))).slice(0, 14)
   const stats = (
     site.stats ?? [
-      { value: courses.data ? String(courses.data.totalElements) : '–', label: { en: strings('en').statCourses, mr: strings('mr').statCourses } },
-      { value: lang === 'mr' ? 'लाईव्ह' : 'Live', label: { en: strings('en').statClasses, mr: strings('mr').statClasses } },
-      { value: 'QR', label: { en: strings('en').statCertificates, mr: strings('mr').statCertificates } },
-      { value: '24x7', label: { en: strings('en').statNotes, mr: strings('mr').statNotes } },
+      { value: courses.data ? String(courses.data.totalElements) : '–', label: s.statCourses },
+      { value: 'Live', label: s.statClasses },
+      { value: 'QR', label: s.statCertificates },
+      { value: '24x7', label: s.statNotes },
     ]
-  ).map((x) => ({ value: x.value, label: pick(x.label, lang) }))
+  ).map((x) => ({ value: x.value, label: pick(x.label) }))
 
   const whatsappDigits = phoneDigits(site.social.whatsapp)
   const whatsappLink = whatsappDigits
-    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(pick(site.whatsappMessage, lang, pick(DEFAULT_WHATSAPP_MESSAGE, lang)))}`
+    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(pick(site.whatsappMessage, pick(DEFAULT_WHATSAPP_MESSAGE)))}`
     : ''
   const socials = [
     { label: 'WhatsApp', href: whatsappLink },
@@ -122,7 +119,7 @@ function Website() {
     { label: 'Facebook', href: site.social.facebook },
     { label: 'LinkedIn', href: site.social.linkedin },
   ].filter((x) => x.href)
-  const announcement = site.announcement.enabled ? pick(site.announcement.text, lang) : ''
+  const announcement = site.announcement.enabled ? pick(site.announcement.text) : ''
 
   return (
     <div className="min-h-svh bg-background text-foreground">
@@ -145,11 +142,6 @@ function Website() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            {site.languageSwitch && (
-              <Button size="sm" variant="ghost" onClick={() => setLang(lang === 'en' ? 'mr' : 'en')} aria-label="Change language">
-                <GlobeIcon /> {s.switchTo}
-              </Button>
-            )}
             <ThemeToggle />
             <Button asChild size="sm" variant="outline" className="hidden sm:inline-flex">
               <Link to="/register">{s.register}</Link>
@@ -184,7 +176,7 @@ function Website() {
       </header>
 
       <main id="main">
-        <Hero name={name} tagline={tagline} lang={lang} s={s} site={site} image={hero} separate={!!site.heroImage} stats={stats} />
+        <Hero name={name} tagline={tagline} s={s} site={site} image={hero} separate={!!site.heroImage} stats={stats} />
 
         {stack.length > 0 && (
           <div className="overflow-hidden border-y bg-muted/40 py-3" aria-label="Technologies we teach">
@@ -197,12 +189,12 @@ function Website() {
         )}
 
         {show('about') && (
-          <Section id="about" title={`${s.aboutTitle} ${name}`} intro={pick(site.aboutIntro, lang, pick(DEFAULT_ABOUT_INTRO, lang))}>
+          <Section id="about" title={`${s.aboutTitle} ${name}`} intro={pick(site.aboutIntro, pick(DEFAULT_ABOUT_INTRO))}>
             <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-3">
               {aboutPoints.map((point, i) => (
                 <div key={i} className="flex gap-3 rounded-xl border bg-card p-5">
                   <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-                  <p className="text-sm">{pick(point, lang)}</p>
+                  <p className="text-sm">{pick(point)}</p>
                 </div>
               ))}
             </div>
@@ -255,8 +247,8 @@ function Website() {
                   <span className="mb-3 inline-flex size-9 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground">
                     {index + 1}
                   </span>
-                  <h3 className="font-semibold">{pick(step.title, lang)}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{pick(step.text, lang)}</p>
+                  <h3 className="font-semibold">{pick(step.title)}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{pick(step.text)}</p>
                 </li>
               ))}
             </ol>
@@ -265,7 +257,7 @@ function Website() {
 
         {show('gallery') && has.gallery && (
           <Section id="gallery" title={s.galleryTitle}>
-            <Gallery site={site} lang={lang} closeLabel={s.close} />
+            <Gallery site={site} closeLabel={s.close} />
           </Section>
         )}
 
@@ -283,7 +275,7 @@ function Website() {
                   )}
                   <figcaption>
                     <span className="block font-semibold">{person.name}</span>
-                    <span className="block text-sm text-muted-foreground">{pick(person.role, lang)}</span>
+                    <span className="block text-sm text-muted-foreground">{pick(person.role)}</span>
                   </figcaption>
                 </figure>
               ))}
@@ -313,12 +305,12 @@ function Website() {
               {site.testimonials.map((t, i) => (
                 <figure key={i} className="flex flex-col gap-3 rounded-xl border bg-card p-6">
                   <QuoteIcon className="size-5 text-primary" aria-hidden="true" />
-                  <blockquote className="text-sm leading-relaxed">{pick(t.text, lang)}</blockquote>
+                  <blockquote className="text-sm leading-relaxed">{pick(t.text)}</blockquote>
                   <figcaption className="mt-auto flex items-center gap-3 text-sm">
                     {t.image && <img src={siteImageUrl(t.image)} alt="" loading="lazy" className="size-10 rounded-full object-cover" />}
                     <span>
                       <span className="block font-semibold">{t.name}</span>
-                      {pick(t.role, lang) && <span className="block text-xs text-muted-foreground">{pick(t.role, lang)}</span>}
+                      {pick(t.role) && <span className="block text-xs text-muted-foreground">{pick(t.role)}</span>}
                     </span>
                   </figcaption>
                 </figure>
@@ -334,13 +326,13 @@ function Website() {
                 <details key={i} className="group rounded-xl border bg-card p-4 open:shadow-sm">
                   <summary className="cursor-pointer list-none font-medium marker:hidden [&::-webkit-details-marker]:hidden">
                     <span className="flex items-center justify-between gap-3">
-                      {pick(item.q, lang)}
+                      {pick(item.q)}
                       <span className="text-primary transition-transform group-open:rotate-45" aria-hidden="true">
                         +
                       </span>
                     </span>
                   </summary>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{pick(item.a, lang)}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{pick(item.a)}</p>
                 </details>
               ))}
             </div>
@@ -349,7 +341,7 @@ function Website() {
 
         {show('enquiry') && (
           <Section id="enquiry" title={s.enquiryTitle} intro={s.enquiryIntro} tone="muted">
-            <EnquiryForm courses={list} lang={lang} />
+            <EnquiryForm courses={list} />
           </Section>
         )}
 
@@ -441,7 +433,6 @@ function AnnouncementBar({ text, link }: { text: string; link: string }) {
 function Hero({
   name,
   tagline,
-  lang,
   s,
   site,
   image,
@@ -450,7 +441,6 @@ function Hero({
 }: {
   name: string
   tagline: string
-  lang: Lang
   s: Strings
   site: SiteConfig
   image: string | null
@@ -460,13 +450,13 @@ function Hero({
   const copy = (
     <>
       <span className="rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-        {pick(site.heroBadge, lang, pick(DEFAULT_HERO_BADGE, lang))}
+        {pick(site.heroBadge, pick(DEFAULT_HERO_BADGE))}
       </span>
       <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
         {name}
         <span className="mt-2 block bg-gradient-to-r from-primary to-foreground bg-clip-text pb-2 leading-[1.2] text-transparent">{tagline}</span>
       </h1>
-      <p className="max-w-2xl text-lg text-muted-foreground">{pick(site.heroText, lang, pick(DEFAULT_HERO_TEXT, lang))}</p>
+      <p className="max-w-2xl text-lg text-muted-foreground">{pick(site.heroText, pick(DEFAULT_HERO_TEXT))}</p>
       <div className={`flex flex-wrap gap-3 ${separate ? '' : 'justify-center'}`}>
         <Button asChild size="lg">
           <a href="#enquiry">
@@ -539,7 +529,7 @@ function CourseCard({ course, site, s }: { course: CourseSummaryResponse; site: 
   )
 }
 
-function Gallery({ site, lang, closeLabel }: { site: SiteConfig; lang: Lang; closeLabel: string }) {
+function Gallery({ site, closeLabel }: { site: SiteConfig; closeLabel: string }) {
   const [open, setOpen] = useState<number | null>(null)
   const photo = open === null ? null : site.gallery[open]
   return (
@@ -550,7 +540,7 @@ function Gallery({ site, lang, closeLabel }: { site: SiteConfig; lang: Lang; clo
             <button type="button" onClick={() => setOpen(i)} className="group relative block aspect-[4/3] w-full overflow-hidden rounded-xl border">
               <img
                 src={siteImageUrl(item.image)}
-                alt={pick(item.caption, lang)}
+                alt={pick(item.caption)}
                 loading="lazy"
                 className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
@@ -560,12 +550,12 @@ function Gallery({ site, lang, closeLabel }: { site: SiteConfig; lang: Lang; clo
       </ul>
       <Dialog open={photo !== null} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-w-4xl p-2">
-          <DialogTitle className="sr-only">{photo ? pick(photo.caption, lang) || 'Photo' : 'Photo'}</DialogTitle>
+          <DialogTitle className="sr-only">{photo ? pick(photo.caption) || 'Photo' : 'Photo'}</DialogTitle>
           <DialogDescription className="sr-only">{closeLabel}</DialogDescription>
           {photo && (
             <figure>
-              <img src={siteImageUrl(photo.image)} alt={pick(photo.caption, lang)} className="max-h-[75vh] w-full rounded-md object-contain" />
-              {pick(photo.caption, lang) && <figcaption className="p-2 text-center text-sm text-muted-foreground">{pick(photo.caption, lang)}</figcaption>}
+              <img src={siteImageUrl(photo.image)} alt={pick(photo.caption)} className="max-h-[75vh] w-full rounded-md object-contain" />
+              {pick(photo.caption) && <figcaption className="p-2 text-center text-sm text-muted-foreground">{pick(photo.caption)}</figcaption>}
             </figure>
           )}
         </DialogContent>

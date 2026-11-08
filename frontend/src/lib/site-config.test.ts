@@ -8,27 +8,32 @@ describe('parseSite', () => {
     expect(site.stats).toBeUndefined()
     expect(site.features).toBeUndefined()
     expect(site.gallery).toEqual([])
-    expect(site.languageSwitch).toBe(false)
     expect(site.courseCards.showDuration).toBe(true)
     expect(site.courseCards.showFee).toBe(false)
   })
 
-  it('keeps both languages, drops blanks and caps the lists', () => {
-    const many = Array.from({ length: 30 }, (_, i) => ({ image: String(i + 1), caption: { en: 'x', mr: 'य' } }))
+  it('keeps plain text, drops blanks and caps the lists', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({ image: String(i + 1), caption: 'x' }))
     const site = parseSite(
       JSON.stringify({
-        heroTitle: { en: 'Learn. Build.', mr: 'शिका. घडा.' },
-        gallery: [...many, { image: '', caption: { en: 'no picture', mr: '' } }],
-        faqs: [{ q: { en: 'Fees?', mr: '' }, a: { en: 'Ask us', mr: '' } }, { q: { en: '', mr: '' }, a: { en: 'orphan', mr: '' } }],
-        stats: [{ value: '', label: { en: '', mr: '' } }],
+        heroTitle: 'Learn. Build.',
+        gallery: [...many, { image: '', caption: 'no picture' }],
+        faqs: [{ q: 'Fees?', a: 'Ask us' }, { q: '', a: 'orphan' }],
+        stats: [{ value: '', label: '' }],
         hidden: ['faq'],
       }),
     )
-    expect(site.heroTitle).toEqual({ en: 'Learn. Build.', mr: 'शिका. घडा.' })
+    expect(site.heroTitle).toBe('Learn. Build.')
     expect(site.gallery).toHaveLength(18)
-    expect(site.faqs).toHaveLength(1)
+    expect(site.faqs).toEqual([{ q: 'Fees?', a: 'Ask us' }])
     expect(site.stats).toBeUndefined()
     expect(site.hidden).toEqual(['faq'])
+  })
+
+  it('still reads content saved while the site had two languages, keeping the English', () => {
+    const site = parseSite(JSON.stringify({ heroTitle: { en: 'Learn. Build.', mr: 'शिका.' }, faqs: [{ q: { en: 'Fees?', mr: '' }, a: { en: 'Ask us', mr: '' } }] }))
+    expect(site.heroTitle).toBe('Learn. Build.')
+    expect(site.faqs).toEqual([{ q: 'Fees?', a: 'Ask us' }])
   })
 
   it('accepts only picture ids made of digits', () => {
@@ -57,11 +62,10 @@ describe('parseSite', () => {
 })
 
 describe('pick', () => {
-  it('uses the chosen language, then the standard wording, then the other language', () => {
-    expect(pick({ en: 'Hello', mr: 'नमस्कार' }, 'mr')).toBe('नमस्कार')
-    expect(pick({ en: 'Hello', mr: '' }, 'mr', 'standard')).toBe('standard')
-    expect(pick({ en: 'Hello', mr: '' }, 'mr')).toBe('Hello')
-    expect(pick(undefined, 'en', 'fallback')).toBe('fallback')
+  it('uses the text, or the standard wording when it is empty', () => {
+    expect(pick('Hello')).toBe('Hello')
+    expect(pick('', 'standard')).toBe('standard')
+    expect(pick(undefined, 'fallback')).toBe('fallback')
   })
 })
 

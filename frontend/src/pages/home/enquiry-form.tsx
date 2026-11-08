@@ -10,13 +10,11 @@ import { sendEnquiry } from '@/api/public-site'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { Lang } from '@/lib/site-config'
 
-import { strings } from './home-content'
+import { S as s } from './home-content'
 
 /** The public enquiry form. It lands in the admission team's leads list. */
-export function EnquiryForm({ courses, lang }: { courses: CourseSummaryResponse[]; lang: Lang }) {
-  const s = strings(lang)
+export function EnquiryForm({ courses }: { courses: CourseSummaryResponse[] }) {
   const [form, setForm] = useState({ name: '', phone: '', email: '', courseId: '', message: '', website: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [sent, setSent] = useState(false)
@@ -123,7 +121,7 @@ export function EnquiryForm({ courses, lang }: { courses: CourseSummaryResponse[
         <Link to="/privacy" className="underline">
           {s.privacy}
         </Link>
-        {lang === 'mr' ? ' मान्य करता.' : '.'}
+        .
       </p>
     </form>
   )
