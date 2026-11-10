@@ -20,7 +20,8 @@ public interface AdmissionClient {
     @PostMapping("/api/students/internal/lookup")
     List<Student> lookup(@RequestBody List<Long> studentIds);
 
-    record Student(Long id, Long userId, String studentCode, String fullName, String status) {
+    record Student(Long id, Long userId, String studentCode, String fullName, String phone,
+                   String status) {
     }
 
     /** The photo the student gave at admission. A 404 (no photo yet) or an unreachable service comes back as null. */
@@ -30,7 +31,8 @@ public interface AdmissionClient {
     @PostMapping("/api/trainers/internal/lookup")
     List<Trainer> lookupTrainers(@RequestBody List<Long> trainerIds);
 
-    record Trainer(Long id, Long userId, String employeeCode, String fullName, String status) {
+    record Trainer(Long id, Long userId, String employeeCode, String fullName, String phone,
+                   String status) {
     }
 
     @Slf4j

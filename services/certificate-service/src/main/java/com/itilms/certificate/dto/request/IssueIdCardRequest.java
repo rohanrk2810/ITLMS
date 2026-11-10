@@ -26,6 +26,10 @@ public record IssueIdCardRequest(
         @Size(max = 120)
         String designation,
 
+        @Schema(description = "Staff only: the phone number to print")
+        @Size(max = 30)
+        String phone,
+
         @Schema(description = "Students only: the batch to print on the card")
         Long batchId,
 

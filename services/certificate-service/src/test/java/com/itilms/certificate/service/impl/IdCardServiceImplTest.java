@@ -71,7 +71,7 @@ class IdCardServiceImplTest {
     }
 
     private static IssueIdCardRequest student(Long id, Long batchId) {
-        return new IssueIdCardRequest(IdCardPersonType.STUDENT, id, null, null, batchId, null);
+        return new IssueIdCardRequest(IdCardPersonType.STUDENT, id, null, null, null, batchId, null);
     }
 
     private LocalDate today() {
@@ -84,7 +84,7 @@ class IdCardServiceImplTest {
     void studentCardCopiesTheirDetailsAndEndsWithTheBatch() {
         signInAs("ADMIN", 1L);
         when(admissionClient.lookup(List.of(30L)))
-                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", "ACTIVE")));
+                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", null, "ACTIVE")));
         LocalDate end = today().plusMonths(5);
         when(batchClient.batch(9L)).thenReturn(new BatchClient.BatchInfo(9L, "B-9", "Morning Batch", end));
 
@@ -104,7 +104,7 @@ class IdCardServiceImplTest {
     void studentWithoutABatchEndDateGetsOneYear() {
         signInAs("COORDINATOR", 1L);
         when(admissionClient.lookup(List.of(30L)))
-                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", "ACTIVE")));
+                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", null, "ACTIVE")));
 
         var response = service.issue(student(30L, null));
 
@@ -115,9 +115,9 @@ class IdCardServiceImplTest {
     void trainerCardUsesTheEmployeeCode() {
         signInAs("ADMIN", 1L);
         when(admissionClient.lookupTrainers(List.of(3L)))
-                .thenReturn(List.of(new AdmissionClient.Trainer(3L, 11L, "EMP-3", "Ravi Kulkarni", "ACTIVE")));
+                .thenReturn(List.of(new AdmissionClient.Trainer(3L, 11L, "EMP-3", "Ravi Kulkarni", null, "ACTIVE")));
 
-        var response = service.issue(new IssueIdCardRequest(IdCardPersonType.TRAINER, 3L, null, null, null, null));
+        var response = service.issue(new IssueIdCardRequest(IdCardPersonType.TRAINER, 3L, null, null, null, null, null));
 
         assertThat(response.cardNo()).startsWith("TRN-");
         assertThat(response.personCode()).isEqualTo("EMP-3");
@@ -129,7 +129,7 @@ class IdCardServiceImplTest {
         signInAs("ADMIN", 1L);
 
         assertThatThrownBy(() -> service.issue(
-                new IssueIdCardRequest(IdCardPersonType.STAFF, null, "  ", "Accountant", null, null)))
+                new IssueIdCardRequest(IdCardPersonType.STAFF, null, "  ", "Accountant", null, null, null)))
                 .isInstanceOf(BusinessRuleException.class);
     }
 
@@ -137,8 +137,8 @@ class IdCardServiceImplTest {
     void staffCardUsesTheTitleOrFallsBackToStaff() {
         signInAs("ADMIN", 1L);
 
-        var titled = service.issue(new IssueIdCardRequest(IdCardPersonType.STAFF, null, "Meera", "Accountant", null, null));
-        var plain = service.issue(new IssueIdCardRequest(IdCardPersonType.STAFF, null, "Meera", null, null, null));
+        var titled = service.issue(new IssueIdCardRequest(IdCardPersonType.STAFF, null, "Meera", "Accountant", null, null, null));
+        var plain = service.issue(new IssueIdCardRequest(IdCardPersonType.STAFF, null, "Meera", null, null, null, null));
 
         assertThat(titled.designation()).isEqualTo("Accountant");
         assertThat(plain.designation()).isEqualTo("Staff");
@@ -149,7 +149,7 @@ class IdCardServiceImplTest {
     void aStudentWhoDroppedOutGetsNoCard() {
         signInAs("ADMIN", 1L);
         when(admissionClient.lookup(List.of(30L)))
-                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", "DROPPED")));
+                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", null, "DROPPED")));
 
         assertThatThrownBy(() -> service.issue(student(30L, null))).isInstanceOf(BusinessRuleException.class);
         verify(cards, never()).save(any());
@@ -168,14 +168,14 @@ class IdCardServiceImplTest {
         signInAs("ADMIN", 1L);
 
         assertThatThrownBy(() -> service.issue(new IssueIdCardRequest(IdCardPersonType.STAFF, null, "Meera", null,
-                null, today().minusDays(1)))).isInstanceOf(BusinessRuleException.class);
+                null, null, today().minusDays(1)))).isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
     void aNewCardRevokesTheOneStillInForce() {
         signInAs("ADMIN", 1L);
         when(admissionClient.lookup(List.of(30L)))
-                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", "ACTIVE")));
+                .thenReturn(List.of(new AdmissionClient.Student(30L, 7L, "STU-30", "Asha Patil", null, "ACTIVE")));
         IdCard old = IdCard.builder().id(5L).personType(IdCardPersonType.STUDENT).personId(30L).cardNo("STU-2026-0001")
                 .fullName("Asha Patil").validUntil(today().plusMonths(2)).build();
         when(cards.findByPersonTypeAndPersonIdAndStatus(IdCardPersonType.STUDENT, 30L, IdCardStatus.ISSUED))

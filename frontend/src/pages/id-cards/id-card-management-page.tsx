@@ -264,6 +264,7 @@ function IssueDialog({
   const [trainerId, setTrainerId] = useState<number | ''>('')
   const [name, setName] = useState('')
   const [title, setTitle] = useState('')
+  const [phone, setPhone] = useState('')
   const [validUntil, setValidUntil] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
 
@@ -291,6 +292,7 @@ function IssueDialog({
         batchId: personType === 'STUDENT' && batchId ? batchId : undefined,
         fullName: personType === 'STAFF' ? name : undefined,
         designation: personType === 'STAFF' && title.trim() ? title : undefined,
+        phone: personType === 'STAFF' && phone.trim() ? phone.trim() : undefined,
         validUntil: validUntil || undefined,
       })
       if (photo) {
@@ -415,6 +417,10 @@ function IssueDialog({
               <div className="flex flex-col gap-2">
                 <Label htmlFor="card-title">Title (for example Accountant)</Label>
                 <Input id="card-title" value={title} onChange={(event) => setTitle(event.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="card-phone">Phone number</Label>
+                <Input id="card-phone" value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={30} />
               </div>
             </>
           )}
