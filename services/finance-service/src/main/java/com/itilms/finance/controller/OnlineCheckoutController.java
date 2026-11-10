@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.CheckoutConfig;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.ConfirmRequest;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.CreateOrderRequest;
+import com.itilms.finance.dto.request.OnlineCheckoutDtos.FeeOrderRequest;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.OrderCreated;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.OrderStatus;
 import com.itilms.finance.online.OnlineCheckoutService;
@@ -44,6 +45,13 @@ public class OnlineCheckoutController {
     @PostMapping("/orders")
     public ResponseEntity<OrderCreated> create(@Valid @RequestBody CreateOrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.createOrder(request));
+    }
+
+    @Operation(summary = "Pay a fee plan online", description = "Students only, for their own fee plan: an installment, part or all of the balance.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/fee-orders")
+    public ResponseEntity<OrderCreated> createFeeOrder(@Valid @RequestBody FeeOrderRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.createFeeOrder(request));
     }
 
     @Operation(summary = "The payment finished", description = "Checks Razorpay's signature, records the fee and receipt, "

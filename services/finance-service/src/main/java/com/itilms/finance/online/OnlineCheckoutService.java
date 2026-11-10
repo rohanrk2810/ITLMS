@@ -29,13 +29,16 @@ import com.itilms.finance.config.RazorpayProperties;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.CheckoutConfig;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.ConfirmRequest;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.CreateOrderRequest;
+import com.itilms.finance.dto.request.OnlineCheckoutDtos.FeeOrderRequest;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.OrderCreated;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.OrderStatus;
 import com.itilms.finance.dto.request.RecordPaymentRequest;
 import com.itilms.finance.entity.FeePlan;
 import com.itilms.finance.entity.FeePlanStatus;
 import com.itilms.finance.entity.OnlineOrder;
+import com.itilms.finance.ledger.FeeLedger;
 import com.itilms.finance.repository.FeePlanRepository;
+import com.itilms.finance.repository.PaymentRepository;
 import com.itilms.finance.repository.OnlineOrderRepository;
 import com.itilms.finance.service.FeePlanService;
 import com.itilms.finance.service.PaymentService;
@@ -61,6 +64,7 @@ public class OnlineCheckoutService {
     private final RazorpayGateway gateway;
     private final OnlineOrderRepository orders;
     private final FeePlanRepository plans;
+    private final PaymentRepository paymentRepository;
     private final FeePlanService feePlans;
     private final PaymentService payments;
     private final CourseClient courses;
@@ -72,7 +76,8 @@ public class OnlineCheckoutService {
     private final TransactionTemplate tx;
 
     public OnlineCheckoutService(RazorpayProperties razorpay, RazorpayGateway gateway, OnlineOrderRepository orders,
-                                 FeePlanRepository plans, FeePlanService feePlans, PaymentService payments,
+                                 FeePlanRepository plans, PaymentRepository paymentRepository,
+                                 FeePlanService feePlans, PaymentService payments,
                                  CourseClient courses, BatchClient batches, AdmissionClient admission,
                                  FinanceProperties props, EventPublisher events, ObjectMapper json,
                                  PlatformTransactionManager txm) {
@@ -80,6 +85,7 @@ public class OnlineCheckoutService {
         this.gateway = gateway;
         this.orders = orders;
         this.plans = plans;
+        this.paymentRepository = paymentRepository;
         this.feePlans = feePlans;
         this.payments = payments;
         this.courses = courses;
@@ -143,6 +149,55 @@ public class OnlineCheckoutService {
                 props.getCurrency(), course.title());
     }
 
+    /**
+     * Starts a payment against a fee plan the student already has: the whole balance, or any part of it (an
+     * installment). The student must own the plan, it must still be live, and the amount cannot be more than is owed,
+     * so what Razorpay charges is always something the ledger can accept.
+     */
+    public OrderCreated createFeeOrder(FeeOrderRequest request) {
+        if (!razorpay.enabled()) {
+            throw new BusinessRuleException("Online payment is not set up yet. Please pay at the institute.");
+        }
+        AppPrincipal me = student();
+        FeePlan plan = plans.findWithInstallmentsById(request.feePlanId())
+                .filter(p -> p.getStudentId().equals(me.profileId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Fee plan", request.feePlanId()));
+        if (plan.getStatus() != FeePlanStatus.ACTIVE) {
+            throw new BusinessRuleException("There is nothing to pay on this fee plan.");
+        }
+        BigDecimal outstanding = FeeLedger.of(plan,
+                paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(plan.getId()),
+                LocalDate.now(props.getZone())).outstanding();
+        if (outstanding.signum() <= 0) {
+            throw new BusinessRuleException("Your fees for this course are fully paid.");
+        }
+        BigDecimal amount = request.amount() == null ? outstanding : request.amount().setScale(2, RoundingMode.HALF_UP);
+        if (amount.compareTo(new BigDecimal("1.00")) < 0) {
+            throw new BusinessRuleException("The smallest online payment is 1 rupee.");
+        }
+        if (amount.compareTo(outstanding) > 0) {
+            throw new BusinessRuleException("That is more than the %s %s still owed."
+                    .formatted(props.getCurrencySymbol(), outstanding.toPlainString()));
+        }
+
+        String receipt = "fee%d-st%d-%d".formatted(plan.getId(), me.profileId(), Instant.now().getEpochSecond());
+        String razorpayOrderId = gateway.createOrder(amount, plan.getCurrency(), receipt);
+        String title = courseTitle(plan.getCourseId());
+        orders.save(OnlineOrder.builder()
+                .razorpayOrderId(razorpayOrderId)
+                .kind(OnlineOrder.Kind.FEES)
+                .studentId(me.profileId())
+                .studentUserId(me.userId())
+                .courseId(plan.getCourseId())
+                .courseTitle(title)
+                .feePlanId(plan.getId())
+                .amount(amount)
+                .currency(plan.getCurrency())
+                .build());
+        return new OrderCreated(razorpayOrderId, razorpay.getKeyId(), amount.movePointRight(2).longValueExact(),
+                plan.getCurrency(), "Fee payment: " + title);
+    }
+
     // -----------------------------------------------------------------
     // Student: the payment finished in the browser
     // -----------------------------------------------------------------
@@ -176,6 +231,9 @@ public class OnlineCheckoutService {
         if (order.getStatus() == OnlineOrder.Status.CREATED) {
             throw new BusinessRuleException("This order has not been paid.");
         }
+        if (order.getKind() == OnlineOrder.Kind.FEES) {
+            return status(order, null, "Payment received. Your receipt has been emailed to you and is under Fees.");
+        }
         if (order.getStatus() == OnlineOrder.Status.ENROLLED) {
             return status(order, null, "You are enrolled. The course is open in My courses.");
         }
@@ -205,6 +263,17 @@ public class OnlineCheckoutService {
         OnlineOrder order = orders.lockByRazorpayOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
         if (order.getStatus() != OnlineOrder.Status.CREATED) {
+            return;
+        }
+        if (order.getKind() == OnlineOrder.Kind.FEES) {
+            var payment = payments.record(new RecordPaymentRequest(order.getFeePlanId(), order.getAmount(), null, "ONLINE",
+                    paymentId, "Razorpay order " + orderId));
+            order.setRazorpayPaymentId(paymentId);
+            order.setPaymentId(payment.id());
+            order.setPaidAt(Instant.now());
+            order.setStatus(OnlineOrder.Status.PAID);
+            events.audit(SERVICE_NAME, "ONLINE_FEE_PAYMENT_RECEIVED", "OnlineOrder", order.getId(), null,
+                    java.util.Map.of("orderId", orderId, "paymentId", paymentId, "amount", order.getAmount().toPlainString()));
             return;
         }
         AdmissionClient.StudentSummary student = admission.lookup(List.of(order.getStudentId())).stream()
@@ -295,9 +364,28 @@ public class OnlineCheckoutService {
         return order;
     }
 
+    /**
+     * What is reported about an order. A payment against a fee plan is reported as FEES_PAID, never PAID or ENROLLED:
+     * batch-service places a student in a batch only on a paid course purchase, and paying an installment must not be
+     * usable as one.
+     */
     private static OrderStatus status(OnlineOrder o, String batchCode, String message) {
-        return new OrderStatus(o.getRazorpayOrderId(), o.getStatus().name(), o.getStudentId(), o.getCourseId(),
+        String state = o.getKind() == OnlineOrder.Kind.FEES && o.getStatus() != OnlineOrder.Status.CREATED
+                ? "FEES_PAID" : o.getStatus().name();
+        return new OrderStatus(o.getRazorpayOrderId(), state, o.getStudentId(), o.getCourseId(),
                 o.getBatchId(), batchCode, message);
+    }
+
+    private String courseTitle(Long courseId) {
+        try {
+            CourseClient.CourseDetail detail = courses.get(courseId);
+            if (detail != null && detail.course() != null && detail.course().title() != null) {
+                return detail.course().title();
+            }
+        } catch (RuntimeException e) {
+            // fall through to the generic wording
+        }
+        return "your course fee";
     }
 
     private void tellStaff(String title, String message) {

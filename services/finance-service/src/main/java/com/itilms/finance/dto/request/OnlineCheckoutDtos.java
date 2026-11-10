@@ -1,6 +1,10 @@
 package com.itilms.finance.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,6 +21,12 @@ public final class OnlineCheckoutDtos {
 
     public record CreateOrderRequest(@NotNull Long courseId,
                                      @Schema(description = "A batch the student prefers (optional)") Long batchId) {
+    }
+
+    @Schema(description = "Pay part or all of what is owed on a fee plan. Without an amount, the whole balance.")
+    public record FeeOrderRequest(@NotNull Long feePlanId,
+                                  @DecimalMin(value = "1.00", message = "The smallest online payment is 1 rupee")
+                                  @Digits(integer = 10, fraction = 2) BigDecimal amount) {
     }
 
     @Schema(description = "What the browser needs to open Razorpay Checkout. The amount is the course fee, fixed on the server.")

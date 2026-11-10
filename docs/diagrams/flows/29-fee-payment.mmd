@@ -37,6 +37,12 @@ sequenceDiagram
     FI->>K: installment-overdue
     K->>RP: overdue counts for the finance desk
     S->>FI: view my fees and receipts
+    opt pay online from Fees
+        S->>FI: POST /api/payments/online/fee-orders (own plan, amount at most the outstanding)
+        FI-->>S: Razorpay order
+        S->>FI: POST /api/payments/online/verify (signature checked)
+        FI->>FI: record an ONLINE payment on the plan, as for a counter payment
+    end
     FI->>FI: outstanding = net fee - successful payments, computed on every read
     FI-->>S: instalments, receipts, outstanding
     S->>FI: GET /api/payments/{id}/receipt/pdf (own payments only)

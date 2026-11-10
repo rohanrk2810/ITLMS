@@ -16,6 +16,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,12 +34,14 @@ import com.itilms.finance.config.FinanceProperties;
 import com.itilms.finance.config.RazorpayProperties;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.ConfirmRequest;
 import com.itilms.finance.dto.request.OnlineCheckoutDtos.CreateOrderRequest;
+import com.itilms.finance.dto.request.OnlineCheckoutDtos.FeeOrderRequest;
 import com.itilms.finance.dto.request.RecordPaymentRequest;
 import com.itilms.finance.dto.response.PaymentResponse;
 import com.itilms.finance.entity.FeePlan;
 import com.itilms.finance.entity.OnlineOrder;
 import com.itilms.finance.repository.FeePlanRepository;
 import com.itilms.finance.repository.OnlineOrderRepository;
+import com.itilms.finance.repository.PaymentRepository;
 import com.itilms.finance.service.FeePlanService;
 import com.itilms.finance.service.PaymentService;
 
@@ -50,6 +53,7 @@ class OnlineCheckoutServiceTest {
     private final RazorpayGateway gateway = mock(RazorpayGateway.class);
     private final OnlineOrderRepository orders = mock(OnlineOrderRepository.class);
     private final FeePlanRepository plans = mock(FeePlanRepository.class);
+    private final PaymentRepository paymentRepository = mock(PaymentRepository.class);
     private final FeePlanService feePlans = mock(FeePlanService.class);
     private final PaymentService payments = mock(PaymentService.class);
     private final CourseClient courses = mock(CourseClient.class);
@@ -64,7 +68,7 @@ class OnlineCheckoutServiceTest {
         razorpay.setKeySecret("secret");
         PlatformTransactionManager txm = mock(PlatformTransactionManager.class);
         when(txm.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-        service = new OnlineCheckoutService(razorpay, gateway, orders, plans, feePlans, payments, courses, batches,
+        service = new OnlineCheckoutService(razorpay, gateway, orders, plans, paymentRepository, feePlans, payments, courses, batches,
                 admission, new FinanceProperties(), events, new ObjectMapper(), txm);
         AppPrincipal me = new AppPrincipal(7L, "a@x", "Asha", "STUDENT", STUDENT);
         SecurityContextHolder.getContext().setAuthentication(
@@ -190,5 +194,95 @@ class OnlineCheckoutServiceTest {
 
         assertThat(result.status()).isEqualTo("ENROLLED");
         verify(payments, never()).record(any());
+    }
+
+    // -----------------------------------------------------------------
+    // Paying a fee plan that already exists (an installment, or the balance)
+    // -----------------------------------------------------------------
+
+    /** A 30,000 plan in three installments of 10,000, nothing paid yet. */
+    private FeePlan feePlan(long studentId) {
+        FeePlan plan = FeePlan.builder().studentId(studentId).courseId(5L).currency("INR").build();
+        plan.setId(11L);
+        plan.setTerms(new BigDecimal("30000.00"), BigDecimal.ZERO);
+        plan.replaceInstallments(new java.util.ArrayList<>(com.itilms.finance.ledger.ScheduleBuilder.evenSplit(
+                plan.getNetFee(), 3, java.time.LocalDate.of(2026, 1, 1))));
+        return plan;
+    }
+
+    private void ownPlan() {
+        when(plans.findWithInstallmentsById(11L)).thenReturn(Optional.of(feePlan(STUDENT)));
+        when(paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(11L)).thenReturn(List.of());
+        when(gateway.createOrder(any(), anyString(), anyString())).thenReturn("order_fee");
+    }
+
+    @Test
+    void anInstallmentCanBePaidOnline_andWithNoAmountItIsTheWholeBalance() {
+        ownPlan();
+
+        var installment = service.createFeeOrder(new FeeOrderRequest(11L, new BigDecimal("10000")));
+        var balance = service.createFeeOrder(new FeeOrderRequest(11L, null));
+
+        assertThat(installment.amountPaise()).isEqualTo(1_000_000L);
+        assertThat(balance.amountPaise()).isEqualTo(3_000_000L);
+        ArgumentCaptor<OnlineOrder> saved = ArgumentCaptor.forClass(OnlineOrder.class);
+        verify(orders, org.mockito.Mockito.times(2)).save(saved.capture());
+        assertThat(saved.getAllValues()).allSatisfy(o -> {
+            assertThat(o.getKind()).isEqualTo(OnlineOrder.Kind.FEES);
+            assertThat(o.getFeePlanId()).isEqualTo(11L);
+        });
+    }
+
+    @Test
+    void youCannotPayMoreThanIsOwed_orSomeoneElsesPlan_orNothing() {
+        ownPlan();
+        assertThatThrownBy(() -> service.createFeeOrder(new FeeOrderRequest(11L, new BigDecimal("30000.01"))))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("still owed");
+
+        when(plans.findWithInstallmentsById(12L)).thenReturn(Optional.of(feePlan(99L)));
+        assertThatThrownBy(() -> service.createFeeOrder(new FeeOrderRequest(12L, null)))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        FeePlan settled = feePlan(STUDENT);
+        settled.setStatus(com.itilms.finance.entity.FeePlanStatus.SETTLED);
+        when(plans.findWithInstallmentsById(13L)).thenReturn(Optional.of(settled));
+        assertThatThrownBy(() -> service.createFeeOrder(new FeeOrderRequest(13L, null)))
+                .isInstanceOf(BusinessRuleException.class);
+        verify(gateway, org.mockito.Mockito.never()).createOrder(any(), anyString(), anyString());
+    }
+
+    @Test
+    void aVerifiedFeePaymentIsRecordedAgainstThePlanAndNeverPlacesAnyoneInABatch() {
+        OnlineOrder o = OnlineOrder.builder().razorpayOrderId("order_fee").kind(OnlineOrder.Kind.FEES).studentId(STUDENT)
+                .courseId(5L).courseTitle("Java Full Stack").feePlanId(11L).amount(new BigDecimal("10000.00"))
+                .currency("INR").build();
+        when(orders.findByRazorpayOrderId("order_fee")).thenReturn(Optional.of(o));
+        when(orders.lockByRazorpayOrderId("order_fee")).thenReturn(Optional.of(o));
+        when(gateway.validPayment("order_fee", "pay_9", "sig")).thenReturn(true);
+        PaymentResponse paid = mock(PaymentResponse.class);
+        when(paid.id()).thenReturn(31L);
+        when(payments.record(any(RecordPaymentRequest.class))).thenReturn(paid);
+
+        var result = service.confirm(new ConfirmRequest("order_fee", "pay_9", "sig"));
+
+        assertThat(result.status()).isEqualTo("FEES_PAID");
+        assertThat(o.getStatus()).isEqualTo(OnlineOrder.Status.PAID);
+        assertThat(o.getPaymentId()).isEqualTo(31L);
+        ArgumentCaptor<RecordPaymentRequest> request = ArgumentCaptor.forClass(RecordPaymentRequest.class);
+        verify(payments).record(request.capture());
+        assertThat(request.getValue().feePlanId()).isEqualTo(11L);
+        assertThat(request.getValue().method()).isEqualTo("ONLINE");
+        verify(feePlans, org.mockito.Mockito.never()).createFromAdmission(any());
+        verify(batches, never()).paidJoin(any());
+    }
+
+    @Test
+    void aFeePaymentIsNeverReportedAsAPaidCoursePurchase_soItCannotBuyAPlaceInABatch() {
+        OnlineOrder o = OnlineOrder.builder().razorpayOrderId("order_fee").kind(OnlineOrder.Kind.FEES).studentId(STUDENT)
+                .courseId(5L).feePlanId(11L).amount(new BigDecimal("1.00")).currency("INR")
+                .status(OnlineOrder.Status.PAID).build();
+        when(orders.findByRazorpayOrderId("order_fee")).thenReturn(Optional.of(o));
+
+        assertThat(service.get("order_fee").status()).isEqualTo("FEES_PAID");
     }
 }

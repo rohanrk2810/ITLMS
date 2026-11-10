@@ -31,6 +31,9 @@ public class OnlineOrder extends AuditableEntity {
 
     public enum Status { CREATED, PAID, ENROLLED }
 
+    /** COURSE: buying a course. FEES: paying an installment or the balance of an existing fee plan. */
+    public enum Kind { COURSE, FEES }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -66,6 +69,11 @@ public class OnlineOrder extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 12)
     private Status status = Status.CREATED;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 8)
+    private Kind kind = Kind.COURSE;
 
     @Column(name = "fee_plan_id")
     private Long feePlanId;
