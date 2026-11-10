@@ -28,6 +28,7 @@ import { ExportMenu } from '@/components/export-menu'
 import { attendanceReport } from '@/lib/export-rows'
 import { formatDate } from '@/lib/format'
 import { type ClassProvider, newJitsiRoomUrl } from '@/lib/jitsi'
+import { ExtendAccessButton, ExtendBatchButton } from '@/components/extend-validity'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const SESSION_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -46,7 +47,7 @@ export function BatchDetailPage() {
   const batchQuery = useQuery({ queryKey: ['batches', batchId], queryFn: () => getBatch(batchId!), enabled: !!batchId })
   const rosterQuery = useQuery({
     queryKey: ['batches', batchId, 'roster'],
-    queryFn: () => getRoster(batchId!),
+    queryFn: () => getRoster(batchId!, true),
     enabled: !!batchId,
   })
   const sessionsQuery = useQuery({
@@ -91,6 +92,7 @@ export function BatchDetailPage() {
               })
             }
           />
+          {canManage && batch.status !== 'CANCELLED' && <ExtendBatchButton batchId={batch.id} currentEnd={batch.endDate} />}
           <Badge>{batch.status}</Badge>
         </div>
       </div>
@@ -214,7 +216,9 @@ export function BatchDetailPage() {
                   <TableHead>Code</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Enrolled</TableHead>
+                  <TableHead>Access until</TableHead>
                   <TableHead>Status</TableHead>
+                  {canManage && <TableHead />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -227,7 +231,20 @@ export function BatchDetailPage() {
                       </Link>
                     </TableCell>
                     <TableCell>{formatDate(enrollment.enrolledAt)}</TableCell>
-                    <TableCell>{enrollment.status}</TableCell>
+                    <TableCell>{enrollment.accessUntil ? formatDate(enrollment.accessUntil) : 'No limit'}</TableCell>
+                    <TableCell>
+                      <Badge variant={enrollment.status === 'EXPIRED' ? 'destructive' : 'outline'}>{enrollment.status}</Badge>
+                    </TableCell>
+                    {canManage && (
+                      <TableCell>
+                        <ExtendAccessButton
+                          enrollmentId={enrollment.id}
+                          studentName={enrollment.studentName}
+                          accessUntil={enrollment.accessUntil}
+                          expired={enrollment.status === 'EXPIRED'}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

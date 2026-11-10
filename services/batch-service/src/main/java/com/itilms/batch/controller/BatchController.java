@@ -22,6 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.itilms.batch.dto.request.CreateBatchRequest;
 import com.itilms.batch.dto.request.EnrollStudentRequest;
 import com.itilms.batch.dto.request.UpdateBatchRequest;
+import com.itilms.batch.dto.request.ValidityDtos.ExtendAccessRequest;
+import com.itilms.batch.dto.request.ValidityDtos.ExtendBatchRequest;
+import com.itilms.batch.dto.request.ValidityDtos.ExtendBatchResult;
+import com.itilms.batch.service.BatchValidityService;
 import com.itilms.batch.dto.response.BatchResponse;
 import com.itilms.batch.dto.response.BatchSummaryResponse;
 import com.itilms.batch.dto.response.EnrollmentResponse;
@@ -48,6 +52,7 @@ import lombok.RequiredArgsConstructor;
 public class BatchController {
 
     private final BatchService batchService;
+    private final BatchValidityService validity;
 
     @Operation(summary = "List batches")
     @PreAuthorize("isAuthenticated()")
@@ -113,6 +118,25 @@ public class BatchController {
         return batchService.update(id, request);
     }
 
+    @Operation(summary = "Extend a batch",
+            description = "A later end date, with the reason. A finished batch runs again, the students and the "
+                    + "trainer are told, and the change is audited.")
+    @PreAuthorize(Roles.STAFF)
+    @PostMapping("/{id}/extend")
+    public ExtendBatchResult extend(@PathVariable Long id, @Valid @RequestBody ExtendBatchRequest request) {
+        return validity.extendBatch(id, request);
+    }
+
+    @Operation(summary = "Set or extend one student's access to the course",
+            description = "Until a date, with the reason. A student whose access had run out is on the course "
+                    + "again. The student is told and the change is audited.")
+    @PreAuthorize(Roles.STAFF)
+    @PostMapping("/enrollments/{enrollmentId}/access")
+    public EnrollmentResponse extendAccess(@PathVariable Long enrollmentId,
+                                           @Valid @RequestBody ExtendAccessRequest request) {
+        return validity.extendAccess(enrollmentId, request);
+    }
+
     @Operation(summary = "Enrol students",
             description = "Checks capacity and rejects a second active enrolment for the same "
                     + "student (Doc S14). Reports the outcome per student rather than failing "
@@ -128,11 +152,13 @@ public class BatchController {
         return batchService.enroll(id, request);
     }
 
-    @Operation(summary = "Batch roster", description = "Active students in the batch.")
+    @Operation(summary = "Batch roster", description = "Active students in the batch. With includeExpired, also those whose access has run out, "
+                    + "so an administrator can extend them.")
     @PreAuthorize(Roles.ACADEMIC)
     @GetMapping("/{id}/students")
-    public List<EnrollmentResponse> roster(@PathVariable Long id) {
-        return batchService.roster(id);
+    public List<EnrollmentResponse> roster(@PathVariable Long id,
+                                           @RequestParam(defaultValue = "false") boolean includeExpired) {
+        return includeExpired ? validity.rosterWithExpired(id) : batchService.roster(id);
     }
 
     @Operation(summary = "Drop a student from a batch")

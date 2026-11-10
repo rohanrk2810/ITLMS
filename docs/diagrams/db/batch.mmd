@@ -108,6 +108,7 @@ erDiagram
         timestamptz updated_at
         bigint created_by
         bigint updated_by
+        date access_until
     }
     class_sessions ||--o{ attendance : "session_id"
     batches ||--o{ batch_trainers : "batch_id"

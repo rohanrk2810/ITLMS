@@ -12,7 +12,9 @@ public enum EnrollmentStatus {
     COMPLETED,
     DROPPED,
     SUSPENDED,
-    TRANSFERRED;
+    TRANSFERRED,
+    /** The student access end date passed. An administrator can extend it, which opens the enrolment again. */
+    EXPIRED;
 
     public boolean isActive() {
         return this == ACTIVE;

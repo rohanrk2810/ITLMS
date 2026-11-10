@@ -21,6 +21,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long>,
 
     List<Enrollment> findByBatchId(Long batchId);
 
+    /** Active enrolments whose access end date is before the given day: the nightly job closes them. */
+    List<Enrollment> findByStatusAndAccessUntilBefore(EnrollmentStatus status, java.time.LocalDate day);
+
     List<Enrollment> findByStudentId(Long studentId);
 
     /** Whether the student has ever been placed in a batch, whatever became of that place. */
