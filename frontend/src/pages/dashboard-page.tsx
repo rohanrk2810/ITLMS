@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
 import { getDashboardSummary } from '@/api/reporting'
+import { AnimatedNumber } from '@/components/animated-number'
 import { AnnouncementsPanel } from '@/components/announcements-panel'
 import { InstituteCharts, StudentCharts } from '@/components/dashboard-charts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -87,19 +88,20 @@ function InstituteSummary() {
       <div className="flex justify-end">
         <ExportMenu label="Download these figures" report="DASHBOARD" build={async () => dashboardReport(s)} />
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-4">
         {shows('stat-students') && <Stat label="Students admitted" value={s.studentsAdmittedTotal} hint={`+${s.studentsAdmittedLast30Days} in 30 days`} />}
         {shows('stat-enrollments') && <Stat label="Enrollments" value={s.enrollmentsTotal} hint={`+${s.enrollmentsLast30Days} in 30 days`} />}
-        {shows('stat-revenue') && <Stat label="Revenue collected" value={formatMoney(s.revenueCollectedTotal)} hint={`${formatMoney(s.revenueCollectedLast30Days)} in 30 days`} />}
+        {shows('stat-revenue') && <Stat label="Revenue collected" value={s.revenueCollectedTotal} format={formatMoney} hint={`${formatMoney(s.revenueCollectedLast30Days)} in 30 days`} />}
         {shows('stat-overdue') && <Stat
           label="Overdue"
-          value={formatMoney(s.overdueAmountTotal)}
+          value={s.overdueAmountTotal}
+          format={formatMoney}
           hint={`${s.installmentsOverdueTotal} installments`}
           tone={s.installmentsOverdueTotal > 0 ? 'destructive' : undefined}
         />}
         {shows('stat-certificates') && <Stat label="Certificates issued" value={s.certificatesIssuedTotal} />}
         {shows('stat-quizzes') && <Stat label="Quiz attempts" value={s.quizAttemptsTotal} hint={`${s.quizAttemptsPassed} passed`} />}
-        {shows('stat-attendance') && <Stat label="Attendance" value={`${s.attendance.percent}%`} hint={`${s.attendance.present} present, ${s.attendance.absent} absent`} />}
+        {shows('stat-attendance') && <Stat label="Attendance" value={s.attendance.percent} format={(n) => `${Math.round(n)}%`} hint={`${s.attendance.present} present, ${s.attendance.absent} absent`} />}
         {shows('stat-placements') && <Stat label="Placements" value={s.placementsSelectedTotal} hint={`${s.jobsPostedTotal} jobs posted`} />}
       </div>
       {shows('charts') && <InstituteCharts s={s} />}
@@ -112,12 +114,27 @@ function InstituteSummary() {
   )
 }
 
-function Stat({ label, value, hint, tone }: { label: string; value: string | number; hint?: string; tone?: 'destructive' }) {
+function Stat({
+  label,
+  value,
+  format,
+  hint,
+  tone,
+}: {
+  label: string
+  value: number
+  /** How the counting figure is written, such as money or a percentage. */
+  format?: (n: number) => string
+  hint?: string
+  tone?: 'destructive'
+}) {
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
       <CardContent className="pt-6">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`text-xl font-semibold ${tone === 'destructive' ? 'text-destructive' : ''}`}>{value}</p>
+        <p className={`text-xl font-semibold tabular-nums ${tone === 'destructive' ? 'text-destructive' : ''}`}>
+          <AnimatedNumber value={value} format={format} />
+        </p>
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </CardContent>
     </Card>
@@ -145,10 +162,10 @@ function RoleQuickLinks({ role }: { role?: string }) {
   if (links.length === 0) return null
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {links.map((link) => (
         <Link key={link.to} to={link.to}>
-          <Card className="h-full transition-colors hover:border-primary">
+          <Card className="h-full transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-md">
             <CardHeader>
               <CardTitle className="text-base">{link.label}</CardTitle>
               <CardDescription>{link.description}</CardDescription>

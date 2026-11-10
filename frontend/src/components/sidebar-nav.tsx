@@ -44,7 +44,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const items = [...filtered].sort((a, b) => rank(a.to) - rank(b.to))
 
   return (
-    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
+    <nav className="stagger flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
       {items.map((item) => (
         <NavLink
           key={item.to}
@@ -53,15 +53,26 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           className={({ isActive }) =>
             cn(
-              'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 hover:translate-x-0.5',
               isActive
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
             )
           }
         >
-          <item.icon className="size-4" />
-          {menu.labels?.[item.to] || item.label}
+          {({ isActive }) => (
+            <>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute inset-y-1.5 left-0 w-0.5 origin-center rounded-full bg-primary transition-transform duration-300',
+                  isActive ? 'scale-y-100' : 'scale-y-0',
+                )}
+              />
+              <item.icon className="size-4 transition-transform duration-200 group-hover:scale-110" />
+              {menu.labels?.[item.to] || item.label}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>
