@@ -19,7 +19,8 @@ public interface BrandingClient {
     @GetMapping("/api/public/branding/logo")
     ResponseEntity<byte[]> logo();
 
-    record Branding(String name, String signatoryName, String signatoryTitle, String logoUrl, long version) {
+    record Branding(String name, String signatoryName, String signatoryTitle, String logoUrl, long version,
+                    String primaryColor) {
     }
 
     /** Null answers: the caller falls back to the configured name and prints no logo. */
