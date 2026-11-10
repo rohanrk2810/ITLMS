@@ -4,9 +4,9 @@ Students, trainers and other staff can be given a printed ID card. ADMIN and COO
 
 ## What a card shows
 
-CR80 (credit-card size, 54 x 85.6 mm), upright: the institute logo and name in a coloured band, the photo, the name, the role (Student, Trainer, or a staff title), the person's code (student code or employee code), the batch for a student, the valid-until date, a QR code, the card number such as `STU-2026-0042`, and a phone number: the person's own (copied from their student or trainer record when the card is issued, typed in for staff), otherwise the institute's contact phone from the Branding page, otherwise none. The prefix is `STU`, `TRN` or `STF`; the number comes from a database sequence.
+CR80 (credit-card size, 54 x 85.6 mm), upright: the institute logo and name in a coloured band with the institute address in very small letters under the name (from the Branding page, shortened when long, left out when empty), the photo, the name, **under the name the mobile number** (the person's own, copied from their student or trainer record when the card is issued and typed in for staff, otherwise the institute's contact phone from the Branding page, otherwise none), the role (Student, Trainer, or a staff title), the person's code (student code or employee code), the batch for a student, the valid-until date, and at the foot a **small barcode** of the card number (Code 128) with the number printed under it, such as `STU-2026-0042`. The prefix is `STU`, `TRN` or `STF`; the number comes from a database sequence.
 
-The QR code opens the public check page `/verify-id/<card number>?code=<code>`. That page shows only the name, role, validity and whether the card is valid, expired or withdrawn.
+The card has **no QR code** (removed on request, 2026-11-11). The barcode holds only the card number, for a desk scanner to look the card up. The public check page `/verify-id/<card number>?code=<code>` still exists and shows only the name, role, validity and whether the card is valid, expired or withdrawn, but nothing on the card links to it now; type the number and the code printed in the record.
 
 ## Who can do what
 
@@ -46,18 +46,18 @@ A staff card has no login attached, so it is printed by the office and is not sh
 ## Screens
 
 - **ID cards** in the menu. Staff see the list with filters (type, search), "Issue a card", "Print selected" for a sheet, and per row Add photo, PDF and Withdraw. A student or trainer sees "My ID card" with a Download button.
-- **/verify-id/...** is the public page the QR code opens.
+- **/verify-id/...** is the public check page (a number and a code). The card no longer carries a QR code that opens it.
 
 ## Settings
 
-`ID_VERIFY_URL` (set in `deploy/docker/.env`, read by `config-repo/certificate-service.yml`) is the public address of the check page, for example `https://app.example.com/verify-id`. Set it, and `CERT_VERIFY_URL` for certificates, to the real address of the web app on any server, or the QR codes point at `localhost`. The card colour (band, photo frame, role) is the primary colour set on the Branding page, orange when none is set; the logo and institute name come from the Branding page.
+`ID_VERIFY_URL` (set in `deploy/docker/.env`, read by `config-repo/certificate-service.yml`) is the public address of the check page, for example `https://app.example.com/verify-id`. Set it, and `CERT_VERIFY_URL` for certificates, to the real address of the web app on any server, or the check links in emails point at `localhost`. The card colour (band, photo frame, role) is the primary colour set on the Branding page, orange when none is set; the logo and institute name come from the Branding page.
 
 ## Limits
 
 - Text uses the PDF standard fonts, which cover Latin script only. A name in Devanagari or another script needs an embedded font in `IdCardPdfRenderer`.
 - Only the front of the card is drawn. A back with an address or rules would be a second drawing.
 - The list is capped at 300 cards; use the search to reach older ones.
-- Drawn by `IdCardPdfRenderer` with the zxing core library (QR) and OpenPDF.
+- Drawn by `IdCardPdfRenderer` with OpenPDF (the Code 128 barcode is OpenPDF `Barcode128`).
 
 ## Student photo and full registration details
 
