@@ -33,6 +33,8 @@ import com.itilms.finance.entity.PaymentStatus;
 import com.itilms.finance.ledger.FeeLedger;
 import com.itilms.finance.repository.FeePlanRepository;
 import com.itilms.finance.repository.PaymentRepository;
+import com.itilms.finance.receipt.ReceiptDocument;
+import com.itilms.finance.receipt.ReceiptEmailer;
 import com.itilms.finance.service.PaymentService;
 
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final FeePlanRepository planRepository;
     private final FinanceProperties props;
     private final EventPublisher events;
+    private final ReceiptEmailer receiptEmailer;
+    private final ReceiptDocument receiptDocument;
 
     @Override
     @Transactional
@@ -119,6 +123,8 @@ public class PaymentServiceImpl implements PaymentService {
                 Map.of("feePlanId", plan.getId(), "amount", payment.getAmount().toPlainString(),
                         "method", method.name(), "receiptNo", payment.getReceiptNo()));
 
+        receiptEmailer.send(payment, plan, after.paid(), after.outstanding());
+
         log.info("Recorded payment {} ({}) on plan {}", payment.getId(), payment.getReceiptNo(), plan.getId());
         return PaymentResponse.from(payment);
     }
@@ -181,6 +187,18 @@ public class PaymentServiceImpl implements PaymentService {
                 plan.getCurrency(), props.getCurrencySymbol(), payment.getAmount(),
                 payment.getMethod().name(), payment.getReferenceNo(), payment.getStatus().name(),
                 plan.getNetFee(), ledger.paid(), ledger.outstanding());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReceiptPdf receiptPdf(Long id) {
+        Payment payment = requirePayment(id);
+        SecurityUtils.requireStudentOwnershipOrStaff(payment.getStudentId());
+        FeePlan plan = planRepository.findWithInstallmentsById(payment.getFeePlanId()).orElseThrow();
+        FeeLedger ledger = FeeLedger.of(plan,
+                paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(plan.getId()), today());
+        return new ReceiptPdf("Receipt-" + payment.getReceiptNo() + ".pdf",
+                receiptDocument.pdf(payment, plan, ledger.paid(), ledger.outstanding()));
     }
 
     @Override

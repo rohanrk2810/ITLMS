@@ -79,6 +79,19 @@ public class PaymentController {
         return paymentService.receipt(id);
     }
 
+    @Operation(summary = "A payment's receipt as a PDF",
+            description = "The same document that is emailed when the payment is recorded. A student may fetch only their own.")
+    @PreAuthorize("hasAnyRole('ADMIN','FINANCE','COORDINATOR','STUDENT')")
+    @GetMapping("/{id}/receipt/pdf")
+    public ResponseEntity<byte[]> receiptPdf(@PathVariable Long id) {
+        PaymentService.ReceiptPdf pdf = paymentService.receiptPdf(id);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.attachment().filename(pdf.fileName()).build().toString())
+                .body(pdf.bytes());
+    }
+
     @Operation(summary = "Reverse a payment",
             description = "For a bounced cheque or a mistaken entry. The payment stays on record, marked "
                     + "reversed; the student is told and the change is audited.")

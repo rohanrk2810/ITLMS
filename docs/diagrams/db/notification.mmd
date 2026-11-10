@@ -36,6 +36,9 @@ erDiagram
         varchar last_error
         timestamptz sent_at
         timestamptz created_at
+        varchar attachment_name
+        bytea attachment
+        varchar event_id
     }
     notifications {
         bigint id PK

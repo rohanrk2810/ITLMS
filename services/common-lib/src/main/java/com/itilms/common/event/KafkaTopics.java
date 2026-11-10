@@ -45,7 +45,9 @@ public final class KafkaTopics {
 
     /** finance-service -> notification, reporting. */
     public static final String PAYMENT_RECORDED = "itilms.finance.payment-recorded";
-    public static final String FEE_PLAN_CREATED = "itilms.finance.fee-plan-created";
+    /** finance-service -> notification: the receipt PDF to email to the student. */
+    public static final String PAYMENT_RECEIPT_EMAIL = "itilms.finance.payment-receipt-email";
+    public static final String FEE_PLAN_CREATED ="itilms.finance.fee-plan-created";
     public static final String INSTALLMENT_OVERDUE = "itilms.finance.installment-overdue";
 
     /** certificate-service -> notification. */

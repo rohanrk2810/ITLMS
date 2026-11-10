@@ -55,7 +55,8 @@ public class EmailOutboxJob {
             for (EmailOutbox email : due) {
                 try {
                     mailer.send(email.getToAddress(),
-                            new EmailComposer.Email(email.getSubject(), email.getTextBody(), email.getHtmlBody()));
+                            new EmailComposer.Email(email.getSubject(), email.getTextBody(), email.getHtmlBody()),
+                            email.getAttachmentName(), email.getAttachment());
                     email.markSent(Instant.now());
                     ok++;
                 } catch (MailException ex) {

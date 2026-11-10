@@ -54,6 +54,8 @@ sequenceDiagram
         FN->>FN: one transaction: fee plan (full fee), ONLINE payment with receipt, order PAID
         FN->>K: payment.recorded
         K->>NO: Payment received
+        FN->>K: payment-receipt-email (receipt PDF)
+        K->>NO: email the student the PDF receipt
     end
 
     Note over FN,BA: Open the course
@@ -79,6 +81,27 @@ sequenceDiagram
 ![Online course payment](diagrams/flows/43-online-course-payment.svg)
 
 The same diagram is kept as [diagrams/flows/43-online-course-payment.mmd](diagrams/flows/43-online-course-payment.mmd). Related: [fee payment](diagrams/flows/29-fee-payment.mmd) and the [finance schema](diagrams/db/finance.mmd), which now has `online_orders`.
+
+## Receipt PDF by email
+
+Every payment recorded in finance-service (online, or entered by staff as cash, UPI, cheque and so on) now emails the student a receipt, with a PDF attached. Nothing to switch on except mail itself (`MAIL_ENABLED`); the student needs an email address on their account.
+
+- finance-service draws the PDF in `ReceiptPdfRenderer` (A4: header in the Branding colour with the logo, institute name and address; the student and course; the amount large with its words in lakh and crore; method and reference; total fee, paid so far and balance; contact line). Text uses the standard PDF fonts, so money is written `Rs.`, not with the rupee sign.
+- The PDF travels in a `payment-receipt-email` event ([`PaymentReceiptEmailEvent`](../services/common-lib/src/main/java/com/itilms/common/event/PaymentReceiptEmailEvent.java)) because a Kafka consumer holds no sign-in and cannot ask finance-service for it later.
+- notification-service queues it in `email_outbox` (migration V4 adds `attachment_name`, `attachment` and `event_id`). The usual retry applies; the attachment is dropped once the email is sent. A redelivered event is ignored through `event_id`.
+- It never blocks the payment: if the branding service is down the receipt is drawn with a plain header, and if drawing or publishing fails the payment still stands and a warning is logged.
+- A reversed payment sends no email. Its receipt can still be fetched, marked CANCELLED.
+
+### Download in the portal
+
+A student sees **PDF** beside each payment on **Fees** (and **Download PDF** in the receipt window); the finance desk has the same on a fee plan. It calls `GET /api/payments/{id}/receipt/pdf` (a student gets only their own, as with the JSON receipt) and returns the same document as the email, so the two never differ. The figures are as of the moment it is fetched, as on the screen receipt.
+
+### What is on the PDF
+
+- Header band in the Branding colour with the logo, the institute name and its full address.
+- The institute logo as a faint watermark behind the page (the institute name set diagonally when there is no logo).
+- Receipt number and date, student name and ID, the course, the amount large with its words, method and reference, total fee, paid so far and balance.
+- At the foot: the institute name, address, phone and email (and website), all from the Branding page. Fill in address, phone and email there and they appear on every receipt.
 
 ## Webhook
 

@@ -27,6 +27,7 @@ flowchart LR
         t11(["assessment.quiz-attempt-completed"])
         t12(["finance.fee-plan-created /<br/>payment-recorded"])
         t13(["finance.installment-overdue"])
+        t13b(["finance.payment-receipt-email<br/>(receipt PDF)"])
         t14(["certificate.issued"])
         t15(["placement.job-posted"])
         t16(["placement.application-stage-changed"])
@@ -59,6 +60,7 @@ flowchart LR
     AS --> t11
     FN --> t12
     FN --> t13
+    FN --> t13b
     CE --> t14
     PLC --> t15
     PLC --> t16
@@ -83,6 +85,7 @@ flowchart LR
     t11 --> cRP
     t12 --> cRP
     t13 --> cRP
+    t13b --> cNO
     t14 --> cRP
     t15 --> cNO
     t15 --> cRP

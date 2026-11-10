@@ -3,6 +3,7 @@ package com.itilms.finance.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,7 +56,9 @@ class PaymentServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new PaymentServiceImpl(paymentRepository, planRepository, new FinanceProperties(), events);
+        service = new PaymentServiceImpl(paymentRepository, planRepository, new FinanceProperties(), events,
+                mock(com.itilms.finance.receipt.ReceiptEmailer.class),
+                mock(com.itilms.finance.receipt.ReceiptDocument.class));
 
         AppPrincipal cashier = new AppPrincipal(7L, "cash@x", "Cashier", "FINANCE", null);
         SecurityContextHolder.getContext().setAuthentication(

@@ -14,6 +14,7 @@ import {
   type ReceiptResponse,
   reversePayment,
 } from '@/api/finance'
+import { DownloadReceiptButton } from '@/components/download-receipt-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -157,6 +158,7 @@ export function FeePlanDetailPage() {
                   <Button size="sm" variant="ghost" onClick={() => setReceiptPaymentId(payment.id)}>
                     <Receipt className="size-3.5" />
                   </Button>
+                  <DownloadReceiptButton paymentId={payment.id} receiptNo={payment.receiptNo} label="" variant="ghost" />
                   {payment.status !== 'REVERSED' && (
                     <ReverseDialog
                       onConfirm={(reason) => reverseMutation.mutate({ paymentId: payment.id, reason })}
@@ -364,6 +366,7 @@ function ReceiptView({ paymentId }: { paymentId: number }) {
         <Row label="Paid to date" value={`${r.currencySymbol}${r.paidToDate}`} />
         <Row label="Balance today" value={`${r.currencySymbol}${r.balanceAsOfToday}`} />
       </div>
+      <DownloadReceiptButton paymentId={paymentId} receiptNo={r.receiptNo} />
     </>
   )
 }

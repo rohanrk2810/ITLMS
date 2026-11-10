@@ -25,5 +25,11 @@ public interface PaymentService {
 
     ReceiptResponse receipt(Long id);
 
+    /** The receipt as a PDF, for the student who paid or staff. */
+    ReceiptPdf receiptPdf(Long id);
+
+    record ReceiptPdf(String fileName, byte[] bytes) {
+    }
+
     PageResponse<PaymentResponse> list(LocalDate from, LocalDate to, Pageable pageable);
 }

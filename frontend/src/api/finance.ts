@@ -119,6 +119,19 @@ export async function myFeePlans(): Promise<FeePlanResponse[]> {
   return data
 }
 
+/** Downloads the receipt as a PDF: the same document that is emailed when the payment is recorded. */
+export async function downloadReceiptPdf(paymentId: number | string, receiptNo: string): Promise<void> {
+  const { data } = await apiClient.get<ArrayBuffer>(`/api/payments/${paymentId}/receipt/pdf`, { responseType: 'arraybuffer' })
+  const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `Receipt-${receiptNo}.pdf`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
 export async function getReceipt(paymentId: number | string): Promise<ReceiptResponse> {
   const { data } = await apiClient.get<ReceiptResponse>(`/api/payments/${paymentId}/receipt`)
   return data
