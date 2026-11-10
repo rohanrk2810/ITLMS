@@ -103,6 +103,16 @@ A student sees **PDF** beside each payment on **Fees** (and **Download PDF** in 
 - Receipt number and date, student name and ID, the course, the amount large with its words, method and reference, total fee, paid so far and balance.
 - At the foot: the institute name, address, phone and email (and website), all from the Branding page. Fill in address, phone and email there and they appear on every receipt.
 
+## Paying fees you already owe (Fees page)
+
+A student who already has a fee plan (from admission, or from an earlier purchase) pays what is left online from **Fees**:
+
+- **Pay online** on the fee plan: the next installment, the whole balance, or any amount from 1 rupee up to what is owed. A small **Pay** beside an unpaid installment pays what is left of that installment.
+- `POST /api/payments/online/fee-orders {feePlanId, amount?}` (STUDENT). The plan must be the caller's own and ACTIVE, and the amount cannot be more than the outstanding balance, so what Razorpay charges is always something the ledger accepts. Without an amount it is the whole balance. The order row has `kind = FEES` (migration V3) and the plan id from the start.
+- The same `POST /api/payments/online/verify` checks the signature and records an `ONLINE` payment against the plan (receipt number, `PAYMENT_RECORDED`, the PDF receipt by email, exactly as for a payment staff enter). There is no batch step: the order ends as `FEES_PAID`.
+- **A fee payment can never open a course.** `GET /api/payments/online/orders/{id}` reports a fee payment as `FEES_PAID`, never `PAID` or `ENROLLED`, and batch-service places a student only on a paid course purchase. Without that, paying a small installment of any plan could have been used to claim a seat.
+- Two orders for the same balance at once: the second payment is refused by the ledger when it is recorded (it would exceed what is owed). The order stays unrecorded, ADMIN and COORDINATOR are told, and the money is refunded from the Razorpay dashboard.
+
 ## Webhook
 
 `POST /api/payments/online/webhook` (public, listed in the gateway and in `FinanceBeans`) accepts Razorpay's `payment.captured` only with a valid `X-Razorpay-Signature`. Placing a student needs their sign-in, which a webhook does not have, so it only warns ADMIN and COORDINATOR when an order was paid but the browser never confirmed it (the student closed the tab). They then record the payment or place the student by hand.

@@ -4,6 +4,7 @@ import { Receipt } from 'lucide-react'
 
 import { type FeePlanResponse, getReceipt, myFeePlans, type ReceiptResponse } from '@/api/finance'
 import { DownloadReceiptButton } from '@/components/download-receipt-button'
+import { PayFeesButton, PayInstallmentButton } from '@/components/pay-fees'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -88,6 +89,8 @@ function FeePlanCard({ plan, onViewReceipt }: { plan: FeePlanResponse; onViewRec
           />
         </div>
 
+        <PayFeesButton plan={plan} />
+
         <Separator />
 
         <div>
@@ -99,6 +102,7 @@ function FeePlanCard({ plan, onViewReceipt }: { plan: FeePlanResponse; onViewRec
                 <TableHead>Due</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,6 +113,9 @@ function FeePlanCard({ plan, onViewReceipt }: { plan: FeePlanResponse; onViewRec
                   <TableCell>{formatMoney(installment.amount, plan.currency)}</TableCell>
                   <TableCell>
                     <Badge variant={STATE_VARIANT[installment.state] ?? 'outline'}>{installment.state}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <PayInstallmentButton plan={plan} remaining={installment.remaining} />
                   </TableCell>
                 </TableRow>
               ))}

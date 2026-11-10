@@ -16,7 +16,7 @@ export interface OrderCreated {
 /** CREATED, PAID (money received, not yet in a batch) or ENROLLED. */
 export interface OrderStatus {
   orderId: string
-  status: 'CREATED' | 'PAID' | 'ENROLLED'
+  status: 'CREATED' | 'PAID' | 'ENROLLED' | 'FEES_PAID'
   courseId: number
   batchCode: string | null
   message: string | null
@@ -39,6 +39,12 @@ export async function createOnlineOrder(courseId: number): Promise<OrderCreated>
 }
 
 /** The server checks Razorpay's signature, records the fee and places the student in a batch. */
+/** Pay an installment or the balance of a fee plan the student already has. Without an amount, the whole balance. */
+export async function createFeeOrder(feePlanId: number, amount?: number): Promise<OrderCreated> {
+  const { data } = await apiClient.post<OrderCreated>('/api/payments/online/fee-orders', { feePlanId, amount })
+  return data
+}
+
 export async function verifyOnlinePayment(result: RazorpayResult): Promise<OrderStatus> {
   const { data } = await apiClient.post<OrderStatus>('/api/payments/online/verify', {
     orderId: result.razorpay_order_id,

@@ -378,6 +378,7 @@ actually costs, and what it fails as when no Egress worker is running.
 | GET | /api/payments | FINANCE_VIEW | Payments in a date range |
 | GET | /api/payments/{id} | ADMIN, FINANCE, COORDINATOR, STUDENT | One payment |
 | GET | /api/payments/{id}/receipt | ADMIN, FINANCE, COORDINATOR, STUDENT | The receipt |
+| POST | /api/payments/online/fee-orders | STUDENT | Start an online payment against the caller's own fee plan (an installment or the balance) |
 | GET | /api/payments/{id}/receipt/pdf | ADMIN, FINANCE, COORDINATOR, STUDENT | The receipt as a PDF (a student only their own) |
 | POST | /api/payments/{id}/reverse | FINANCE_DESK | Reverse (e.g. bounced cheque) — kept, not deleted |
 
