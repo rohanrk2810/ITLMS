@@ -10,6 +10,8 @@ export interface InstallmentResponse {
   remaining: number
   /** PAID, PARTLY_PAID, DUE, OVERDUE or UPCOMING. */
   state: string
+  /** The name of an extra charge such as a development fee; empty for a part of the course fee. */
+  label: string | null
 }
 
 export interface PaymentResponse {
@@ -130,6 +132,24 @@ export async function downloadReceiptPdf(paymentId: number | string, receiptNo: 
   link.click()
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+export interface ChargeInput {
+  title: string
+  amount: number
+  dueDate: string
+}
+
+/** Adds a named extra charge (a development fee, a book) to one student's fee plan. The student is told. */
+export async function addCharge(feePlanId: number | string, input: ChargeInput): Promise<FeePlanResponse> {
+  const { data } = await apiClient.post<FeePlanResponse>(`/api/fee-plans/${feePlanId}/charges`, input)
+  return data
+}
+
+/** Adds the same charge to the fee plan of every student in a batch. */
+export async function addBatchCharge(input: ChargeInput & { batchId: number }): Promise<{ students: number; skipped: number }> {
+  const { data } = await apiClient.post<{ students: number; skipped: number }>('/api/fee-plans/charges/batch', input)
+  return data
 }
 
 export async function getReceipt(paymentId: number | string): Promise<ReceiptResponse> {

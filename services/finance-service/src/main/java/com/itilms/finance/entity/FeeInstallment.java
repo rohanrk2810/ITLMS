@@ -46,6 +46,10 @@ public class FeeInstallment {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    /** The name of an extra charge ("Development fee"); empty for a part of the course fee. */
+    @Column(length = 120)
+    private String label;
+
     /** The last "due in N days" reminder sent, so each goes out once. */
     @Column(name = "last_reminder_days")
     private Integer lastReminderDays;

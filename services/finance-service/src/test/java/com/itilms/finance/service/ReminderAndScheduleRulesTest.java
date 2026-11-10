@@ -66,7 +66,8 @@ class ReminderAndScheduleRulesTest {
         private final FeePlanRepository plans = mock(FeePlanRepository.class);
         private final AdmissionClient admission = mock(AdmissionClient.class);
         private final FeePlanServiceImpl service = new FeePlanServiceImpl(plans, mock(PaymentRepository.class),
-                admission, new FinanceProperties(), mock(EventPublisher.class));
+                admission, mock(com.itilms.finance.client.CourseClient.class), new FinanceProperties(),
+                mock(EventPublisher.class));
 
         @Test
         @DisplayName("An explicit schedule that does not add up to the net fee is refused")
@@ -106,7 +107,8 @@ class ReminderAndScheduleRulesTest {
         @Test
         @DisplayName("A redelivered admission event does not raise a second plan")
         void idempotent() {
-            when(plans.existsByStudentIdAndCourseIdAndStatusNot(3L, 1L, FeePlanStatus.CANCELLED)).thenReturn(true);
+            when(plans.findFirstByStudentIdAndCourseIdAndStatusNot(3L, 1L, FeePlanStatus.CANCELLED))
+                    .thenReturn(java.util.Optional.of(FeePlan.builder().studentId(3L).courseId(1L).build()));
 
             service.createFromAdmission(new StudentAdmittedEvent("e", java.time.Instant.now(), 3L, 30L, "STU-1",
                     "Asha", "a@x", "9", 1L, 2L, LocalDate.of(2026, 1, 1), 1L,

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { allFeePlans, type FeePlanResponse, getFinanceDashboard, getOverdueInstallments, searchFeePlans } from '@/api/finance'
 import { searchStudents, type StudentSummaryResponse } from '@/api/students'
+import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { ExportMenu } from '@/components/export-menu'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,7 +49,10 @@ export function FinanceDeskPage() {
           <h1 className="text-2xl font-semibold">Finance</h1>
           <p className="text-muted-foreground">Fee position across the institute (Doc S15).</p>
         </div>
-        <ExportMenu label="Download every student's fees" report="FEE_POSITION" build={feePositionSheet} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ChargeBatchButton />
+          <ExportMenu label="Download every student's fees" report="FEE_POSITION" build={feePositionSheet} />
+        </div>
       </div>
 
       {dashboardQuery.isLoading && <Skeleton className="h-32" />}

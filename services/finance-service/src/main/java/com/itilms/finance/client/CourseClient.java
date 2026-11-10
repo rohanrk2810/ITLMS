@@ -15,6 +15,10 @@ public interface CourseClient {
     @GetMapping("/{id}")
     CourseDetail get(@PathVariable("id") Long id);
 
+    /** The same, without a sign-in: for a consumer of Kafka events, which has none to pass on. */
+    @GetMapping("/public/{id}")
+    CourseDetail publicDetail(@PathVariable("id") Long id);
+
     record CourseDetail(Course course) {
     }
 
@@ -26,7 +30,17 @@ public interface CourseClient {
     class Fallback implements FallbackFactory<CourseClient> {
         @Override
         public CourseClient create(Throwable cause) {
-            return id -> null;
+            return new CourseClient() {
+                @Override
+                public CourseDetail get(Long id) {
+                    return null;
+                }
+
+                @Override
+                public CourseDetail publicDetail(Long id) {
+                    return null;
+                }
+            };
         }
     }
 }

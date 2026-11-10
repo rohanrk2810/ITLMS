@@ -369,6 +369,8 @@ actually costs, and what it fails as when no Egress worker is running.
 | GET | /api/fee-plans | FINANCE_VIEW | List fee plans |
 | GET | /api/fee-plans/{id} | ADMIN, FINANCE, COORDINATOR, STUDENT | One plan — student sees only their own |
 | PUT | /api/fee-plans/{id} | FINANCE_DESK | Change a plan |
+| POST | /api/fee-plans/{id}/charges | FINANCE_DESK | Add a named extra charge (development fee, a book) to one plan; the student is told |
+| POST | /api/fee-plans/charges/batch | FINANCE_DESK | The same charge on every student of a batch who has a fee plan |
 | POST | /api/fee-plans/{id}/cancel | FINANCE_DESK | Cancel |
 
 ### `PaymentController` — `/api/payments`

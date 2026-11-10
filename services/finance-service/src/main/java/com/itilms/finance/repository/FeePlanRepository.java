@@ -39,6 +39,9 @@ public interface FeePlanRepository extends JpaRepository<FeePlan, Long> {
 
     Optional<FeePlan> findFirstByStudentIdAndCourseIdAndStatusNot(Long studentId, Long courseId, FeePlanStatus status);
 
+    @EntityGraph(attributePaths = "installments")
+    List<FeePlan> findByBatchIdAndStatusNot(Long batchId, FeePlanStatus status);
+
     boolean existsByStudentIdAndCourseIdAndStatusNot(Long studentId, Long courseId, FeePlanStatus status);
 
     Page<FeePlan> findByStatusOrderByCreatedAtDesc(FeePlanStatus status, Pageable pageable);

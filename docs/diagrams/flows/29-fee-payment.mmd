@@ -13,6 +13,16 @@ sequenceDiagram
     FI->>FI: plan = course fee - discount, split into instalments with due dates
     FI->>K: fee-plan-created
 
+    Note over FI: When a student is placed in a batch
+    K->>FI: enrollment-created (student name and code, course, batch)
+    FI->>FI: no live plan yet: raise the course fee as one installment due in 7 days (flagged auto-created)
+    FI->>K: fee-plan-created
+
+    Note over F,FI: Extra charges
+    F->>FI: POST /api/fee-plans/{id}/charges, or /charges/batch (title, amount, pay-by date)
+    FI->>FI: a named installment, the total grows, a settled plan is active again
+    FI->>K: notify each student (New fee, pay it online from Fees)
+
     F->>FI: record payment (amount, mode, reference)
     FI->>FI: refuse if the amount is more than the outstanding
     FI->>FI: apply to instalments oldest first (state is worked out each time: PAID, PARTLY_PAID, DUE, OVERDUE, UPCOMING)

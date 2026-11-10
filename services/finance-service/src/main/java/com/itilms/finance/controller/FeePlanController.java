@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.itilms.common.dto.PageResponse;
 import com.itilms.common.security.Roles;
+import com.itilms.finance.dto.request.ChargeDtos.BatchChargeRequest;
+import com.itilms.finance.dto.request.ChargeDtos.BatchChargeResult;
+import com.itilms.finance.dto.request.ChargeDtos.ChargeRequest;
 import com.itilms.finance.dto.request.FeePlanRequest;
 import com.itilms.finance.dto.request.ReasonRequest;
 import com.itilms.finance.dto.response.FeePlanResponse;
@@ -67,6 +70,24 @@ public class FeePlanController {
     @PutMapping("/{id}")
     public FeePlanResponse update(@PathVariable Long id, @Valid @RequestBody FeePlanRequest request) {
         return feePlanService.update(id, request);
+    }
+
+    @Operation(summary = "Add an extra charge to a fee plan",
+            description = "A named charge on top of the course fee, such as a development fee or a book. It becomes "
+                    + "an installment of its own, so it is paid, reminded about and receipted like the rest, and "
+                    + "the student is told. The change is audited.")
+    @PreAuthorize(Roles.FINANCE_DESK)
+    @PostMapping("/{id}/charges")
+    public FeePlanResponse addCharge(@PathVariable Long id, @Valid @RequestBody ChargeRequest request) {
+        return feePlanService.addCharge(id, request);
+    }
+
+    @Operation(summary = "Add the same extra charge for a whole batch",
+            description = "Every student in the batch who has a fee plan is charged and told.")
+    @PreAuthorize(Roles.FINANCE_DESK)
+    @PostMapping("/charges/batch")
+    public BatchChargeResult addBatchCharge(@Valid @RequestBody BatchChargeRequest request) {
+        return feePlanService.addChargeToBatch(request);
     }
 
     @Operation(summary = "Cancel a fee plan", description = "Only when no money has been received on it.")
