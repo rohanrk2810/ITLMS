@@ -10,6 +10,14 @@ export async function getPublicCourses(): Promise<PageResponse<CourseSummaryResp
   return data
 }
 
+/** Every published course, for the public /courses page. */
+export async function getAllPublicCourses(): Promise<PageResponse<CourseSummaryResponse>> {
+  const { data } = await apiClient.get<PageResponse<CourseSummaryResponse>>('/api/courses/public', {
+    params: { size: 100 },
+  })
+  return data
+}
+
 export interface EnquiryInput {
   name: string
   phone: string

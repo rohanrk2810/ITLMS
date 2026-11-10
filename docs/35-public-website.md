@@ -40,6 +40,31 @@ Everything above is edited by the administrator without a deploy. Anything left 
 - **Map:** paste the link from Google Maps > Share (or the whole `<iframe>` from Share > Embed a map; only its address is kept). A share link such as `maps.app.goo.gl/...` cannot be embedded, so the map is found from the address in the Institute tab and an "Open in Google Maps" button opens the exact link; an embed address is shown as it is, for an exact pin. Only Google Maps addresses are accepted.
 - Reading the JSON on the page never throws: unknown or malformed parts are ignored. Links must be web addresses or paths of this site (so stored text can never become a script), picture ids must be digits, and a map address must be a Google Maps address.
 
+## Footer, the /courses page and Buy / Inquiry
+
+- **Footer** (`components/site-footer.tsx`, on the front page and on /courses): the institute logo, name and tagline from Branding; social icons for the Facebook, LinkedIn, YouTube, Instagram and WhatsApp links set under Customize > Website (an icon appears only when its link is set); three link columns (Explore, Resources, Company); a **Stay Updated** box; the four policy links.
+- **Every footer link opens its own page of the app**, none leaves the site (routes in `App.tsx`, pages in `pages/courses/public-courses-page.tsx` and `pages/site/site-pages.tsx`, shared frame in `components/site-shell.tsx`):
+
+| Link | Page | What it shows |
+|---|---|---|
+| Courses | /courses | every published course, search and level filter, Buy and Inquiry |
+| Programs | /programs | the courses grouped by level |
+| Pricing | /pricing | a fee table with Buy and Inquiry, how to pay, receipts and refunds |
+| Blog | /blog | three short starter articles |
+| Success Stories | /success-stories | the feedback added under Customize > Website |
+| Learning Paths | /learning-paths | beginner, intermediate, advanced, with the courses at each step |
+| Career Guide | /career-guide | six steps from learning to a first job |
+| Student Community | /community | a WhatsApp button when the WhatsApp number is set, otherwise a link to Contact |
+| Free Resources | /free-resources | seven independent learning sites, opening in a new tab |
+| FAQ | /faq | the questions written under Customize > Website, or a default set |
+| About Us | /about | the About text, points, features and trainers from Customize > Website |
+| Contact Us | /contact | phone, email, address and map from Branding, and the enquiry form |
+| Become an Instructor, Careers, Affiliates | /become-an-instructor, /careers, /affiliates | a short explanation and the enquiry form with the first line of the message already written |
+
+- The blog articles, career guide, free-resource list, level descriptions and default FAQ are fixed general text in `pages/site/site-page-content.ts` (no claim about the institute's results). The administrator can change the FAQ, success stories, About text, trainers, contact details and WhatsApp link from the admin screens; the other text is changed in that file.
+- **Stay Updated** takes an email and opens the enquiry form with it filled in, because an enquiry needs a name and a phone number to call back. There is no mailing list.
+- **/courses** (`pages/courses/public-courses-page.tsx`) is open to anyone: every published course (up to 100) with its fee, a search box, a level filter, and the **Buy** and **Inquiry** buttons ([34-online-payments.md](34-online-payments.md)). The page's own course photos are the ones chosen under Customize > Website.
+
 ## Tests
 
-`home-page.test.tsx` (the Login button, the fallback name `SutraVidya`, the administrator's wording, hidden sections, no language button), `site-config.test.ts` (parsing, content saved in the older two-language form, limits, unsafe links, picture ids, the map address), and the backend `SiteContentServiceTest` (saving, invalid JSON, picture type and limit, missing pictures).
+`public-courses-page.test.tsx` (the list, search, Buy and Inquiry buttons, footer links staying in the app), `site-pages.test.tsx` (each of the fourteen pages opens with its heading and the footer, levels and fees, the prefilled enquiry message, the default FAQ, external links in a new tab), `home-page.test.tsx` (the Login button, the fallback name `SutraVidya`, the administrator's wording, hidden sections, no language button), `site-config.test.ts` (parsing, content saved in the older two-language form, limits, unsafe links, picture ids, the map address), and the backend `SiteContentServiceTest` (saving, invalid JSON, picture type and limit, missing pictures).
