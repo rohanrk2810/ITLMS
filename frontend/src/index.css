@@ -246,3 +246,48 @@ textarea:user-invalid,
     animation: none;
   }
 }
+
+/* Public pages: a page fades up when it opens, cards of a grid follow one after another, and menus slide down. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes menu-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.page-in {
+  animation: page-in 0.55s ease-out both;
+}
+.menu-down {
+  animation: menu-down 0.22s ease-out both;
+}
+.stagger > * {
+  animation: page-in 0.55s ease-out both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger > *:nth-child(3) { animation-delay: 0.16s; }
+.stagger > *:nth-child(4) { animation-delay: 0.22s; }
+.stagger > *:nth-child(5) { animation-delay: 0.28s; }
+.stagger > *:nth-child(6) { animation-delay: 0.34s; }
+.stagger > *:nth-child(n + 7) { animation-delay: 0.4s; }
+@media (prefers-reduced-motion: reduce) {
+  .page-in,
+  .menu-down,
+  .stagger > * {
+    animation: none;
+  }
+}

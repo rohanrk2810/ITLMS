@@ -28,7 +28,7 @@ const byLevel = (a: string, b: string) => (LEVEL_ORDER.indexOf(a) + 99) % 99 - (
 
 function Loading() {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {[0, 1, 2].map((i) => (
         <Skeleton key={i} className="h-56" />
       ))}
@@ -42,7 +42,7 @@ function Empty({ children }: { children: ReactNode }) {
 
 function Panel({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border bg-card p-6">
+    <section className="rounded-xl border bg-card p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
       {title && <h2 className="mb-3 text-lg font-semibold">{title}</h2>}
       <div className="flex flex-col gap-3 text-sm leading-relaxed text-muted-foreground">{children}</div>
     </section>
@@ -63,7 +63,7 @@ export function AboutPage() {
   const features = site.features ?? DEFAULT_FEATURES
   return (
     <SiteShell title={`About ${name}`} intro={pick(site.aboutIntro, DEFAULT_ABOUT_INTRO)}>
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="stagger mx-auto flex max-w-3xl flex-col gap-6">
         <Panel title="Why learn with us">
           <ul className="flex list-disc flex-col gap-2 pl-5">
             {points.map((point, i) => (
@@ -71,7 +71,7 @@ export function AboutPage() {
             ))}
           </ul>
         </Panel>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="stagger grid gap-4 sm:grid-cols-2">
           {features.map((feature, i) => (
             <Panel key={i} title={pick(feature.title)}>
               <p>{pick(feature.text)}</p>
@@ -120,7 +120,7 @@ export function ProgramsPage() {
           <section key={level}>
             <h2 className="text-2xl font-semibold capitalize">{level.toLowerCase()}</h2>
             <p className="mb-4 text-sm text-muted-foreground">{LEVEL_BLURB[level] ?? ''}</p>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {courses
                 .filter((c) => c.level === level)
                 .map((course) => (
@@ -194,9 +194,9 @@ export function PricingPage() {
 export function BlogPage() {
   return (
     <SiteShell title="Blog" intro="Short, practical reads for people starting out in IT." narrow>
-      <div className="flex flex-col gap-4">
+      <div className="stagger flex flex-col gap-4">
         {BLOG_POSTS.map((post) => (
-          <details key={post.title} className="group rounded-xl border bg-card p-5 open:shadow-sm">
+          <details key={post.title} className="group rounded-xl border bg-card p-5 transition-shadow duration-300 hover:shadow-md open:shadow-sm">
             <summary className="cursor-pointer list-none marker:hidden [&::-webkit-details-marker]:hidden">
               <h2 className="text-lg font-semibold">{post.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{post.summary}</p>
@@ -227,7 +227,7 @@ export function SuccessStoriesPage() {
       {site.testimonials.length === 0 ? (
         <Empty>Student stories will appear here soon.</Empty>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {site.testimonials.map((t, i) => (
             <figure key={i} className="flex flex-col gap-3 rounded-xl border bg-card p-6">
               <QuoteIcon className="size-5 text-primary" aria-hidden="true" />
@@ -260,7 +260,7 @@ export function LearningPathsPage() {
     <SiteShell title="Learning paths" intro="A step-by-step route from the basics to job-ready skills." narrow>
       {isLoading && <Loading />}
       {isError && <Empty>The courses could not be loaded. Please try again.</Empty>}
-      <ol className="flex flex-col gap-5">
+      <ol className="stagger flex flex-col gap-5">
         {levels.map((level, index) => (
           <li key={level} className="rounded-xl border bg-card p-6">
             <div className="flex items-center gap-3">
@@ -298,9 +298,9 @@ export function LearningPathsPage() {
 export function CareerGuidePage() {
   return (
     <SiteShell title="Career guide" intro="Six steps from learning to your first job." narrow>
-      <ol className="flex flex-col gap-4">
+      <ol className="stagger flex flex-col gap-4">
         {CAREER_STEPS.map((step, index) => (
-          <li key={step.title} className="flex gap-4 rounded-xl border bg-card p-5">
+          <li key={step.title} className="flex gap-4 rounded-xl border bg-card p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{index + 1}</span>
             <div>
               <h2 className="font-semibold">{step.title}</h2>
@@ -364,7 +364,7 @@ export function CommunityPage() {
 export function FreeResourcesPage() {
   return (
     <SiteShell title="Free resources" intro="Good places to practise, whatever you decide to study." narrow>
-      <ul className="flex flex-col gap-4">
+      <ul className="stagger flex flex-col gap-4">
         {FREE_RESOURCES.map((item) => (
           <li key={item.href}>
             <a
@@ -393,7 +393,7 @@ export function FaqPage() {
   const items = site.faqs.length > 0 ? site.faqs.map((f) => ({ q: pick(f.q), a: pick(f.a) })) : DEFAULT_FAQS
   return (
     <SiteShell title="Frequently asked questions" intro="Quick answers. Still stuck? Send us a message." narrow>
-      <div className="flex flex-col gap-3">
+      <div className="stagger flex flex-col gap-3">
         {items.map((item, i) => (
           <details key={i} className="group rounded-xl border bg-card p-4 open:shadow-sm">
             <summary className="cursor-pointer list-none font-medium marker:hidden [&::-webkit-details-marker]:hidden">

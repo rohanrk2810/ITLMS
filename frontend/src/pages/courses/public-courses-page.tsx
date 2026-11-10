@@ -66,7 +66,7 @@ export function PublicCoursesPage() {
           </div>
 
           {query.isLoading && (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {[0, 1, 2].map((i) => (
                 <Skeleton key={i} className="h-72" />
               ))}
@@ -79,7 +79,7 @@ export function PublicCoursesPage() {
             </p>
           )}
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((course) => (
               <CourseTile key={course.id} course={course} photo={site.courseCards.images[String(course.id)]} />
             ))}

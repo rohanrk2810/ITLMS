@@ -63,20 +63,20 @@ describe('the pages the footer links to', () => {
   })
 
   const cases: [string, React.ReactElement, string][] = [
-    ['About', <AboutPage />, 'About SutraVidya'],
-    ['Programs', <ProgramsPage />, 'Programs'],
-    ['Pricing', <PricingPage />, 'Pricing'],
-    ['Blog', <BlogPage />, 'Blog'],
-    ['Success stories', <SuccessStoriesPage />, 'Success stories'],
-    ['Learning paths', <LearningPathsPage />, 'Learning paths'],
-    ['Career guide', <CareerGuidePage />, 'Career guide'],
-    ['Community', <CommunityPage />, 'Student community'],
-    ['Free resources', <FreeResourcesPage />, 'Free resources'],
-    ['FAQ', <FaqPage />, 'Frequently asked questions'],
-    ['Contact', <ContactPage />, 'Contact us'],
-    ['Instructor', <InstructorPage />, 'Become an instructor'],
-    ['Careers', <CareersPage />, 'Careers'],
-    ['Affiliates', <AffiliatesPage />, 'Affiliates'],
+    ['About', <AboutPage key="AboutPage" />, 'About SutraVidya'],
+    ['Programs', <ProgramsPage key="ProgramsPage" />, 'Programs'],
+    ['Pricing', <PricingPage key="PricingPage" />, 'Pricing'],
+    ['Blog', <BlogPage key="BlogPage" />, 'Blog'],
+    ['Success stories', <SuccessStoriesPage key="SuccessStoriesPage" />, 'Success stories'],
+    ['Learning paths', <LearningPathsPage key="LearningPathsPage" />, 'Learning paths'],
+    ['Career guide', <CareerGuidePage key="CareerGuidePage" />, 'Career guide'],
+    ['Community', <CommunityPage key="CommunityPage" />, 'Student community'],
+    ['Free resources', <FreeResourcesPage key="FreeResourcesPage" />, 'Free resources'],
+    ['FAQ', <FaqPage key="FaqPage" />, 'Frequently asked questions'],
+    ['Contact', <ContactPage key="ContactPage" />, 'Contact us'],
+    ['Instructor', <InstructorPage key="InstructorPage" />, 'Become an instructor'],
+    ['Careers', <CareersPage key="CareersPage" />, 'Careers'],
+    ['Affiliates', <AffiliatesPage key="AffiliatesPage" />, 'Affiliates'],
   ]
 
   it.each(cases)('%s opens with its heading and the footer', async (_name, element, heading) => {
