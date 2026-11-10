@@ -79,6 +79,11 @@ public class FeePlan extends AuditableEntity {
     @Column(length = 500)
     private String notes;
 
+    /** Raised automatically when the student was placed in a batch, and not changed since. */
+    @Column(name = "auto_created", nullable = false)
+    @Builder.Default
+    private boolean autoCreated = false;
+
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
@@ -107,6 +112,27 @@ public class FeePlan extends AuditableEntity {
     public void replaceInstallments(List<FeeInstallment> schedule) {
         this.installments.clear();
         this.installments.addAll(schedule);
+    }
+
+    /**
+     * Adds a named charge on top of what is already owed: the total grows by the amount and the charge becomes an
+     * installment of its own, so payments, reminders and receipts treat it like any other part of the plan. A plan
+     * that was fully paid owes money again.
+     */
+    public FeeInstallment addCharge(String label, BigDecimal amount, java.time.LocalDate dueDate) {
+        int next = installments.stream().mapToInt(FeeInstallment::getInstallmentNo).max().orElse(0) + 1;
+        FeeInstallment charge = FeeInstallment.builder()
+                .installmentNo(next)
+                .dueDate(dueDate)
+                .amount(money(amount))
+                .label(label)
+                .build();
+        installments.add(charge);
+        setTerms(totalFee.add(money(amount)), discount);
+        if (status == FeePlanStatus.SETTLED) {
+            status = FeePlanStatus.ACTIVE;
+        }
+        return charge;
     }
 
     public void cancel(String reason, Instant at) {

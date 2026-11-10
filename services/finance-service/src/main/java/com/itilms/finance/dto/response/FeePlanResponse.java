@@ -51,7 +51,9 @@ public record FeePlanResponse(
             BigDecimal paid,
             BigDecimal remaining,
             @Schema(description = "PAID, PARTLY_PAID, DUE, OVERDUE or UPCOMING")
-            String state
+            String state,
+            @Schema(description = "The name of an extra charge such as a development fee; empty for the course fee")
+            String label
     ) {
     }
 
@@ -68,7 +70,7 @@ public record FeePlanResponse(
                 ledger.lines().stream().map(l -> new InstallmentResponse(
                         l.installment().getId(), l.installment().getInstallmentNo(),
                         l.installment().getDueDate(), l.installment().getAmount(),
-                        l.paid(), l.remaining(), l.state().name())).toList(),
+                        l.paid(), l.remaining(), l.state().name(), l.installment().getLabel())).toList(),
                 payments);
     }
 }

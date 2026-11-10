@@ -15,6 +15,7 @@ import {
   reversePayment,
 } from '@/api/finance'
 import { DownloadReceiptButton } from '@/components/download-receipt-button'
+import { AddChargeButton } from '@/components/add-charge-dialogs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -91,6 +92,7 @@ export function FeePlanDetailPage() {
           {plan.status === 'ACTIVE' && plan.paid === 0 && (
             <CancelPlanDialog onConfirm={(reason) => cancelMutation.mutate(reason)} pending={cancelMutation.isPending} />
           )}
+          {plan.status !== 'CANCELLED' && <AddChargeButton feePlanId={plan.id} onAdded={invalidate} />}
           {plan.status === 'ACTIVE' && (
             <RecordPaymentDialog feePlanId={plan.id} onRecorded={invalidate} />
           )}
@@ -108,7 +110,7 @@ export function FeePlanDetailPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>#</TableHead>
+              <TableHead>For</TableHead>
               <TableHead>Due</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Paid</TableHead>
@@ -118,7 +120,9 @@ export function FeePlanDetailPage() {
           <TableBody>
             {plan.installments.map((installment) => (
               <TableRow key={installment.id}>
-                <TableCell>{installment.installmentNo}</TableCell>
+                <TableCell className={installment.label ? 'font-medium' : ''}>
+                  {installment.label ?? `Course fee (${installment.installmentNo})`}
+                </TableCell>
                 <TableCell>{formatDate(installment.dueDate)}</TableCell>
                 <TableCell>{formatMoney(installment.amount, plan.currency)}</TableCell>
                 <TableCell>{formatMoney(installment.paid, plan.currency)}</TableCell>

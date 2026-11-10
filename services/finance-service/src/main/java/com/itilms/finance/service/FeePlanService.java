@@ -5,7 +5,11 @@ import java.util.List;
 import org.springframework.data.domain.Pageable;
 
 import com.itilms.common.dto.PageResponse;
+import com.itilms.common.event.EnrollmentCreatedEvent;
 import com.itilms.common.event.StudentAdmittedEvent;
+import com.itilms.finance.dto.request.ChargeDtos.BatchChargeRequest;
+import com.itilms.finance.dto.request.ChargeDtos.BatchChargeResult;
+import com.itilms.finance.dto.request.ChargeDtos.ChargeRequest;
 import com.itilms.finance.dto.request.FeePlanRequest;
 import com.itilms.finance.dto.response.FeePlanResponse;
 
@@ -20,6 +24,19 @@ public interface FeePlanService {
      * for the course does nothing.
      */
     void createFromAdmission(StudentAdmittedEvent event);
+
+    /**
+     * Raises the course fee as a fee plan when the student is placed in a batch, so what they owe shows on their
+     * Fees page before any payment. Does nothing when a plan already exists (it only records the batch), or when the
+     * course has no fee. Idempotent.
+     */
+    void createFromEnrollment(EnrollmentCreatedEvent event);
+
+    /** Adds a named extra charge (a development fee, a book) to one plan. */
+    FeePlanResponse addCharge(Long planId, ChargeRequest request);
+
+    /** Adds the same charge to the plan of every student in a batch. */
+    BatchChargeResult addChargeToBatch(BatchChargeRequest request);
 
     FeePlanResponse create(FeePlanRequest request);
 

@@ -98,7 +98,7 @@ function FeePlanCard({ plan, onViewReceipt }: { plan: FeePlanResponse; onViewRec
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>#</TableHead>
+                <TableHead>For</TableHead>
                 <TableHead>Due</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
@@ -108,7 +108,7 @@ function FeePlanCard({ plan, onViewReceipt }: { plan: FeePlanResponse; onViewRec
             <TableBody>
               {plan.installments.map((installment) => (
                 <TableRow key={installment.id}>
-                  <TableCell>{installment.installmentNo}</TableCell>
+                  <TableCell className={installment.label ? 'font-medium' : ''}>{installment.label ?? 'Course fee'}</TableCell>
                   <TableCell>{formatDate(installment.dueDate)}</TableCell>
                   <TableCell>{formatMoney(installment.amount, plan.currency)}</TableCell>
                   <TableCell>

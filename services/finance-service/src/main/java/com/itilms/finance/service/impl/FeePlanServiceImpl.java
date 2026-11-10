@@ -19,6 +19,7 @@ import com.itilms.common.event.DomainEvent;
 import com.itilms.common.event.EventPublisher;
 import com.itilms.common.event.FeePlanCreatedEvent;
 import com.itilms.common.event.KafkaTopics;
+import com.itilms.common.event.EnrollmentCreatedEvent;
 import com.itilms.common.event.StudentAdmittedEvent;
 import com.itilms.common.exception.BusinessRuleException;
 import com.itilms.common.exception.DuplicateResourceException;
@@ -27,6 +28,10 @@ import com.itilms.common.exception.ResourceNotFoundException;
 import com.itilms.common.security.AppPrincipal;
 import com.itilms.common.security.SecurityUtils;
 import com.itilms.finance.client.AdmissionClient;
+import com.itilms.finance.client.CourseClient;
+import com.itilms.finance.dto.request.ChargeDtos.BatchChargeRequest;
+import com.itilms.finance.dto.request.ChargeDtos.BatchChargeResult;
+import com.itilms.finance.dto.request.ChargeDtos.ChargeRequest;
 import com.itilms.finance.config.FinanceProperties;
 import com.itilms.finance.dto.request.FeePlanRequest;
 import com.itilms.finance.dto.response.FeePlanResponse;
@@ -55,6 +60,7 @@ public class FeePlanServiceImpl implements FeePlanService {
     private final FeePlanRepository planRepository;
     private final PaymentRepository paymentRepository;
     private final AdmissionClient admissionClient;
+    private final CourseClient courseClient;
     private final FinanceProperties props;
     private final EventPublisher events;
 
@@ -68,18 +74,35 @@ public class FeePlanServiceImpl implements FeePlanService {
         if (!event.hasFeePlan()) {
             return;
         }
-        if (planRepository.existsByStudentIdAndCourseIdAndStatusNot(
-                event.studentId(), event.courseId(), FeePlanStatus.CANCELLED)) {
-            log.debug("Student {} already has a fee plan for course {}; admission event ignored",
-                    event.studentId(), event.courseId());
-            return;
-        }
         BigDecimal discount = event.discount() == null ? BigDecimal.ZERO : event.discount();
         if (discount.compareTo(event.totalFee()) > 0) {
             // A fee plan with a negative net would be a debt the institute owes.
             // Leave it for the finance desk rather than invent a number.
             log.error("Admission of student {} carried a discount larger than the fee; no plan raised",
                     event.studentId());
+            return;
+        }
+        var existing = planRepository.findFirstByStudentIdAndCourseIdAndStatusNot(
+                event.studentId(), event.courseId(), FeePlanStatus.CANCELLED);
+        if (existing.isPresent()) {
+            FeePlan plan = planRepository.findWithInstallmentsById(existing.get().getId()).orElse(existing.get());
+            // The placement can arrive before the admission. The plan it raised is the plain course fee; the
+            // admission carries what was actually agreed (a discount, installments), so it takes over, provided
+            // nobody has paid on it or changed it yet.
+            if (plan.isAutoCreated()
+                    && paymentRepository.countByFeePlanIdAndStatus(plan.getId(), PaymentStatus.SUCCESS) == 0) {
+                plan.setTerms(event.totalFee(), discount);
+                int count = event.installments() == null || event.installments() < 1 ? 1 : event.installments();
+                replaceSchedule(plan, schedule(plan.getNetFee(), count,
+                        event.admissionDate() != null ? event.admissionDate() : today(), null));
+                plan.setAutoCreated(false);
+                plan.setStatus(plan.getNetFee().signum() == 0 ? FeePlanStatus.SETTLED : FeePlanStatus.ACTIVE);
+                planRepository.save(plan);
+                log.info("Fee plan {} raised at placement was replaced by the terms agreed at admission", plan.getId());
+            } else {
+                log.debug("Student {} already has a fee plan for course {}; admission event ignored",
+                        event.studentId(), event.courseId());
+            }
             return;
         }
 
@@ -102,6 +125,109 @@ public class FeePlanServiceImpl implements FeePlanService {
         plan = planRepository.save(plan);
         announce(plan);
         log.info("Raised fee plan {} for student {} from admission", plan.getId(), plan.getStudentId());
+    }
+
+    /** Days after placement that the course fee falls due. */
+    private static final int AUTO_PLAN_DUE_DAYS = 7;
+
+    @Override
+    @Transactional
+    public void createFromEnrollment(EnrollmentCreatedEvent event) {
+        if (event.studentId() == null || event.courseId() == null) {
+            return;
+        }
+        var existing = planRepository.findFirstByStudentIdAndCourseIdAndStatusNot(
+                event.studentId(), event.courseId(), FeePlanStatus.CANCELLED);
+        if (existing.isPresent()) {
+            FeePlan plan = existing.get();
+            // A plan that came from admission or a purchase keeps its terms; it only learns which batch the student
+            // is in now (a transfer moves them).
+            if (event.batchId() != null && !event.batchId().equals(plan.getBatchId())) {
+                plan.setBatchId(event.batchId());
+                planRepository.save(plan);
+            }
+            return;
+        }
+        CourseClient.CourseDetail detail = courseClient.publicDetail(event.courseId());
+        if (detail == null || detail.course() == null) {
+            // Throwing lets Kafka deliver the event again once course-service is back, instead of losing it.
+            throw new IllegalStateException("The fee of course " + event.courseId() + " could not be read yet");
+        }
+        BigDecimal fee = detail.course().fee();
+        if (fee == null || fee.signum() <= 0) {
+            log.info("Course {} has no fee; no plan raised for student {}", event.courseId(), event.studentId());
+            return;
+        }
+
+        FeePlan plan = FeePlan.builder()
+                .studentId(event.studentId())
+                .studentUserId(event.userId())
+                .studentCode(event.studentCode())
+                .studentName(event.studentName())
+                .courseId(event.courseId())
+                .batchId(event.batchId())
+                .currency(props.getCurrency())
+                .autoCreated(true)
+                .build();
+        plan.setTerms(fee, BigDecimal.ZERO);
+        plan.replaceInstallments(schedule(plan.getNetFee(), 1, today().plusDays(AUTO_PLAN_DUE_DAYS), null));
+        plan = planRepository.save(plan);
+        announce(plan);
+        events.audit(SERVICE_NAME, "FEE_PLAN_RAISED_AT_PLACEMENT", "FeePlan", plan.getId(), null,
+                Map.of("studentId", plan.getStudentId(), "courseId", plan.getCourseId(),
+                        "netFee", plan.getNetFee().toPlainString()));
+        log.info("Raised fee plan {} for student {} when they were placed in batch {}",
+                plan.getId(), plan.getStudentId(), event.batchId());
+    }
+
+    // -----------------------------------------------------------------
+    // Extra charges: a development fee, a book, an exam fee
+    // -----------------------------------------------------------------
+
+    @Override
+    @Transactional
+    public FeePlanResponse addCharge(Long planId, ChargeRequest request) {
+        FeePlan plan = requirePlan(planId);
+        applyCharge(plan, request.title(), request.amount(), request.dueDate());
+        plan = planRepository.save(plan);
+        return response(plan, paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(planId));
+    }
+
+    @Override
+    @Transactional
+    public BatchChargeResult addChargeToBatch(BatchChargeRequest request) {
+        List<FeePlan> plans = planRepository.findByBatchIdAndStatusNot(request.batchId(), FeePlanStatus.CANCELLED);
+        int added = 0;
+        for (FeePlan plan : plans) {
+            applyCharge(plan, request.title(), request.amount(), request.dueDate());
+            added++;
+        }
+        planRepository.saveAll(plans);
+        events.audit(SERVICE_NAME, "BATCH_CHARGE_ADDED", "Batch", request.batchId(), null,
+                Map.of("title", request.title().trim(), "amount", FeePlan.money(request.amount()).toPlainString(),
+                        "students", added));
+        return new BatchChargeResult(added, 0);
+    }
+
+    /** Adds the charge to a plan and tells the student; the caller saves. */
+    private void applyCharge(FeePlan plan, String title, BigDecimal amount, LocalDate dueDate) {
+        if (plan.getStatus() == FeePlanStatus.CANCELLED) {
+            throw new BusinessRuleException("A cancelled fee plan cannot be charged.");
+        }
+        if (dueDate.isBefore(today())) {
+            throw new BusinessRuleException("The due date cannot be in the past.");
+        }
+        String label = title.trim();
+        plan.addCharge(label, amount, dueDate);
+        plan.setAutoCreated(false);
+        events.audit(SERVICE_NAME, "FEE_CHARGE_ADDED", "FeePlan", plan.getId(), null,
+                Map.of("title", label, "amount", FeePlan.money(amount).toPlainString(), "dueDate", dueDate.toString()));
+        if (plan.getStudentUserId() != null) {
+            events.notifyUsers(List.of(plan.getStudentUserId()), "FEE_PLAN", "New fee: " + label,
+                    "%s %s has been added to your fees, due %s. You can pay it online from Fees."
+                            .formatted(props.getCurrencySymbol(), FeePlan.money(amount).toPlainString(), dueDate),
+                    "/student/fees");
+        }
     }
 
     @Override
@@ -176,14 +302,31 @@ public class FeePlanServiceImpl implements FeePlanService {
         boolean newSchedule = (request.installments() != null && !request.installments().isEmpty())
                 || request.installmentCount() != null;
         if (newSchedule || netChanged) {
+            // Extra charges (a development fee, a book) are not part of the course fee being re-split: they stay as
+            // they are, after the course-fee installments.
+            List<FeeInstallment> extras = plan.getInstallments().stream().filter(i -> i.getLabel() != null).toList();
+            List<FeeInstallment> course = plan.getInstallments().stream().filter(i -> i.getLabel() == null).toList();
+            BigDecimal extrasTotal = ScheduleBuilder.total(extras);
+            BigDecimal courseNet = plan.getNetFee().subtract(extrasTotal);
+            if (courseNet.signum() < 0) {
+                throw new BusinessRuleException(
+                        "The net fee cannot be less than the extra charges already on this plan (%s %s)."
+                                .formatted(props.getCurrencySymbol(), extrasTotal.toPlainString()));
+            }
             // Keep the existing shape when only the amount moved: same number of
             // installments from the same first date.
             Integer count = request.installmentCount() != null ? request.installmentCount()
-                    : Math.max(1, plan.getInstallments().size());
+                    : Math.max(1, course.size());
             LocalDate first = request.firstDueDate() != null ? request.firstDueDate()
-                    : plan.getInstallments().stream().map(FeeInstallment::getDueDate)
-                            .min(Comparator.naturalOrder()).orElse(today());
-            replaceSchedule(plan, schedule(plan.getNetFee(), count, first, request.installments()));
+                    : course.stream().map(FeeInstallment::getDueDate).min(Comparator.naturalOrder()).orElse(today());
+            List<FeeInstallment> rebuilt = new ArrayList<>(schedule(courseNet, count, first, request.installments()));
+            int number = rebuilt.size();
+            for (FeeInstallment extra : extras) {
+                rebuilt.add(FeeInstallment.builder().installmentNo(++number).dueDate(extra.getDueDate())
+                        .amount(extra.getAmount()).label(extra.getLabel()).build());
+            }
+            replaceSchedule(plan, rebuilt);
+            plan.setAutoCreated(false);
         }
 
         FeeLedger ledger = FeeLedger.of(plan, payments, today());

@@ -7,6 +7,7 @@ erDiagram
         numeric amount
         integer last_reminder_days
         timestamptz overdue_notified_at
+        varchar label
     }
     fee_plans {
         bigint id PK
@@ -28,6 +29,7 @@ erDiagram
         timestamptz updated_at
         bigint created_by
         bigint updated_by
+        boolean auto_created
     }
     online_orders {
         bigint id PK
@@ -48,6 +50,7 @@ erDiagram
         timestamptz updated_at
         bigint created_by
         bigint updated_by
+        varchar kind
     }
     payments {
         bigint id PK

@@ -384,7 +384,8 @@ public class BatchServiceImpl implements BatchService {
             events.publishAfterCommit(KafkaTopics.ENROLLMENT_CREATED, new EnrollmentCreatedEvent(
                     DomainEvent.newId(), Instant.now(),
                     enrollment.getId(), studentId, student.userId(),
-                    batch.getCourseId(), batchId, batch.getBatchCode()));
+                    batch.getCourseId(), batchId, batch.getBatchCode(),
+                    student.studentCode(), student.fullName()));
 
             events.notifyUsers(List.of(student.userId()), "ENROLLMENT",
                     "You have been added to " + batch.getBatchCode(),
@@ -472,7 +473,8 @@ public class BatchServiceImpl implements BatchService {
         events.publishAfterCommit(KafkaTopics.ENROLLMENT_CREATED, new EnrollmentCreatedEvent(
                 DomainEvent.newId(), Instant.now(),
                 moved.getId(), moved.getStudentId(), moved.getUserId(),
-                moved.getCourseId(), targetBatchId, target.getBatchCode()));
+                moved.getCourseId(), targetBatchId, target.getBatchCode(),
+                moved.getStudentCode(), moved.getStudentName()));
 
         events.notifyUsers(List.of(moved.getUserId()), "ENROLLMENT",
                 "You have been moved to " + target.getBatchCode(),
