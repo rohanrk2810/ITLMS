@@ -17,6 +17,8 @@ interface AuthState {
   roles: Role[]
   accessToken: string | null
   status: AuthStatus
+  /** Set when the person chose Sign out, so the portal sends them to the front page and not the sign-in page. */
+  signedOutByUser: boolean
   setSession: (accessToken: string, user: UserResponse) => void
   setUser: (user: UserResponse) => void
   clearSession: () => void
@@ -32,7 +34,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   roles: [],
   accessToken: null,
   status: 'checking',
-  setSession: (accessToken, user) => set({ accessToken, user, roles: rolesOf(user), status: 'authenticated' }),
+  signedOutByUser: false,
+  setSession: (accessToken, user) =>
+    set({ accessToken, user, roles: rolesOf(user), status: 'authenticated', signedOutByUser: false }),
   setUser: (user) => set({ user, roles: rolesOf(user) }),
   clearSession: () => set({ accessToken: null, user: null, roles: [], status: 'unauthenticated' }),
 }))
