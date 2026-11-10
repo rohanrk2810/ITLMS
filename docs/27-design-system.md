@@ -102,3 +102,20 @@ Auth pages use `layouts/auth-layout.tsx` with the institute's login background.
 - Until the institute's branding loads, or if the server is down, the name shown is `SutraVidya` (`DEFAULT_NAME` in `use-branding.ts`, and the `<title>` in `index.html`).
 - The portal's text-size setting (Customize, `fontScale`) applies inside the app only. `AuthLayout` resets the root size, so sign-in, register and reset-password stay at the normal size.
 - Any component that renders a `<Link>` must sit inside `<BrowserRouter>`; one placed outside it crashes the whole app to a blank page (this happened with the cookie notice).
+
+## Motion
+
+Small, quick and optional. Everything below is switched off for people whose system asks for reduced motion (`prefers-reduced-motion`), and none of it delays a click.
+
+| Where | What | How |
+|---|---|---|
+| Every portal page | fades up as it opens | `animate-in fade-in-0 slide-in-from-bottom-1` on the page wrapper in `layouts/app-layout.tsx` |
+| Lists of cards, stat tiles, the sidebar menu | the items appear one after another | the `stagger` class (`index.css`) |
+| Table rows | settle in with a short delay, first eight rows | `[data-slot='table-body'] > tr` in `index.css` |
+| Dashboard figures | count up when they first appear, glide when they change | `components/animated-number.tsx` |
+| Dashboard tiles and quick links | lift and gain a shadow on hover | Tailwind `hover:-translate-y-1 hover:shadow-md` |
+| Sidebar | a bar slides in beside the open page; the icon grows and the row nudges on hover | `components/sidebar-nav.tsx` |
+| All buttons | press in slightly | `active:scale-[0.97]` in `components/ui/button.tsx` |
+| Dialogs, menus, toasts | open and close with a fade and a zoom | the shadcn components |
+
+The public website has its own set (top bar, footer, page and card entrances): see [35-public-website.md](35-public-website.md).
