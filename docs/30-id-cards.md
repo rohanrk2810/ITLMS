@@ -4,7 +4,7 @@ Students, trainers and other staff can be given a printed ID card. ADMIN and COO
 
 ## What a card shows
 
-CR80 (credit-card size, 54 x 85.6 mm), upright: the institute logo and name in a coloured band, the photo, the name, the role (Student, Trainer, or a staff title), the person's code (student code or employee code), the batch for a student, the valid-until date, a QR code, and the card number such as `STU-2026-0042`. The prefix is `STU`, `TRN` or `STF`; the number comes from a database sequence.
+CR80 (credit-card size, 54 x 85.6 mm), upright: the institute logo and name in a coloured band, the photo, the name, the role (Student, Trainer, or a staff title), the person's code (student code or employee code), the batch for a student, the valid-until date, a QR code, the card number such as `STU-2026-0042`, and the institute's contact phone from the Branding page (left off when none is set). The prefix is `STU`, `TRN` or `STF`; the number comes from a database sequence.
 
 The QR code opens the public check page `/verify-id/<card number>?code=<code>`. That page shows only the name, role, validity and whether the card is valid, expired or withdrawn.
 
