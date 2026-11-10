@@ -3,6 +3,7 @@ import type { LessonWatch } from '@/api/courses'
 import type { FeePlanResponse, OverdueItemResponse } from '@/api/finance'
 import type { LeadResponse } from '@/api/leads'
 import type { StudentProgressReport } from '@/api/progress'
+import type { CourseRequestResponse } from '@/api/course-requests'
 import type { DashboardSummaryResponse } from '@/api/reporting'
 import type { StudentResponse, StudentSummaryResponse } from '@/api/students'
 import type { UserResponse } from '@/api/types'
@@ -350,6 +351,55 @@ export function usersReport(users: UserResponse[], filter: { role?: string; quer
     rows: users.map((u) => [
       u.fullName, u.email, u.phone, u.roleDisplayName, (u.extraRoles ?? []).join(', '), u.status, u.profileCode,
       dateTime(u.lastLoginAt), day(u.createdAt),
+    ]),
+  }
+}
+
+const REQUEST_STATUS: Record<string, string> = {
+  PENDING: 'Waiting',
+  APPROVED: 'Approved',
+  REJECTED: 'Not approved',
+  CANCELLED: 'Withdrawn by the student',
+}
+
+/**
+ * Every course request: who asked for which course, what was decided and by whom, and when. The facts at the top
+ * count the requests by outcome and say how many each person approved and turned down, so the sheet answers "who
+ * accepted how many, and how many were rejected" without any sorting.
+ */
+export function courseRequestsReport(requests: CourseRequestResponse[], filter: { status?: string } = {}): Report {
+  const count = (status: string) => requests.filter((r) => r.status === status).length
+  const deciders = new Map<string, { approved: number; rejected: number }>()
+  for (const r of requests) {
+    if ((r.status !== 'APPROVED' && r.status !== 'REJECTED') || !r.decidedByName) continue
+    const entry = deciders.get(r.decidedByName) ?? { approved: 0, rejected: 0 }
+    if (r.status === 'APPROVED') entry.approved += 1
+    else entry.rejected += 1
+    deciders.set(r.decidedByName, entry)
+  }
+  const perPerson: [string, string][] = [...deciders.entries()]
+    .sort((a, b) => b[1].approved + b[1].rejected - (a[1].approved + a[1].rejected))
+    .map(([name, n]) => [`Decided by ${name}`, `${n.approved} approved, ${n.rejected} not approved`])
+  return {
+    title: 'Course requests',
+    fileName: 'course-requests',
+    info: [
+      ['Requests', String(requests.length)],
+      ['Status', filter.status ? (REQUEST_STATUS[filter.status] ?? filter.status) : 'All'],
+      ['Approved', String(count('APPROVED'))],
+      ['Not approved', String(count('REJECTED'))],
+      ['Waiting', String(count('PENDING'))],
+      ['Withdrawn by the student', String(count('CANCELLED'))],
+      ...perPerson,
+    ],
+    header: [
+      'Student code', 'Student', 'Email', 'Phone', 'Course', 'Asked on', 'Student note', 'Status', 'Decided by', 'Decided on',
+      'Reason or note', 'Batch placed in',
+    ],
+    rows: requests.map((r) => [
+      r.studentCode, r.studentName, r.studentEmail, r.studentPhone, r.courseTitle ?? r.courseCode, day(r.createdAt), r.message,
+      REQUEST_STATUS[r.status] ?? r.status, r.decidedByName, dateTime(r.decidedAt), r.decisionNote,
+      r.approvedBatchId == null ? '' : `Batch ${r.approvedBatchId}`,
     ]),
   }
 }

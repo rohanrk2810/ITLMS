@@ -11,5 +11,6 @@ public enum ExportedReport {
     FEE_POSITION,
     FEE_PLANS,
     OVERDUE_FEES,
-    USERS
+    USERS,
+    COURSE_REQUESTS
 }
