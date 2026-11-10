@@ -99,7 +99,7 @@ Recorded in [02-documentation-review.md](02-documentation-review.md): microservi
 ## 6. Out of scope for now
 
 - Kubernetes manifests (Docker Compose is the supported deployment).
-- Online payment gateway for fees (payments are recorded by finance staff).
+- Online payment of installments and refunds through the gateway. Buying a course online with Razorpay is built ([34](34-online-payments.md)); other fees are still recorded by finance staff.
 - Remote control of a student's own computer (not possible from a browser; see "Open questions").
 
 ## 7. Open questions

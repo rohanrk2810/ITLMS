@@ -15,6 +15,18 @@ public final class CourseRequestDtos {
     private CourseRequestDtos() {
     }
 
+    @Schema(description = "A student whose online payment for a course was confirmed asks to be placed in a batch")
+    public record PaidJoinRequest(@NotNull Long courseId, @NotBlank @Size(max = 80) String orderId) {
+    }
+
+    /** Where the student was placed. */
+    public record PaidJoinResponse(Long batchId, String batchCode, boolean alreadyEnrolled) {
+    }
+
+    /** A batch of a course that still has a seat. */
+    public record OpenBatchResponse(Long batchId, String batchCode, long seatsLeft) {
+    }
+
     public record CreateRequest(
             @NotNull Long courseId,
             @Schema(description = "A batch of that course the student would like to join (optional)") Long batchId,

@@ -67,13 +67,14 @@ class CourseRequestServiceTest {
     @Mock BatchService batchService;
     @Mock CourseClient courseClient;
     @Mock AdmissionClient admissionClient;
+    @Mock com.itilms.batch.client.FinanceClient financeClient;
     @Mock EventPublisher events;
 
     CourseRequestService service;
 
     @BeforeEach
     void setUp() {
-        service = new CourseRequestService(requests, batches, enrollments, batchService, courseClient, admissionClient, events);
+        service = new CourseRequestService(requests, batches, enrollments, batchService, courseClient, admissionClient, financeClient, events);
 
         lenient().when(courseClient.get(COURSE)).thenReturn(
                 new CourseClient.CourseDetail(new CourseClient.CourseSummary(COURSE, "Java Full Stack", "JFS", "PUBLISHED")));
@@ -330,6 +331,59 @@ class CourseRequestServiceTest {
     private static CourseRequest pending(Long id, Long studentId) {
         return CourseRequest.builder().id(id).studentId(studentId).userId(4L).studentName("Asha Patil")
                 .courseId(COURSE).courseTitle("Java Full Stack").build();
+    }
+
+    // -----------------------------------------------------------------
+    // Online purchase
+    // -----------------------------------------------------------------
+
+    @Test
+    @DisplayName("a confirmed payment places the student in the first batch with a free seat")
+    void paidJoinPlacesTheStudent() {
+        when(financeClient.order("order_1")).thenReturn(new com.itilms.batch.client.FinanceClient.OnlineOrder(
+                "order_1", "PAID", 10L, COURSE, null));
+        Batch open = batch(5L, COURSE, BatchStatus.PLANNED);
+        when(batches.findByCourseIdAndStatusInOrderByStartDateAsc(eq(COURSE), any())).thenReturn(List.of(open));
+        when(enrollments.countByBatchIdAndStatus(5L, EnrollmentStatus.ACTIVE)).thenReturn(0L);
+        when(batchService.enroll(eq(5L), any())).thenReturn(new EnrollmentResultResponse(5L, 1, 0, 9, List.of()));
+
+        var result = service.paidJoin(new com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinRequest(COURSE, "order_1"));
+
+        assertThat(result.batchId()).isEqualTo(5L);
+        verify(batchService).enroll(eq(5L), any());
+    }
+
+    @Test
+    @DisplayName("an unpaid, someone else's or another course's order places nobody")
+    void paidJoinNeedsAConfirmedPaymentOfThisStudentForThisCourse() {
+        var request = new com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinRequest(COURSE, "order_1");
+        when(financeClient.order("order_1")).thenReturn(new com.itilms.batch.client.FinanceClient.OnlineOrder(
+                "order_1", "CREATED", 10L, COURSE, null));
+        assertThatThrownBy(() -> service.paidJoin(request)).isInstanceOf(BusinessRuleException.class);
+
+        when(financeClient.order("order_1")).thenReturn(new com.itilms.batch.client.FinanceClient.OnlineOrder(
+                "order_1", "PAID", 11L, COURSE, null));
+        assertThatThrownBy(() -> service.paidJoin(request)).isInstanceOf(BusinessRuleException.class);
+
+        when(financeClient.order("order_1")).thenReturn(new com.itilms.batch.client.FinanceClient.OnlineOrder(
+                "order_1", "PAID", 10L, 8L, null));
+        assertThatThrownBy(() -> service.paidJoin(request)).isInstanceOf(BusinessRuleException.class);
+
+        when(financeClient.order("order_1")).thenReturn(null);
+        assertThatThrownBy(() -> service.paidJoin(request)).isInstanceOf(BusinessRuleException.class);
+        verify(batchService, never()).enroll(any(), any());
+    }
+
+    @Test
+    @DisplayName("no free seat: the student is not placed and the staff are told")
+    void paidJoinWithNoSeatTellsTheStaff() {
+        when(financeClient.order("order_1")).thenReturn(new com.itilms.batch.client.FinanceClient.OnlineOrder(
+                "order_1", "PAID", 10L, COURSE, null));
+        when(batches.findByCourseIdAndStatusInOrderByStartDateAsc(eq(COURSE), any())).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.paidJoin(new com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinRequest(COURSE, "order_1")))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("payment is safe");
+        verify(events).notifyRole(eq("ADMIN"), eq("COURSE_REQUEST"), any(), any(), any());
     }
 
     private static void actAs(AppPrincipal principal) {

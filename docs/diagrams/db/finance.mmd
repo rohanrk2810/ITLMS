@@ -29,6 +29,26 @@ erDiagram
         bigint created_by
         bigint updated_by
     }
+    online_orders {
+        bigint id PK
+        varchar razorpay_order_id UK
+        varchar razorpay_payment_id
+        bigint student_id
+        bigint student_user_id
+        bigint course_id
+        varchar course_title
+        bigint batch_id
+        numeric amount
+        varchar currency
+        varchar status
+        bigint fee_plan_id
+        bigint payment_id
+        timestamptz paid_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
     payments {
         bigint id PK
         bigint fee_plan_id FK

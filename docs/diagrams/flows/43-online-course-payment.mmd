@@ -1,0 +1,59 @@
+sequenceDiagram
+    autonumber
+    actor S as Student
+    participant FE as Web app
+    participant FN as finance-service
+    participant CR as course-service
+    participant BA as batch-service
+    participant RZ as Razorpay
+    participant K as Kafka
+    participant NO as notification-service
+
+    Note over S,FN: Start the purchase
+    S->>FE: Buy, then Pay online
+    FE->>FN: POST /api/payments/online/orders {courseId}
+    FN->>FN: STUDENT role only, off when no Razorpay key is set
+    FN->>CR: course fee and state (Feign)
+    CR-->>FN: PUBLISHED, fee
+    FN->>FN: refuse if the fee is empty or the student already has a fee plan for the course
+    FN->>BA: GET /api/course-requests/open-batch
+    BA-->>FN: a batch with a free seat, or 404 (then no sale)
+    FN->>RZ: create order for exactly the course fee
+    RZ-->>FN: order_id
+    FN->>FN: online_orders row, status CREATED
+    FN-->>FE: order id, public key id, amount
+
+    Note over S,RZ: Pay
+    FE->>RZ: Razorpay Checkout (UPI, card, netbanking, wallet)
+    S->>RZ: pays
+    RZ-->>FE: order id, payment id, signature
+
+    Note over FE,FN: Confirm and record
+    FE->>FN: POST /api/payments/online/verify
+    FN->>FN: HMAC-SHA256(order_id|payment_id, key secret) must equal the signature
+    alt signature does not match
+        FN-->>FE: refused, nothing recorded
+    else genuine
+        FN->>FN: one transaction: fee plan (full fee), ONLINE payment with receipt, order PAID
+        FN->>K: payment.recorded
+        K->>NO: Payment received
+    end
+
+    Note over FN,BA: Open the course
+    FN->>BA: POST /api/course-requests/paid-join {courseId, orderId}
+    BA->>FN: GET /api/payments/online/orders/{orderId}
+    FN-->>BA: PAID, owner and course (answers only for the owner)
+    alt a batch has a seat
+        BA->>BA: enrol the student in the preferred or first open batch
+        BA->>K: enrollment.created
+        BA-->>FN: batch
+        FN->>FN: order ENROLLED
+        FN-->>FE: enrolled, the course is open in My courses
+    else no seat or service down
+        FN->>K: notification.requested (ADMIN, COORDINATOR: paid student needs a batch)
+        FN-->>FE: payment received, the institute will add you shortly
+    end
+
+    Note over RZ,FN: Safety net
+    RZ->>FN: POST /api/payments/online/webhook (payment.captured, signed)
+    FN->>FN: signature checked, and if the order is still CREATED, warn ADMIN and COORDINATOR

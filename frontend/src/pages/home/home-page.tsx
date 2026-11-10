@@ -16,6 +16,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { assetUrl } from '@/api/branding'
 import type { CourseSummaryResponse } from '@/api/courses'
+import { CourseActions } from '@/components/course-actions'
 import { getPublicCourses } from '@/api/public-site'
 import { BrandMark } from '@/components/brand-mark'
 import { LegalLinks } from '@/components/legal-links'
@@ -520,10 +521,8 @@ function CourseCard({ course, site, s }: { course: CourseSummaryResponse; site: 
         )}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-sm">
           <span className="text-muted-foreground">{[duration, fee].filter(Boolean).join(' · ')}</span>
-          <a href="#enquiry" className="inline-flex shrink-0 items-center gap-1 font-medium text-primary hover:underline">
-            {s.askAbout} <ArrowRightIcon className="size-4" />
-          </a>
         </div>
+        <CourseActions course={course} />
       </div>
     </article>
   )

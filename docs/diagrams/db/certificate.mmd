@@ -77,6 +77,7 @@ erDiagram
         timestamptz updated_at
         bigint created_by
         bigint updated_by
+        varchar phone
     }
     certificates ||--o{ certificate_requests : "certificate_id"
     certificate_requests ||--o{ certificates : "request_id"

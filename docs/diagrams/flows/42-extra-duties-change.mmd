@@ -39,4 +39,4 @@ sequenceDiagram
     S-->>B: the answer a coordinator gets
 
     Note over A,I: Withdrawn the same way: roles_version 1 -> 2, the next request is renewed without the duty
-    Note over G,RD: If Redis cannot be reached the check is skipped; the 30-minute token limit still applies
+    Note over G,RD: If Redis cannot be reached the check is skipped, and the 30-minute token limit still applies

@@ -159,3 +159,7 @@ Comparing the implementation against §12 and §14 turned up five defects. All f
 | Internal service-to-service endpoints (`/internal/...`) were reachable through the gateway | A signed-in student could call lookups meant for other services, such as resolving batch or course ids in bulk | The gateway answers 404 for any `/internal/` path |
 | A LiveKit room closing early (unused before class, or everyone disconnected mid-class) was treated as the class ending | Attendance was published early, and every later join was refused with "this class has finished" | Only a room that was in use and closes near the scheduled end settles the class; any other closure lets the room be recreated on the next join |
 | The password-reset link, token included, was sent as the notification's link | The in-app notification would have stored a live reset token, so anyone able to read that table could take over the account | The token travels only as email data. notification-service builds the link inside the email and never stores or logs the token, or a temporary password |
+
+### Online course payment (2026-11)
+
+The PDF has staff record every payment. A student can now also pay a course fee online with Razorpay; a confirmed payment records the fee and receipt and places the student in a batch at once. See [34-online-payments.md](34-online-payments.md).

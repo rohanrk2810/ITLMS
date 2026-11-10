@@ -46,6 +46,8 @@ public class GatewayJwtProperties {
             "/api/id-cards/verify/**",
             "/api/leads/enquiry",
             "/api/liveclass/webhook/**",
+            // Razorpay calls this; the body is checked against its signature in finance-service.
+            "/api/payments/online/webhook",
             "/actuator/health/**",
             "/v3/api-docs/**",
             // The gateway's Swagger page loads each service's docs through its route prefix.

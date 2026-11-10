@@ -25,7 +25,7 @@ if (-not $SkipBuild) {
         if ($jdk) { $env:JAVA_HOME = $jdk.FullName }
     }
     # clean: jars compiled by an IDE can contain "Unresolved compilation problem" classes.
-    mvn -DskipTests clean package
+    mvn -DskipTests clean package     
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

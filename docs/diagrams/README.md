@@ -1,6 +1,6 @@
 # Diagrams
 
-Forty-two diagrams of IT-ILMS, each as Mermaid source (`.mmd`) and a rendered picture (`.svg`) beside it. GitHub and VS Code (Markdown preview) show the pictures below; the `.mmd` files are what you edit.
+Forty-three diagrams of IT-ILMS, each as Mermaid source (`.mmd`) and a rendered picture (`.svg`) beside it. GitHub and VS Code (Markdown preview) show the pictures below; the `.mmd` files are what you edit.
 
 The short diagrams inside [../19-system-design-hld-lld.md](../19-system-design-hld-lld.md) are an overview. These go deeper: every service's real schema, every event, and each flow step by step.
 
@@ -8,7 +8,7 @@ The short diagrams inside [../19-system-design-hld-lld.md](../19-system-design-h
 |---|---|---|
 | Architecture | [architecture/](architecture) | 6 |
 | Database (ER, one per service) | [db/](db) | 12 |
-| Flows (sequence) | [flows/](flows) | 14 |
+| Flows (sequence) | [flows/](flows) | 15 |
 | State machines | [states/](states) | 4 |
 | Security | [security/](security) | 3 |
 | Frontend | [frontend/](frontend) | 3 |
@@ -65,6 +65,7 @@ Foreign keys are only drawn inside one database. Ids that point at another servi
 | 30 | Notifications and the email outbox | [flows/30-notification-and-email-outbox.svg](flows/30-notification-and-email-outbox.svg) |
 | 41 | ID cards: issue, photo, print, own card, QR check, withdraw | [flows/41-id-card-issue-print-verify.svg](flows/41-id-card-issue-print-verify.svg) |
 | 42 | Extra duties: given by the administrator, applied at the next request | [flows/42-extra-duties-change.svg](flows/42-extra-duties-change.svg) |
+| 43 | Online course payment (Razorpay) | [flows/43-online-course-payment.svg](flows/43-online-course-payment.svg) |
 
 ## State machines
 
