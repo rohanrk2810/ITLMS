@@ -84,6 +84,22 @@ class IdCardPdfRendererTest {
     }
 
     @Test
+    void aTwoLineInstituteNameWithAnAddressStillFitsInsideTheBand() throws Exception {
+        var client = org.mockito.Mockito.mock(com.itilms.certificate.client.BrandingClient.class);
+        org.mockito.Mockito.when(client.branding()).thenReturn(new com.itilms.certificate.client.BrandingClient.Branding(
+                "Sprint Institute of Information Technology and Management Studies", null, null, null, 1L, "#2b0255", null,
+                "Office 4, Sutra Plaza, FC Road, Shivajinagar, Pune, Maharashtra 411004, near the old bus stand"));
+        var renderer2 = new IdCardPdfRenderer(new InstituteBranding(client, new CertificateProperties()));
+        IdCard card = card("Asha Patil", "STU-30");
+
+        byte[] pdf = renderer2.renderOne(card, null, verifyUrl(card));
+
+        String text = new com.lowagie.text.pdf.parser.PdfTextExtractor(new com.lowagie.text.pdf.PdfReader(pdf)).getTextFromPage(1);
+        assertThat(text).contains("Sprint Institute").contains("Sutra Plaza").contains("...");
+        Files.write(Path.of("target", "id-card-long-name.pdf"), pdf);
+    }
+
+    @Test
     void withoutAnAddressTheHeaderIsAsBefore_andALongAddressIsShortened() throws Exception {
         var client = org.mockito.Mockito.mock(com.itilms.certificate.client.BrandingClient.class);
         org.mockito.Mockito.when(client.branding()).thenReturn(new com.itilms.certificate.client.BrandingClient.Branding(
