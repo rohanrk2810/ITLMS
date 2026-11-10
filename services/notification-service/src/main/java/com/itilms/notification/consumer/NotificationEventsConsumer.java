@@ -7,10 +7,12 @@ import com.itilms.common.event.EnrollmentCreatedEvent;
 import com.itilms.common.event.JobPostedEvent;
 import com.itilms.common.event.KafkaTopics;
 import com.itilms.common.event.NotificationRequestedEvent;
+import com.itilms.common.event.PaymentReceiptEmailEvent;
 import com.itilms.common.event.UserCreatedEvent;
 import com.itilms.common.event.UserStatusChangedEvent;
 import com.itilms.notification.service.DirectoryService;
 import com.itilms.notification.service.NotificationIntake;
+import com.itilms.notification.service.ReceiptEmailService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,10 +25,16 @@ public class NotificationEventsConsumer {
 
     private final NotificationIntake intake;
     private final DirectoryService directory;
+    private final ReceiptEmailService receipts;
 
     @KafkaListener(topics = KafkaTopics.NOTIFICATION_REQUESTED, groupId = GROUP)
     public void onNotificationRequested(NotificationRequestedEvent event) {
         intake.handle(event);
+    }
+
+    @KafkaListener(topics = KafkaTopics.PAYMENT_RECEIPT_EMAIL, groupId = GROUP)
+    public void onPaymentReceipt(PaymentReceiptEmailEvent event) {
+        receipts.queue(event);
     }
 
     @KafkaListener(topics = KafkaTopics.JOB_POSTED, groupId = GROUP)

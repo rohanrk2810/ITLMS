@@ -26,6 +26,8 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutbox, Long> 
             """, nativeQuery = true)
     List<EmailOutbox> claimDue(@Param("now") Instant now, @Param("limit") int limit);
 
+    boolean existsByEventId(String eventId);
+
     @Modifying
     @Query("DELETE FROM EmailOutbox e WHERE e.createdAt < :cutoff AND e.status <> 'PENDING'")
     int deleteFinishedBefore(@Param("cutoff") Instant cutoff);

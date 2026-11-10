@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Receipt } from 'lucide-react'
 
 import { type FeePlanResponse, getReceipt, myFeePlans, type ReceiptResponse } from '@/api/finance'
+import { DownloadReceiptButton } from '@/components/download-receipt-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -140,6 +141,7 @@ function FeePlanCard({ plan, onViewReceipt }: { plan: FeePlanResponse; onViewRec
                         <Receipt className="size-3.5" />
                         View
                       </Button>
+                      <DownloadReceiptButton paymentId={payment.id} receiptNo={payment.receiptNo} label="PDF" variant="ghost" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -187,6 +189,7 @@ function ReceiptView({ paymentId }: { paymentId: number }) {
         <Row label="Paid to date" value={`${r.currencySymbol}${r.paidToDate}`} />
         <Row label="Balance today" value={`${r.currencySymbol}${r.balanceAsOfToday}`} />
       </div>
+      <DownloadReceiptButton paymentId={paymentId} receiptNo={r.receiptNo} />
     </>
   )
 }

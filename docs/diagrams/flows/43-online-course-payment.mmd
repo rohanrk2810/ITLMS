@@ -37,6 +37,8 @@ sequenceDiagram
         FN->>FN: one transaction: fee plan (full fee), ONLINE payment with receipt, order PAID
         FN->>K: payment.recorded
         K->>NO: Payment received
+        FN->>K: payment-receipt-email (receipt PDF)
+        K->>NO: email the student the PDF receipt
     end
 
     Note over FN,BA: Open the course

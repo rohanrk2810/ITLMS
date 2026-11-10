@@ -19,6 +19,9 @@ sequenceDiagram
     FI->>FI: receipt number
     FI->>K: payment-recorded
     K->>RP: income and collection facts
+    FI->>FI: draw the receipt as a PDF: Branding colour and logo, full address, logo watermark, amount in words, phone and email at the foot
+    FI->>K: payment-receipt-email (the PDF travels in the event)
+    K->>NO: queue an email to the student with the PDF attached
     alt outstanding becomes 0
         FI->>FI: plan ACTIVE -> SETTLED
     end
@@ -36,3 +39,5 @@ sequenceDiagram
     S->>FI: view my fees and receipts
     FI->>FI: outstanding = net fee - successful payments, computed on every read
     FI-->>S: instalments, receipts, outstanding
+    S->>FI: GET /api/payments/{id}/receipt/pdf (own payments only)
+    FI-->>S: the same PDF that was emailed, figures as of today

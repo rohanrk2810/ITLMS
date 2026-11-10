@@ -46,6 +46,17 @@ public class EmailOutbox {
     @Column(name = "html_body", nullable = false, columnDefinition = "text")
     private String htmlBody;
 
+    /** One optional attachment, such as a receipt PDF. Cleared once the email is sent. */
+    @Column(name = "attachment_name", length = 120)
+    private String attachmentName;
+
+    @Column(name = "attachment", columnDefinition = "bytea")
+    private byte[] attachment;
+
+    /** The event that caused this email, so a redelivered event is not queued twice. */
+    @Column(name = "event_id", length = 60)
+    private String eventId;
+
     @Builder.Default
     @Column(nullable = false, length = 10)
     private String status = PENDING;
@@ -72,6 +83,7 @@ public class EmailOutbox {
         status = SENT;
         sentAt = at;
         lastError = null;
+        attachment = null;
     }
 
     /**

@@ -32,6 +32,11 @@ public class Mailer {
     }
 
     public void send(String to, EmailComposer.Email email) {
+        send(to, email, null, null);
+    }
+
+    /** As {@link #send(String, EmailComposer.Email)}, with one PDF attached when {@code attachment} is not null. */
+    public void send(String to, EmailComposer.Email email, String attachmentName, byte[] attachment) {
         MimeMessage message = sender.createMimeMessage();
         try {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -39,6 +44,10 @@ public class Mailer {
             helper.setTo(to);
             helper.setSubject(email.subject());
             helper.setText(email.text(), email.html());
+            if (attachment != null && attachment.length > 0) {
+                helper.addAttachment(attachmentName == null ? "attachment.pdf" : attachmentName,
+                        new org.springframework.core.io.ByteArrayResource(attachment), "application/pdf");
+            }
         } catch (MessagingException | UnsupportedEncodingException ex) {
             throw new MailPreparationException("Could not build the email", ex);
         }
