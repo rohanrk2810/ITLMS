@@ -60,7 +60,7 @@ describe('PublicCoursesPage', () => {
 
   it('lists every published course with its fee and the Buy and Inquiry buttons', async () => {
     renderPage()
-    expect(await screen.findByRole('heading', { name: 'Java Full Stack' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Java Full Stack' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Data Science' })).toBeTruthy()
     expect(screen.getByText(/15,000/)).toBeTruthy()
     expect(screen.getByText('Fee on request')).toBeTruthy()

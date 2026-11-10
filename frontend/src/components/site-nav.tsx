@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useBranding } from '@/lib/use-branding'
+import { useAuthDialog } from '@/stores/auth-dialog-store'
 import { useAuthStore } from '@/stores/auth-store'
 
 const LINKS = [
@@ -43,6 +44,7 @@ export function SiteNav() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const [inquiryOpen, setInquiryOpen] = useState(false)
+  const showAuth = useAuthDialog((state) => state.show)
   const phone = branding?.contactPhone?.trim()
 
   useEffect(() => {
@@ -115,11 +117,11 @@ export function SiteNav() {
             </Button>
           ) : (
             <>
-              <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex">
-                <Link to="/login">Login</Link>
+              <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => showAuth('login')}>
+                Login
               </Button>
-              <Button asChild size="sm">
-                <Link to="/register">Register</Link>
+              <Button size="sm" onClick={() => showAuth('register')}>
+                Register
               </Button>
             </>
           )}
@@ -189,10 +191,15 @@ export function SiteNav() {
               <MessageCircleQuestionIcon /> Inquiry
             </Button>
             {status !== 'authenticated' && (
-              <Button asChild size="sm" variant="ghost">
-                <Link to="/login" onClick={() => setMenuOpen(false)}>
-                  Login
-                </Link>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setMenuOpen(false)
+                  showAuth('login')
+                }}
+              >
+                Login
               </Button>
             )}
           </div>

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EnquiryForm } from '@/pages/home/enquiry-form'
 import { formatMoney, hasCourseFee } from '@/lib/format'
+import { useAuthDialog } from '@/stores/auth-dialog-store'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 type Course = Pick<CourseSummaryResponse, 'id' | 'title'> & Partial<CourseSummaryResponse>
@@ -23,6 +24,7 @@ type Course = Pick<CourseSummaryResponse, 'id' | 'title'> & Partial<CourseSummar
 export function CourseActions({ course }: { course: Course }) {
   const [mode, setMode] = useState<'buy' | 'inquiry' | null>(null)
   const navigate = useNavigate()
+  const showAuth = useAuthDialog((state) => state.show)
   const queryClient = useQueryClient()
   const signedIn = useAuthStore((state) => state.status) === 'authenticated'
   const user = useAuthStore((state) => state.user)
@@ -57,7 +59,8 @@ export function CourseActions({ course }: { course: Course }) {
 
   function startPurchase() {
     setMode(null)
-    navigate(signedIn ? `/app/courses/${course.id}` : '/register')
+    if (signedIn) navigate(`/app/courses/${course.id}`)
+    else showAuth('register') // the sign-up popup opens over this page, so the course stays in view
   }
 
   return (
@@ -96,6 +99,18 @@ export function CourseActions({ course }: { course: Course }) {
             <Button type="button" variant={canPayOnline ? 'outline' : 'default'} onClick={startPurchase}>
               <CreditCardIcon /> {signedIn ? 'Continue to the course' : 'Create an account and continue'}
             </Button>
+            {!signedIn && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setMode(null)
+                  showAuth('login')
+                }}
+              >
+                I already have an account: sign in
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={() => setMode('inquiry')}>
               <MessageCircleQuestionIcon /> I have questions first: send an inquiry
             </Button>
