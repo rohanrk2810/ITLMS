@@ -37,6 +37,7 @@ Start with [../README.md](../README.md) for what the system is and how to run it
 | [34](34-online-payments.md) | Buying a course online with Razorpay: flow, webhook, keys, rules |
 | [34](34-legal-pages.md) | Privacy, terms, cookie and refund pages, cookie notice, register consent |
 | [35](35-public-website.md) | The public front page: courses, features, enquiry form, Login button |
+| [36](36-extending-a-course.md) | Extending a course: a batch end date, or one student access; the nightly expiry |
 | [12](12-single-active-login.md), [13](13-branding.md), [22](22-human-check-captcha.md), [32](32-extra-duties.md) | Single login, branding, human check, extra duties |
 | [14](14-certificate-workflow.md), [24](24-new-students-and-fees.md), [30](30-id-cards.md), [31](31-downloads.md) | Certificates, new students and fees, ID cards, downloads and reports |
 

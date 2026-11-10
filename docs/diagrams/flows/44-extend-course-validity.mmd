@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor A as Admin or Coordinator
+    participant FE as Web app
+    participant BA as batch-service
+    participant K as Kafka
+    participant CR as course-service
+    participant NO as notification-service
+
+    Note over A,BA: Extend a whole batch
+    A->>FE: Extend course on the batch page, new end date and the reason
+    FE->>BA: POST /api/batches/{id}/extend
+    BA->>BA: STAFF only, the date must be later, a cancelled batch cannot be extended
+    BA->>BA: set the end date, a COMPLETED batch becomes ONGOING again
+    BA->>BA: students whose own access date was the old end date follow it, expired ones are on the course again
+    BA->>K: notification.requested (students of the batch and the trainer)
+    K->>NO: tell them the new date and the reason
+    BA->>K: audit.recorded (BATCH_EXTENDED with the reason)
+
+    Note over A,BA: Set or extend one student
+    A->>FE: Set date, Extend or Reopen beside the student on the roster
+    FE->>BA: POST /api/batches/enrollments/{id}/access
+    BA->>BA: only an active or expired student, the date cannot be in the past
+    alt the access had run out (EXPIRED)
+        BA->>BA: refuse if the student is already on this course in another batch
+        BA->>BA: status ACTIVE again
+        BA->>K: enrollment.created
+        K->>CR: open the course mirror again, progress kept
+    end
+    BA->>K: notification.requested (your access is extended until the date)
+    BA->>K: audit.recorded (ACCESS_EXTENDED)
+
+    Note over BA,CR: Every night at 01:20
+    BA->>BA: ACTIVE enrolments whose access date has passed become EXPIRED
+    BA->>K: enrollment.closed, and notify the student
+    K->>CR: lock the course for that student
+    Note over BA: an enrolment with no access date is never touched

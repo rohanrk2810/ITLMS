@@ -73,6 +73,10 @@ public class Enrollment extends AuditableEntity {
     @Column(name = "dropped_reason", length = 255)
     private String droppedReason;
 
+    /** Last day the student may use the course; empty means no limit. */
+    @Column(name = "access_until")
+    private LocalDate accessUntil;
+
     public void complete() {
         this.status = EnrollmentStatus.COMPLETED;
         this.completionDate = LocalDate.now();

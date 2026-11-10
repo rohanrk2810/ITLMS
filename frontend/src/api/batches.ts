@@ -56,6 +56,8 @@ export interface EnrollmentResponse {
   status: string
   completionDate: string | null
   droppedReason: string | null
+  /** The last day the student may use the course; empty means no limit. */
+  accessUntil: string | null
 }
 
 export interface SessionResponse {
@@ -151,8 +153,31 @@ export async function getBatch(id: number | string): Promise<BatchResponse> {
   return data
 }
 
-export async function getRoster(batchId: number | string): Promise<EnrollmentResponse[]> {
-  const { data } = await apiClient.get<EnrollmentResponse[]>(`/api/batches/${batchId}/students`)
+export interface ExtendBatchResult {
+  batchId: number
+  batchCode: string
+  previousEndDate: string | null
+  endDate: string
+  status: string
+  studentsExtended: number
+}
+
+/** A later end date for a batch, with the reason. A finished batch runs again; students and trainer are told. */
+export async function extendBatch(batchId: number, input: { endDate: string; reason: string }): Promise<ExtendBatchResult> {
+  const { data } = await apiClient.post<ExtendBatchResult>(`/api/batches/${batchId}/extend`, input)
+  return data
+}
+
+/** Sets or extends how long one student may use the course. A student whose access ran out is on the course again. */
+export async function extendAccess(enrollmentId: number, input: { accessUntil: string; reason: string }): Promise<EnrollmentResponse> {
+  const { data } = await apiClient.post<EnrollmentResponse>(`/api/batches/enrollments/${enrollmentId}/access`, input)
+  return data
+}
+
+export async function getRoster(batchId: number | string, includeExpired = false): Promise<EnrollmentResponse[]> {
+  const { data } = await apiClient.get<EnrollmentResponse[]>(`/api/batches/${batchId}/students`, {
+    params: includeExpired ? { includeExpired: true } : undefined,
+  })
   return data
 }
 

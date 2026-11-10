@@ -229,8 +229,18 @@ public class ProgressServiceImpl implements ProgressService {
     @Override
     @Transactional
     public void mirrorEnrollment(EnrollmentCreatedEvent event) {
-        if (enrollmentRepository.existsByEnrollmentId(event.enrollmentId())) {
-            log.debug("Enrolment {} already mirrored; ignoring redelivery", event.enrollmentId());
+        var already = enrollmentRepository.findByEnrollmentId(event.enrollmentId());
+        if (already.isPresent()) {
+            // A redelivery changes nothing. A closed enrolment announced again was opened again (an administrator
+            // extended the student access), so the student gets the course back, with their progress as it was.
+            CourseEnrollment mirrored = already.get();
+            if (mirrored.getStatus() != EnrollmentStatus.ACTIVE) {
+                mirrored.setStatus(EnrollmentStatus.ACTIVE);
+                enrollmentRepository.save(mirrored);
+                log.info("Enrolment {} opened again", event.enrollmentId());
+            } else {
+                log.debug("Enrolment {} already mirrored; ignoring redelivery", event.enrollmentId());
+            }
             return;
         }
         if (!courseRepository.existsById(event.courseId())) {

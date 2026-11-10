@@ -209,6 +209,8 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | PUT | /api/batches/{id} | STAFF | Update |
 | POST | /api/batches/{id}/students | STAFF | Enrol students — partial unique index blocks a double-active-enrolment |
 | GET | /api/batches/{id}/students | ACADEMIC | Roster |
+| POST | /api/batches/{id}/extend | ADMIN, COORDINATOR | A later end date with a reason; a finished batch runs again, students and trainer are told |
+| POST | /api/batches/enrollments/{enrollmentId}/access | ADMIN, COORDINATOR | Set or extend one student's access until a date; an expired student is on the course again |
 | POST | /api/batches/enrollments/{enrollmentId}/drop | STAFF | Drop a student |
 | POST | /api/batches/enrollments/{enrollmentId}/transfer | STAFF | Transfer to another batch |
 | GET | /api/batches/stats/counts | ACADEMIC | Counts by status |

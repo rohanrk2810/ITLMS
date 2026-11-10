@@ -19,7 +19,8 @@ public record EnrollmentResponse(
         Instant enrolledAt,
         String status,
         LocalDate completionDate,
-        String droppedReason
+        String droppedReason,
+        LocalDate accessUntil
 ) {
 
     public static EnrollmentResponse from(Enrollment enrollment) {
@@ -28,6 +29,6 @@ public record EnrollmentResponse(
                 enrollment.getStudentCode(), enrollment.getStudentName(),
                 enrollment.getCourseId(), enrollment.getBatchId(),
                 enrollment.getEnrolledAt(), enrollment.getStatus().name(),
-                enrollment.getCompletionDate(), enrollment.getDroppedReason());
+                enrollment.getCompletionDate(), enrollment.getDroppedReason(), enrollment.getAccessUntil());
     }
 }

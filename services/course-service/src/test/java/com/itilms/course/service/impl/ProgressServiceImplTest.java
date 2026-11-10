@@ -267,7 +267,7 @@ class ProgressServiceImplTest {
 
         @Test
         void aNewEnrolmentIsMirroredWithTheCurrentMandatoryLessonCount() {
-            when(enrollmentRepository.existsByEnrollmentId(5L)).thenReturn(false);
+            when(enrollmentRepository.findByEnrollmentId(5L)).thenReturn(Optional.empty());
             when(courseRepository.existsById(COURSE)).thenReturn(true);
             when(courseRepository.countMandatoryLessons(COURSE)).thenReturn(6);
             when(enrollmentRepository.save(any(CourseEnrollment.class))).thenAnswer(i -> i.getArgument(0));
@@ -282,14 +282,26 @@ class ProgressServiceImplTest {
 
         @Test
         void aRedeliveredEventOrAnUnknownCourseChangesNothing() {
-            when(enrollmentRepository.existsByEnrollmentId(5L)).thenReturn(true);
+            enrollment.setStatus(EnrollmentStatus.ACTIVE);
+            when(enrollmentRepository.findByEnrollmentId(5L)).thenReturn(Optional.of(enrollment));
             service.mirrorEnrollment(created());
 
-            when(enrollmentRepository.existsByEnrollmentId(5L)).thenReturn(false);
+            when(enrollmentRepository.findByEnrollmentId(5L)).thenReturn(Optional.empty());
             when(courseRepository.existsById(COURSE)).thenReturn(false);
             service.mirrorEnrollment(created());
 
             verify(enrollmentRepository, never()).save(any());
+        }
+
+        @Test
+        void aClosedEnrolmentAnnouncedAgainOpensTheCourseAgainWithTheProgressKept() {
+            enrollment.setStatus(EnrollmentStatus.DROPPED);
+            when(enrollmentRepository.findByEnrollmentId(5L)).thenReturn(Optional.of(enrollment));
+
+            service.mirrorEnrollment(created());
+
+            assertThat(enrollment.getStatus()).isEqualTo(EnrollmentStatus.ACTIVE);
+            verify(enrollmentRepository).save(enrollment);
         }
 
         @Test
