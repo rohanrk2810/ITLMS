@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BrandingPage } from '@/pages/branding-page'
+import { SetupTab } from '@/pages/setup-tab'
 import { WebsiteTab } from '@/pages/website-tab'
 import { BRANDING_KEY, useBranding } from '@/lib/use-branding'
 import {
@@ -66,13 +67,14 @@ const TABS = [
   { id: 'institute', label: 'Institute' },
   { id: 'portal', label: 'Portal' },
   { id: 'website', label: 'Website' },
+  { id: 'setup', label: 'Quick setup' },
 ] as const
 
 /** ADMIN: the institute's identity (name, logo, signatory) and the portal's look, in one place. */
 export function CustomizePage() {
   const [params, setParams] = useSearchParams()
   const requested = params.get('tab')
-  const tab = requested === 'portal' || requested === 'website' ? requested : 'institute'
+  const tab = requested === 'portal' || requested === 'website' || requested === 'setup' ? requested : 'institute'
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
@@ -97,7 +99,7 @@ export function CustomizePage() {
           </button>
         ))}
       </div>
-      {tab === 'institute' ? <BrandingPage /> : tab === 'website' ? <WebsiteTab /> : <PortalTab />}
+      {tab === 'institute' ? <BrandingPage /> : tab === 'website' ? <WebsiteTab /> : tab === 'setup' ? <SetupTab /> : <PortalTab />}
     </div>
   )
 }

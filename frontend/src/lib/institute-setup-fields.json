@@ -1,0 +1,83 @@
+{
+  "title": "Institute data sheet",
+  "intro": "Everything the system needs to set up your institute and your website, in one place. Fill this in (or give the same facts to ChatGPT with the prompt file from Customize > Quick setup), get a .json file back and upload it. Pictures are not part of the file: the logo, the gallery and the photos of people are added on the Institute and Website tabs.",
+  "rules": [
+    "Leave out anything you do not have. Whatever is missing stays as it is now.",
+    "Write plain sentences. Do not invent numbers, results, awards or names that are not true.",
+    "Keep to the limits shown. A longer text is shortened, and extra items are dropped.",
+    "Lists replace the list on the website. A trainer, partner or student whose name stays the same keeps the photo already added."
+  ],
+  "sections": [
+    {
+      "id": "institute",
+      "title": "1. The institute",
+      "note": "Shown on the website, on every certificate, ID card and fee receipt, and in emails.",
+      "fields": [
+        { "path": "institute.name", "label": "Name", "required": true, "limit": 120, "what": "The name of the institute, as it should be printed.", "example": "Sprint IT Academy" },
+        { "path": "institute.tagline", "label": "Tagline", "limit": 200, "what": "One line that says what you do.", "example": "Learn skills that get you hired." },
+        { "path": "institute.primaryColor", "label": "Main colour", "limit": 7, "what": "The colour of your brand as #rrggbb. Buttons, headers and cards use it.", "example": "#2b0255" },
+        { "path": "institute.contactEmail", "label": "Email", "limit": 160, "what": "The address people write to.", "example": "info@sprintit.in" },
+        { "path": "institute.contactPhone", "label": "Phone", "limit": 30, "what": "The number people call. Printed on ID cards and receipts.", "example": "+91 98000 00000" },
+        { "path": "institute.website", "label": "Website address", "limit": 200, "what": "Your website, if it has another address.", "example": "https://www.sprintit.in" },
+        { "path": "institute.address", "label": "Full address", "limit": 400, "what": "The full postal address. Printed on ID cards, receipts and certificates, so write it once, correctly.", "example": "Office 4, Sutra Plaza, FC Road, Pune 411004" },
+        { "path": "institute.signatoryName", "label": "Signatory name", "limit": 120, "what": "The person who signs certificates.", "example": "Sarang Gidde" },
+        { "path": "institute.signatoryTitle", "label": "Signatory title", "limit": 120, "what": "Their post.", "example": "Director" }
+      ]
+    },
+    {
+      "id": "hero",
+      "title": "2. The top of the website",
+      "note": "The first thing a visitor reads.",
+      "fields": [
+        { "path": "website.heroBadge", "label": "Small badge", "limit": 40, "what": "A short label above the heading, such as the admission status.", "example": "Admissions open" },
+        { "path": "website.heroTitle", "label": "Main heading", "limit": 80, "what": "The big heading.", "example": "Learn skills that get you hired." },
+        { "path": "website.heroText", "label": "Heading text", "limit": 240, "what": "Two lines under the heading.", "example": "Live classes, hands-on projects, regular tests and a certificate you can prove." },
+        { "path": "website.stats", "label": "Figures", "list": true, "limit": 4, "what": "Up to 4 true figures. Each has a value (up to 12 characters) and a label (up to 30). Leave out to show the automatic ones.", "example": [ { "value": "20+", "label": "Courses" }, { "value": "500+", "label": "Students trained" } ] },
+        { "path": "website.announcement", "label": "Announcement bar", "what": "A line across the top of every page. enabled is true or false; link is optional.", "example": { "enabled": true, "text": "New batch starts on the 15th", "link": "" } }
+      ]
+    },
+    {
+      "id": "about",
+      "title": "3. About, features and steps",
+      "note": "Who you are, why students choose you, and how it works.",
+      "fields": [
+        { "path": "website.aboutIntro", "label": "About, one line", "limit": 200, "what": "A sentence about the institute.", "example": "A place to learn IT skills properly and get ready for work." },
+        { "path": "website.aboutPoints", "label": "About, points", "list": true, "limit": 6, "what": "Up to 6 short points, each up to 160 characters.", "example": [ "Taught by working trainers, not just textbooks.", "Classroom and online batches that fit your schedule." ] },
+        { "path": "website.features", "label": "Why choose us", "list": true, "limit": 9, "what": "Up to 9 items. Each has a title (up to 60) and a text (up to 200).", "example": [ { "title": "Live classes", "text": "Attend from anywhere and watch the recording if you miss one." } ] },
+        { "path": "website.steps", "label": "How it works", "list": true, "limit": 6, "what": "Up to 6 steps in order. Each has a title (up to 60) and a text (up to 200).", "example": [ { "title": "Join", "text": "Register and pick a course." }, { "title": "Learn", "text": "Attend classes and take tests." } ] }
+      ]
+    },
+    {
+      "id": "people",
+      "title": "4. Trainers, partners and student feedback",
+      "note": "Only real people and real words. Photos are added later on the Website tab.",
+      "fields": [
+        { "path": "website.trainers", "label": "Trainers", "list": true, "limit": 12, "what": "Up to 12. Each has a name (up to 60) and what they teach (role, up to 80).", "example": [ { "name": "Ravi Kulkarni", "role": "Java and Spring Boot" } ] },
+        { "path": "website.partners", "label": "Hiring partners", "list": true, "limit": 18, "what": "Up to 18 companies that hire your students. Only companies that really do.", "example": [ { "name": "Infosys" } ] },
+        { "path": "website.testimonials", "label": "Student feedback", "list": true, "limit": 6, "what": "Up to 6. Each has the student's name (up to 60), what they do now (role, up to 80) and their words (text, up to 300). Only with the student's permission.", "example": [ { "name": "Asha Patil", "role": "Java Full Stack, 2025", "text": "The tests kept me on track." } ] },
+        { "path": "website.faqs", "label": "Questions and answers", "list": true, "limit": 14, "what": "Up to 14. Each has a question q (up to 160) and an answer a (up to 600).", "example": [ { "q": "Are there evening batches?", "a": "Yes, from 6 pm to 8 pm." } ] }
+      ]
+    },
+    {
+      "id": "contact",
+      "title": "5. Contact, social links and map",
+      "note": "How people reach you.",
+      "fields": [
+        { "path": "website.social", "label": "Social links", "what": "Any of whatsapp (number with country code, digits only), instagram, youtube, facebook, linkedin (full web addresses). Leave out what you do not have.", "example": { "whatsapp": "919800000000", "instagram": "https://www.instagram.com/sprintit", "youtube": "", "facebook": "", "linkedin": "" } },
+        { "path": "website.whatsappButton", "label": "WhatsApp button", "what": "true shows a green WhatsApp button on the website (needs the WhatsApp number above).", "example": true },
+        { "path": "website.whatsappMessage", "label": "WhatsApp first message", "limit": 200, "what": "The message that is already typed when someone taps the button.", "example": "Hello, I would like to know about your courses." },
+        { "path": "website.mapUrl", "label": "Google Maps link", "limit": 700, "what": "The link from Google Maps, Share. A Google Maps address only.", "example": "https://maps.app.goo.gl/abc123" }
+      ]
+    },
+    {
+      "id": "display",
+      "title": "6. What the website shows",
+      "note": "Choices about the course cards and the sections.",
+      "fields": [
+        { "path": "website.showCourseFee", "label": "Show the course fee", "what": "true shows the fee on every course card of the website.", "example": true },
+        { "path": "website.showCourseDuration", "label": "Show the duration", "what": "true shows the number of hours on every course card.", "example": true },
+        { "path": "website.hiddenSections", "label": "Sections to hide", "list": true, "what": "Sections you do not want on the front page. Choose from: about, courses, why, how, gallery, faculty, partners, testimonials, faq, enquiry, contact.", "example": [ "gallery" ] }
+      ]
+    }
+  ]
+}
