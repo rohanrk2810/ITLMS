@@ -4,16 +4,10 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
 
 import org.springframework.stereotype.Component;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.itilms.certificate.entity.IdCard;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
@@ -21,6 +15,7 @@ import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
+import com.lowagie.text.pdf.Barcode128;
 import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.ColumnText;
 import com.lowagie.text.pdf.PdfContentByte;
@@ -134,8 +129,20 @@ public class IdCardPdfRenderer {
                 // no logo rather than no card
             }
         }
-        text(cb, institute.name(), BaseFont.HELVETICA_BOLD, 9f, Color.WHITE, textLeft, y + H - 46f, textWidth, 32f,
-                textLeft == x + 8 ? Element.ALIGN_CENTER : Element.ALIGN_LEFT);
+        int align = textLeft == x + 8 ? Element.ALIGN_CENTER : Element.ALIGN_LEFT;
+        String address = institute.address() == null ? "" : institute.address().replaceAll("\\s+", " ").trim();
+        if (address.isEmpty()) {
+            text(cb, institute.name(), BaseFont.HELVETICA_BOLD, 9f, Color.WHITE, textLeft, y + H - 46f, textWidth, 32f, align);
+        } else {
+            // The name moves up a little to make room for the address under it, in very small letters.
+            int nameLines = textWidth(institute.name(), BaseFont.HELVETICA_BOLD, 8.5f) > textWidth ? 2 : 1;
+            float nameHeight = nameLines * 10f;
+            text(cb, institute.name(), BaseFont.HELVETICA_BOLD, 8.5f, Color.WHITE, textLeft, y + H - 13f - nameHeight, textWidth,
+                    nameHeight, align);
+            String shortAddress = address.length() > 110 ? address.substring(0, 107) + "..." : address;
+            text(cb, shortAddress, BaseFont.HELVETICA, 4.4f, new Color(0xFF, 0xFF, 0xFF), textLeft,
+                    y + H - 13f - nameHeight - 14f, textWidth, 14f, align);
+        }
 
         // photo
         float photoW = 58f;
@@ -170,6 +177,11 @@ public class IdCardPdfRenderer {
         // name, role, code, batch, validity
         float cy = photoY - 8f;
         cy = line(cb, card.getFullName(), BaseFont.HELVETICA_BOLD, 10.5f, INK, x, cy, true);
+        String phone = card.getPhone() != null && !card.getPhone().isBlank() ? card.getPhone().trim()
+                : institute.contactPhone() == null ? "" : institute.contactPhone().trim();
+        if (!phone.isEmpty()) {
+            cy = line(cb, "Mob: " + phone, BaseFont.HELVETICA_BOLD, 7.5f, BRAND, x, cy, false);
+        }
         cy = line(cb, card.getDesignation() == null ? "" : card.getDesignation().toUpperCase(Locale.ENGLISH),
                 BaseFont.HELVETICA_BOLD, 7.5f, BRAND, x, cy, false);
         if (card.getPersonCode() != null && !card.getPersonCode().isBlank()) {
@@ -180,17 +192,33 @@ public class IdCardPdfRenderer {
         }
         line(cb, "Valid until " + DATE.format(card.getValidUntil()), BaseFont.HELVETICA, 7f, MUTED, x, cy, false);
 
-        // QR and card number
-        String phone = card.getPhone() != null && !card.getPhone().isBlank() ? card.getPhone().trim()
-                : institute.contactPhone() == null ? "" : institute.contactPhone().trim();
-        boolean hasPhone = !phone.isEmpty();
-        float qr = hasPhone ? 32f : 38f;
-        drawQr(cb, item.verificationUrl(), x + (W - qr) / 2, y + (hasPhone ? 22f : 15f), qr);
-        text(cb, card.getCardNo(), BaseFont.HELVETICA, 6.5f, MUTED, x, y + (hasPhone ? 13.5f : 6f), W, 9f,
-                Element.ALIGN_CENTER);
-        if (hasPhone) {
-            text(cb, "Mob: " + phone, BaseFont.HELVETICA_BOLD, 6.5f, BRAND, x, y + 4f, W,
-                    9f, Element.ALIGN_CENTER);
+        // the card number as a small barcode, and in figures under it
+        float barcodeW = 92f;
+        drawBarcode(cb, card.getCardNo(), x + (W - barcodeW) / 2, y + 17f, barcodeW, 20f);
+        text(cb, card.getCardNo(), BaseFont.HELVETICA, 6.5f, MUTED, x, y + 6f, W, 9f, Element.ALIGN_CENTER);
+    }
+
+    /** The card number as a Code 128 barcode filling the box. A failure leaves it blank; the number is printed too. */
+    private static void drawBarcode(PdfContentByte cb, String value, float x, float y, float width, float height) {
+        try {
+            Barcode128 code = new Barcode128();
+            code.setCodeType(Barcode128.CODE128);
+            code.setCode(value);
+            code.setFont(null); // no text of its own: the number is printed under the card
+            Image bars = code.createImageWithBarcode(cb, Color.BLACK, null);
+            bars.scaleAbsolute(width, height);
+            bars.setAbsolutePosition(x, y);
+            cb.addImage(bars);
+        } catch (Exception ignored) {
+            // the QR code and the printed number still identify the card
+        }
+    }
+
+    private static float textWidth(String value, String font, float size) {
+        try {
+            return BaseFont.createFont(font, BaseFont.WINANSI, false).getWidthPoint(value == null ? "" : value, size);
+        } catch (Exception e) {
+            return 0f;
         }
     }
 
@@ -200,28 +228,6 @@ public class IdCardPdfRenderer {
             return hex != null && hex.matches("#[0-9a-fA-F]{6}") ? Color.decode(hex) : DEFAULT_BRAND;
         } catch (NumberFormatException e) {
             return DEFAULT_BRAND;
-        }
-    }
-
-    /** The QR code as filled squares, so it stays sharp at any print size. A failure leaves it blank. */
-    private static void drawQr(PdfContentByte cb, String content, float x, float y, float size) {
-        try {
-            BitMatrix matrix = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0,
-                    Map.of(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M, EncodeHintType.MARGIN, 0));
-            float cell = size / matrix.getWidth();
-            cb.saveState();
-            cb.setColorFill(Color.BLACK);
-            for (int row = 0; row < matrix.getHeight(); row++) {
-                for (int col = 0; col < matrix.getWidth(); col++) {
-                    if (matrix.get(col, row)) {
-                        cb.rectangle(x + col * cell, y + size - (row + 1) * cell, cell + 0.15f, cell + 0.15f);
-                    }
-                }
-            }
-            cb.fill();
-            cb.restoreState();
-        } catch (Exception ignored) {
-            // the number below still lets someone verify by hand
         }
     }
 

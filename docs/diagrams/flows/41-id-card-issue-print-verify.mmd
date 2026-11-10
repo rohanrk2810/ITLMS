@@ -43,8 +43,8 @@ sequenceDiagram
     A->>CE: GET /api/id-cards/{id}/pdf, or /sheet?ids=1,2,3
     CE->>CE: refuse a revoked or expired card (a sheet skips them, up to 60 cards)
     CE->>CE: draw the card in the Branding colour: logo and name, photo, name, role, code, batch, valid until
-    CE->>CE: phone under the QR: the person's own, else the institute's from Branding
-    CE->>CE: QR code points at ID_VERIFY_URL/{cardNo}?code={code}
+    CE->>CE: address in tiny letters under the institute name, the mobile number under the person's name (their own, else the institute's)
+    CE->>CE: a small Code 128 barcode of the card number at the foot (no QR code)
     CE->>K: audit.recorded (ID_CARD_PRINTED)
     CE-->>A: PDF, one card or nine to an A4 page
 
@@ -53,7 +53,7 @@ sequenceDiagram
     CE->>CE: allowed only when the card's user is the caller
     CE-->>S: the card to download
 
-    Note over Q,CE: Check a card by scanning the QR
+    Note over Q,CE: Check a card by its number and code
     Q->>CE: GET /api/id-cards/verify/{cardNo}?code=... (public, limited per address)
     alt code missing
         CE-->>Q: asks for the code

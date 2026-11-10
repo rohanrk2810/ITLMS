@@ -63,6 +63,40 @@ class IdCardPdfRendererTest {
     }
 
     @Test
+    void theInstituteAddressIsPrintedUnderTheNameAndTheCardNumberIsABarcode() throws Exception {
+        var client = org.mockito.Mockito.mock(com.itilms.certificate.client.BrandingClient.class);
+        org.mockito.Mockito.when(client.branding()).thenReturn(new com.itilms.certificate.client.BrandingClient.Branding(
+                "Sprint IT Academy", null, null, null, 1L, "#2b0255", "+91 98000 00000",
+                "Office 4, Sutra Plaza, FC Road, Pune 411004"));
+        var withAddress = new IdCardPdfRenderer(new InstituteBranding(client, new CertificateProperties()));
+        IdCard card = card("Asha Patil", "STU-30");
+
+        byte[] pdf = withAddress.renderOne(card, samplePhoto(), verifyUrl(card));
+
+        var reader = new com.lowagie.text.pdf.PdfReader(pdf);
+        String text = new com.lowagie.text.pdf.parser.PdfTextExtractor(reader).getTextFromPage(1);
+        assertThat(text).contains("Sprint IT Academy").contains("Sutra Plaza").contains("FC Road").contains("STU-2026-0042");
+        // the QR code is drawn as squares; the barcode and the photo are pictures
+        var pictures = reader.getPageN(1).getAsDict(com.lowagie.text.pdf.PdfName.RESOURCES)
+                .getAsDict(com.lowagie.text.pdf.PdfName.XOBJECT);
+        assertThat(pictures.getKeys()).hasSizeGreaterThanOrEqualTo(2); // the photo and the barcode
+        Files.write(Path.of("target", "id-card-with-address.pdf"), pdf);
+    }
+
+    @Test
+    void withoutAnAddressTheHeaderIsAsBefore_andALongAddressIsShortened() throws Exception {
+        var client = org.mockito.Mockito.mock(com.itilms.certificate.client.BrandingClient.class);
+        org.mockito.Mockito.when(client.branding()).thenReturn(new com.itilms.certificate.client.BrandingClient.Branding(
+                "Sprint IT Academy", null, null, null, 1L, null, null, "x ".repeat(300)));
+        var withLong = new IdCardPdfRenderer(new InstituteBranding(client, new CertificateProperties()));
+        IdCard card = card("Asha Patil", "STU-30");
+
+        byte[] pdf = withLong.renderOne(card, null, verifyUrl(card));
+
+        assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
     void aLongNameAndNoPhotoStillDrawAndNeverFail() {
         IdCard card = card("Venkata Subramanian Ramakrishnan Iyer-Chandrasekharan", null);
         card.setBatchName(null);

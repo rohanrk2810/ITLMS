@@ -20,7 +20,8 @@ public interface BrandingClient {
     ResponseEntity<byte[]> logo();
 
     record Branding(String name, String signatoryName, String signatoryTitle, String logoUrl, long version,
-                    String primaryColor, String contactPhone) {
+                    String primaryColor, String contactPhone,
+                    String address) {
     }
 
     /** Null answers: the caller falls back to the configured name and prints no logo. */

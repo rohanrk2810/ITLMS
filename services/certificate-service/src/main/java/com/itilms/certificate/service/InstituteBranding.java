@@ -15,7 +15,7 @@ public class InstituteBranding {
 
     /** The values to print. {@code logo} is null when none is set or it could not be read. */
     public record Info(String name, String signatoryName, String signatoryTitle, byte[] logo,
-                       String primaryColor, String contactPhone) {
+                       String primaryColor, String contactPhone, String address) {
     }
 
     private static final long TTL_MILLIS = 60_000;
@@ -47,13 +47,13 @@ public class InstituteBranding {
                 }
                 cached = new Info(b.name(),
                         b.signatoryName() != null ? b.signatoryName() : props.getSignatoryName(),
-                        b.signatoryTitle(), logo, b.primaryColor(), b.contactPhone());
+                        b.signatoryTitle(), logo, b.primaryColor(), b.contactPhone(), b.address());
                 fetchedAt = now;
                 return cached;
             }
         } catch (RuntimeException ignored) {
             // fall through to the last good value, or the configured one
         }
-        return current != null ? current : new Info(props.getInstituteName(), props.getSignatoryName(), null, null, null, null);
+        return current != null ? current : new Info(props.getInstituteName(), props.getSignatoryName(), null, null, null, null, null);
     }
 }
