@@ -74,6 +74,7 @@ public class IdCardServiceImpl implements IdCardService {
                 card.setUserId(student.userId());
                 card.setPersonCode(student.studentCode());
                 card.setFullName(student.fullName());
+                card.setPhone(blankToNull(student.phone()));
                 card.setDesignation("Student");
                 if (request.batchId() != null) {
                     BatchClient.BatchInfo batch = batchClient.batch(request.batchId());
@@ -93,6 +94,7 @@ public class IdCardServiceImpl implements IdCardService {
                 card.setUserId(trainer.userId());
                 card.setPersonCode(trainer.employeeCode());
                 card.setFullName(trainer.fullName());
+                card.setPhone(blankToNull(trainer.phone()));
                 card.setDesignation("Trainer");
             }
             case STAFF -> {
@@ -101,6 +103,7 @@ public class IdCardServiceImpl implements IdCardService {
                     throw new BusinessRuleException("Type the staff member's name to print on the card.");
                 }
                 card.setFullName(name);
+                card.setPhone(blankToNull(request.phone()));
                 String title = request.designation() == null ? "" : request.designation().trim();
                 card.setDesignation(title.isEmpty() ? "Staff" : title);
             }
@@ -380,5 +383,9 @@ public class IdCardServiceImpl implements IdCardService {
             return "image/png";
         }
         return null;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

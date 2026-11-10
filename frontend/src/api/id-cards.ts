@@ -28,6 +28,7 @@ export interface IssueIdCardInput {
   personId?: number
   fullName?: string
   designation?: string
+  phone?: string
   batchId?: number
   validUntil?: string
 }

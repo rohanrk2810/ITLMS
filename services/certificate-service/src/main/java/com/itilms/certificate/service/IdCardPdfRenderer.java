@@ -181,13 +181,15 @@ public class IdCardPdfRenderer {
         line(cb, "Valid until " + DATE.format(card.getValidUntil()), BaseFont.HELVETICA, 7f, MUTED, x, cy, false);
 
         // QR and card number
-        boolean hasPhone = institute.contactPhone() != null && !institute.contactPhone().isBlank();
+        String phone = card.getPhone() != null && !card.getPhone().isBlank() ? card.getPhone().trim()
+                : institute.contactPhone() == null ? "" : institute.contactPhone().trim();
+        boolean hasPhone = !phone.isEmpty();
         float qr = hasPhone ? 32f : 38f;
         drawQr(cb, item.verificationUrl(), x + (W - qr) / 2, y + (hasPhone ? 22f : 15f), qr);
         text(cb, card.getCardNo(), BaseFont.HELVETICA, 6.5f, MUTED, x, y + (hasPhone ? 13.5f : 6f), W, 9f,
                 Element.ALIGN_CENTER);
         if (hasPhone) {
-            text(cb, "Contact: " + institute.contactPhone().trim(), BaseFont.HELVETICA_BOLD, 6.5f, BRAND, x, y + 4f, W,
+            text(cb, "Mob: " + phone, BaseFont.HELVETICA_BOLD, 6.5f, BRAND, x, y + 4f, W,
                     9f, Element.ALIGN_CENTER);
         }
     }

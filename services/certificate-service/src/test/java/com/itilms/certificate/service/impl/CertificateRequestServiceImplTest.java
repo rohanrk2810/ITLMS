@@ -90,7 +90,7 @@ class CertificateRequestServiceImplTest {
     private void stubHappyRequest() {
         when(certificateService.eligibility(STUDENT, COURSE)).thenReturn(eligibility(true));
         when(admissionClient.lookup(List.of(STUDENT)))
-                .thenReturn(List.of(new AdmissionClient.Student(STUDENT, 7L, "STU-1", "Asha Patil", "ACTIVE")));
+                .thenReturn(List.of(new AdmissionClient.Student(STUDENT, 7L, "STU-1", "Asha Patil", null, "ACTIVE")));
         when(courseClient.course(COURSE)).thenReturn(
                 new CourseClient.CourseDetail(new CourseClient.CourseSummary(COURSE, "Java", "JV")));
         when(batchClient.batch(9L)).thenReturn(new BatchClient.BatchInfo(9L, "B-9", "Morning Batch"));

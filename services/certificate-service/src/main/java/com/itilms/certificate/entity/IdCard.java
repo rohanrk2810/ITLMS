@@ -61,6 +61,10 @@ public class IdCard extends AuditableEntity {
     @Column(length = 120)
     private String designation;
 
+    /** The person's own phone number, copied at issue and printed on the card. */
+    @Column(length = 30)
+    private String phone;
+
     @Column(name = "batch_id")
     private Long batchId;
 
