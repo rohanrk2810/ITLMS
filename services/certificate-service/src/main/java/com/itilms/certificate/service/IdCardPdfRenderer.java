@@ -48,7 +48,7 @@ public class IdCardPdfRenderer {
     static final float W = 153f;
     static final float H = 243f;
     private static final float SHEET_GAP = 12f;
-    private static final Color BRAND = new Color(0xE0, 0x66, 0x1A);
+    private static final Color DEFAULT_BRAND = new Color(0xE0, 0x66, 0x1A);
     private static final Color INK = new Color(0x22, 0x22, 0x22);
     private static final Color MUTED = new Color(0x66, 0x66, 0x66);
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
@@ -106,6 +106,7 @@ public class IdCardPdfRenderer {
 
     private void drawCard(PdfContentByte cb, float x, float y, Item item, InstituteBranding.Info institute) {
         IdCard card = item.card();
+        Color BRAND = brandColor(institute.primaryColor());
 
         // outline and header band
         cb.saveState();
@@ -182,6 +183,15 @@ public class IdCardPdfRenderer {
         // QR and card number
         drawQr(cb, item.verificationUrl(), x + (W - 38f) / 2, y + 15f, 38f);
         text(cb, card.getCardNo(), BaseFont.HELVETICA, 6.5f, MUTED, x, y + 6f, W, 9f, Element.ALIGN_CENTER);
+    }
+
+    /** The colour set under Branding (#rrggbb); the default orange when it is missing or invalid. */
+    private static Color brandColor(String hex) {
+        try {
+            return hex != null && hex.matches("#[0-9a-fA-F]{6}") ? Color.decode(hex) : DEFAULT_BRAND;
+        } catch (NumberFormatException e) {
+            return DEFAULT_BRAND;
+        }
     }
 
     /** The QR code as filled squares, so it stays sharp at any print size. A failure leaves it blank. */

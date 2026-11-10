@@ -50,7 +50,7 @@ A staff card has no login attached, so it is printed by the office and is not sh
 
 ## Settings
 
-`ID_VERIFY_URL` (set in `deploy/docker/.env`, read by `config-repo/certificate-service.yml`) is the public address of the check page, for example `https://app.example.com/verify-id`. Set it, and `CERT_VERIFY_URL` for certificates, to the real address of the web app on any server, or the QR codes point at `localhost`. The card colour is a fixed orange; the logo and institute name come from the Branding page.
+`ID_VERIFY_URL` (set in `deploy/docker/.env`, read by `config-repo/certificate-service.yml`) is the public address of the check page, for example `https://app.example.com/verify-id`. Set it, and `CERT_VERIFY_URL` for certificates, to the real address of the web app on any server, or the QR codes point at `localhost`. The card colour (band, photo frame, role) is the primary colour set on the Branding page, orange when none is set; the logo and institute name come from the Branding page.
 
 ## Limits
 
