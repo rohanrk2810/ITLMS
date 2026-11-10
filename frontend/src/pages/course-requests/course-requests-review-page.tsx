@@ -5,12 +5,14 @@ import { toast } from 'sonner'
 import { searchBatches } from '@/api/batches'
 import { apiErrorMessage } from '@/api/client'
 import {
+  allCourseRequests,
   approveCourseRequest,
   type CourseRequestResponse,
   type CourseRequestStatus,
   listCourseRequests,
   rejectCourseRequest,
 } from '@/api/course-requests'
+import { ExportMenu } from '@/components/export-menu'
 import { RequestStatusBadge } from '@/components/request-status-badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { courseRequestsReport } from '@/lib/export-rows'
 import { formatDate } from '@/lib/format'
 
 const TABS: Array<{ value: CourseRequestStatus; label: string }> = [
@@ -41,9 +44,17 @@ export function CourseRequestsReviewPage() {
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Course requests</h1>
-        <p className="text-muted-foreground">Students asking to join a course. Approving puts them in a batch.</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">Course requests</h1>
+          <p className="text-muted-foreground">Students asking to join a course. Approving puts them in a batch.</p>
+        </div>
+        <ExportMenu
+          label="Download requests"
+          report="COURSE_REQUESTS"
+          detail="All requests"
+          build={async () => courseRequestsReport(await allCourseRequests())}
+        />
       </div>
 
       <Tabs value={status} onValueChange={(value) => setStatus(value as CourseRequestStatus)}>

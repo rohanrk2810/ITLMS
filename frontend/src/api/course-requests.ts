@@ -54,6 +54,16 @@ export async function listCourseRequests(params: {
   return data
 }
 
+/** Every request of a status (or of all statuses), page after page: what a download needs. */
+export async function allCourseRequests(status?: CourseRequestStatus): Promise<CourseRequestResponse[]> {
+  const all: CourseRequestResponse[] = []
+  for (let page = 0; ; page += 1) {
+    const result = await listCourseRequests({ status, page })
+    all.push(...result.content)
+    if (result.last || result.content.length === 0) return all
+  }
+}
+
 export async function approveCourseRequest(
   id: number,
   input: { batchId?: number; note?: string },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { AttemptResultResponse } from '@/api/assessments'
+import type { CourseRequestResponse } from '@/api/course-requests'
 import type { LessonWatch } from '@/api/courses'
 import type { FeePlanResponse, OverdueItemResponse } from '@/api/finance'
 import type { StudentSummaryResponse } from '@/api/students'
@@ -12,6 +13,7 @@ import type { UserResponse } from '@/api/types'
 
 import {
   attendanceReport,
+  courseRequestsReport,
   dashboardReport,
   feePlansReport,
   feePositionReport,
@@ -310,5 +312,61 @@ describe('usersReport', () => {
 
   it('an older answer without the duties field still lists the account', () => {
     expect(usersReport([user({ extraRoles: undefined })]).rows[0][4]).toBe('')
+  })
+})
+
+describe('courseRequestsReport', () => {
+  const request = (over: Partial<CourseRequestResponse>): CourseRequestResponse => ({
+    id: 1, status: 'PENDING', studentId: 1, studentCode: 'STU-1', studentName: 'Asha Patil', studentEmail: 'a@x.in', studentPhone: '9000000001',
+    courseId: 5, courseCode: 'JFS', courseTitle: 'Java Full Stack', preferredBatchId: null, message: null, decidedBy: null,
+    decidedByName: null, decidedAt: null, decisionNote: null, approvedBatchId: null, enrollmentId: null, createdAt: '2026-11-01T10:00:00Z',
+    ...over,
+  })
+  const requests = [
+    request({ id: 1, status: 'APPROVED', decidedByName: 'Ravi Admin', decidedAt: '2026-11-02T09:30:00Z', approvedBatchId: 3 }),
+    request({ id: 2, status: 'APPROVED', decidedByName: 'Ravi Admin', decidedAt: '2026-11-03T09:30:00Z', approvedBatchId: 3 }),
+    request({ id: 3, status: 'REJECTED', decidedByName: 'Meera Coordinator', decidedAt: '2026-11-03T11:00:00Z', decisionNote: 'Batch is full' }),
+    request({ id: 4, status: 'REJECTED', decidedByName: 'Ravi Admin', decisionNote: 'Fee not paid' }),
+    request({ id: 5, status: 'PENDING' }),
+    request({ id: 6, status: 'CANCELLED' }),
+  ]
+
+  it('counts the requests by outcome', () => {
+    const info = Object.fromEntries(courseRequestsReport(requests).info)
+
+    expect(info.Requests).toBe('6')
+    expect(info.Approved).toBe('2')
+    expect(info['Not approved']).toBe('2')
+    expect(info.Waiting).toBe('1')
+    expect(info['Withdrawn by the student']).toBe('1')
+  })
+
+  it('says how many each person approved and turned down, the busiest first', () => {
+    const info = courseRequestsReport(requests).info.filter(([label]) => label.startsWith('Decided by'))
+
+    expect(info).toEqual([
+      ['Decided by Ravi Admin', '2 approved, 1 not approved'],
+      ['Decided by Meera Coordinator', '0 approved, 1 not approved'],
+    ])
+  })
+
+  it('has a row for each request with who decided it, when, why and the batch', () => {
+    const report = courseRequestsReport(requests)
+
+    expect(report.rows).toHaveLength(6)
+    expect(report.header).toContain('Decided by')
+    const approved = report.rows[0]
+    expect(approved).toContain('Approved')
+    expect(approved).toContain('Ravi Admin')
+    expect(approved).toContain('2026-11-02 09:30')
+    expect(approved).toContain('Batch 3')
+    expect(report.rows[2]).toContain('Batch is full')
+    expect(report.rows[2]).toContain('Not approved')
+  })
+
+  it('no requests is an empty report, not an error', () => {
+    const report = courseRequestsReport([])
+    expect(report.rows).toEqual([])
+    expect(Object.fromEntries(report.info).Requests).toBe('0')
   })
 })
