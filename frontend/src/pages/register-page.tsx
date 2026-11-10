@@ -16,6 +16,14 @@ import { useCaptcha } from '@/lib/use-captcha'
 
 /** Doc S8.1, S11: public self-registration always creates a STUDENT account. Staff accounts come from POST /api/users. */
 export function RegisterPage() {
+  return <RegisterForm />
+}
+
+/**
+ * The registration form. On the /register page it stands alone; in the popup the caller says where to go after the
+ * account is created and how to switch to signing in.
+ */
+export function RegisterForm({ onRegistered, onSignIn }: { onRegistered?: () => void; onSignIn?: () => void }) {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '' })
   const [details, setDetails] = useState({
     dateOfBirth: '',
@@ -55,7 +63,8 @@ export function RegisterPage() {
       ),
     onSuccess: () => {
       toast.success('Account created. Add your photo for the ID card.')
-      void navigate('/app/my-profile', { replace: true })
+      if (onRegistered) onRegistered()
+      else void navigate('/app/my-profile', { replace: true })
     },
     onError: (error) => {
       if (axios.isAxiosError<ApiErrorResponse>(error)) {
@@ -113,9 +122,15 @@ export function RegisterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild className="w-full">
-            <Link to="/login">Sign in instead</Link>
-          </Button>
+          {onSignIn ? (
+            <Button className="w-full" onClick={onSignIn}>
+              Sign in instead
+            </Button>
+          ) : (
+            <Button asChild className="w-full">
+              <Link to="/login">Sign in instead</Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
     )
@@ -250,9 +265,15 @@ export function RegisterPage() {
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-foreground hover:underline">
-            Sign in
-          </Link>
+          {onSignIn ? (
+            <button type="button" onClick={onSignIn} className="font-medium text-foreground hover:underline">
+              Sign in
+            </button>
+          ) : (
+            <Link to="/login" className="font-medium text-foreground hover:underline">
+              Sign in
+            </Link>
+          )}
         </p>
       </CardContent>
     </Card>

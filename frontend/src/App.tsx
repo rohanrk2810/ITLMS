@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 
 import type { Role } from '@/api/types'
 import { bootstrapSession } from '@/api/auth'
+import { useAuthDialog } from '@/stores/auth-dialog-store'
 import { BrandingEffect } from '@/components/branding-effect'
 import { CookieBanner } from '@/components/cookie-banner'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -19,6 +20,7 @@ import { ProtectedRoute } from '@/routes/protected-route'
 // Every page beyond the dashboard is lazy: the main bundle stays small, and
 // a module a visitor's role never opens (say, Finance for a student) is
 // never fetched at all.
+const AuthDialog = lazy(() => import('@/components/auth-dialog').then((m) => ({ default: m.AuthDialog })))
 const LoginPage = lazy(() => import('@/pages/login-page').then((m) => ({ default: m.LoginPage })))
 const PublicCoursesPage = lazy(() => import('@/pages/courses/public-courses-page').then((m) => ({ default: m.PublicCoursesPage })))
 const AboutPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.AboutPage })))
@@ -216,6 +218,16 @@ function CatchAll() {
   return mapped ? <Navigate to={mapped} replace /> : <NotFoundPage />
 }
 
+/** The sign-in popup, loaded only when someone opens it. */
+function AuthDialogHost() {
+  const open = useAuthDialog((state) => state.open)
+  return open ? (
+    <Suspense fallback={null}>
+      <AuthDialog />
+    </Suspense>
+  ) : null
+}
+
 /** Tries a stored refresh token once, before the router renders anything that needs to know who's signed in. */
 function SessionBootstrap({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -231,6 +243,7 @@ export default function App() {
       <FieldErrorHighlighter />
       <SessionBootstrap>
         <BrowserRouter>
+          <AuthDialogHost />
           <ErrorBoundary>
           <Suspense fallback={<PageFallback />}>
             <Routes>

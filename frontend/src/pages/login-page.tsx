@@ -12,7 +12,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCaptcha } from '@/lib/use-captcha'
 
+/** The /login page. */
 export function LoginPage() {
+  return <LoginForm />
+}
+
+/**
+ * The sign-in form. On the /login page it stands alone; in the popup (components/auth-dialog.tsx) the caller says what
+ * to do once signed in, how to switch to registering, and what to do when a link leaves for another page.
+ */
+export function LoginForm({
+  onSignedIn,
+  onCreateAccount,
+  onNavigate,
+}: {
+  onSignedIn?: () => void
+  onCreateAccount?: () => void
+  onNavigate?: () => void
+}) {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
@@ -32,6 +49,10 @@ export function LoginPage() {
   }, [])
 
   function goToApp() {
+    if (onSignedIn) {
+      onSignedIn()
+      return
+    }
     // A temporary password sends every route to /app/change-password anyway
     // (see ProtectedRoute), so there is nothing special to do with that case here.
     const state = location.state as { from?: { pathname?: string } } | null
@@ -73,7 +94,7 @@ export function LoginPage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
-              <Link to="/forgot-password" className="text-xs text-muted-foreground hover:underline">
+              <Link to="/forgot-password" onClick={onNavigate} className="text-xs text-muted-foreground hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -99,9 +120,15 @@ export function LoginPage() {
         />
         <p className="mt-4 text-center text-sm text-muted-foreground">
           New student?{' '}
-          <Link to="/register" className="font-medium text-foreground hover:underline">
-            Create an account
-          </Link>
+          {onCreateAccount ? (
+            <button type="button" onClick={onCreateAccount} className="font-medium text-foreground hover:underline">
+              Create an account
+            </button>
+          ) : (
+            <Link to="/register" className="font-medium text-foreground hover:underline">
+              Create an account
+            </Link>
+          )}
         </p>
       </CardContent>
     </Card>

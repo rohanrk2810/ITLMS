@@ -36,7 +36,7 @@ describe('HomePage', () => {
 
   it('shows the site with a Login button and the fallback name when the server is down', () => {
     renderHome()
-    expect(screen.getAllByRole('link', { name: 'Login' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Login' }).length).toBeGreaterThan(0)
     expect(screen.getAllByText('SutraVidya').length).toBeGreaterThan(0)
     expect(screen.getByRole('heading', { name: /Talk to a counsellor/ })).toBeTruthy()
   })
