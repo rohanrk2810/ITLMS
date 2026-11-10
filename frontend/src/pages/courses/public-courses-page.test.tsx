@@ -64,8 +64,12 @@ describe('PublicCoursesPage', () => {
     expect(screen.getByRole('heading', { name: 'Data Science' })).toBeTruthy()
     expect(screen.getByText(/15,000/)).toBeTruthy()
     expect(screen.getByText('Fee on request')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: /Buy/ })).toHaveLength(2)
-    expect(screen.getAllByRole('button', { name: /Inquiry/ })).toHaveLength(2)
+    const cards = screen.getAllByRole('article')
+    expect(cards).toHaveLength(2)
+    for (const card of cards) {
+      expect(within(card).getByRole('button', { name: /Buy/ })).toBeTruthy()
+      expect(within(card).getByRole('button', { name: /Inquiry/ })).toBeTruthy()
+    }
   })
 
   it('filters by the search text', async () => {

@@ -97,7 +97,7 @@ export function SiteFooter() {
                     target="_blank"
                     rel="noreferrer noopener"
                     aria-label={social.label}
-                    className="flex size-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white transition-colors hover:bg-primary"
+                    className="flex size-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white transition-all duration-200 hover:-translate-y-1 hover:bg-primary hover:shadow-lg"
                   >
                     {social.icon}
                   </a>
@@ -113,7 +113,7 @@ export function SiteFooter() {
             <ul className="flex flex-col gap-3 text-sm">
               {column.links.map((link) => (
                 <li key={link.label}>
-                  <Link to={link.to} className="text-neutral-400 transition-colors hover:text-white">
+                  <Link to={link.to} className="inline-block text-neutral-400 transition-all duration-200 hover:translate-x-1 hover:text-white">
                     {link.label}
                   </Link>
                 </li>

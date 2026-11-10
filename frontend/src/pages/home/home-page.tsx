@@ -6,11 +6,9 @@ import {
   ClockIcon,
   MailIcon,
   MapPinIcon,
-  MenuIcon,
   MessageCircleIcon,
   PhoneIcon,
   QuoteIcon,
-  XIcon,
 } from 'lucide-react'
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 
@@ -18,9 +16,8 @@ import { assetUrl } from '@/api/branding'
 import type { CourseSummaryResponse } from '@/api/courses'
 import { CourseActions } from '@/components/course-actions'
 import { getPublicCourses } from '@/api/public-site'
-import { BrandMark } from '@/components/brand-mark'
 import { SiteFooter } from '@/components/site-footer'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { SiteNav } from '@/components/site-nav'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,7 +37,6 @@ import {
   DEFAULT_STEPS,
   DEFAULT_WHATSAPP_MESSAGE,
   FEATURE_ICONS,
-  NAV_IDS,
   type Strings,
   S,
 } from './home-content'
@@ -83,7 +79,6 @@ function Website() {
     const timer = window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' }), 150)
     return () => window.clearTimeout(timer)
   }, [hash])
-  const [menuOpen, setMenuOpen] = useState(false)
   const courses = useQuery({ queryKey: ['public-courses'], queryFn: getPublicCourses, staleTime: 5 * 60_000 })
   const list = courses.data?.content ?? []
 
@@ -99,7 +94,6 @@ function Website() {
     faq: site.faqs.length > 0,
     contact: true,
   }
-  const nav = NAV_IDS.filter((id) => show(id) && has[id])
 
   const tagline = pick(site.heroTitle, branding?.tagline || pick(DEFAULT_HERO_TITLE))
   const features = (site.features ?? DEFAULT_FEATURES).map((f, i) => ({ Icon: FEATURE_ICONS[i % FEATURE_ICONS.length], title: pick(f.title), text: pick(f.text) }))
@@ -130,51 +124,7 @@ function Website() {
 
       {announcement && <AnnouncementBar text={announcement} link={site.announcement.link} />}
 
-      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
-          <a href="#top" className="flex items-center gap-2 font-semibold" aria-label={`${name} home`}>
-            <BrandMark className="size-7" />
-          </a>
-          <nav aria-label="Main" className="ml-6 hidden items-center gap-5 text-sm lg:flex">
-            {nav.map((id) => (
-              <a key={id} href={`#${id}`} className="text-muted-foreground transition-colors hover:text-foreground">
-                {s.nav[id]}
-              </a>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle />
-            <Button asChild size="sm" variant="outline" className="hidden sm:inline-flex">
-              <Link to="/register">{s.register}</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link to="/login">{s.login}</Link>
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="lg:hidden"
-              aria-label={menuOpen ? s.closeMenu : s.openMenu}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              {menuOpen ? <XIcon /> : <MenuIcon />}
-            </Button>
-          </div>
-        </div>
-        {menuOpen && (
-          <nav aria-label="Mobile" className="flex flex-col gap-1 border-t px-4 py-2 lg:hidden">
-            {nav.map((id) => (
-              <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)} className="rounded px-2 py-2 text-sm hover:bg-muted">
-                {s.nav[id]}
-              </a>
-            ))}
-            <Link to="/register" className="rounded px-2 py-2 text-sm hover:bg-muted">
-              {s.register}
-            </Link>
-          </nav>
-        )}
-      </header>
+      <SiteNav />
 
       <main id="main">
         <Hero name={name} tagline={tagline} s={s} site={site} image={hero} separate={!!site.heroImage} stats={stats} />
