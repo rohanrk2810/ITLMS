@@ -27,9 +27,13 @@ export function UserMenu() {
   if (!user) return null
 
   async function handleLogout() {
+    // The portal sees the session disappear first; this tells it the person chose to leave, so it sends them to the
+    // front page rather than to the sign-in page.
+    useAuthStore.setState({ signedOutByUser: true })
     await logout()
+    void navigate('/', { replace: true })
+    useAuthStore.setState({ signedOutByUser: false }) // only for this sign-out
     toast.success('Signed out')
-    void navigate('/login', { replace: true })
   }
 
   return (

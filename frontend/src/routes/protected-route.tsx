@@ -13,7 +13,7 @@ import { hasRole, useAuthStore } from '@/stores/auth-store'
  * visibility, and this router is exactly that frontend.
  */
 export function ProtectedRoute({ roles }: { roles?: readonly Role[] }) {
-  const { status, user, roles: held } = useAuthStore()
+  const { status, user, roles: held, signedOutByUser } = useAuthStore()
   const location = useLocation()
 
   if (status === 'checking') {
@@ -25,7 +25,9 @@ export function ProtectedRoute({ roles }: { roles?: readonly Role[] }) {
   }
 
   if (status === 'unauthenticated' || !user) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+    // Someone who just chose Sign out goes to the front page. Anyone else (a link opened while signed out, an expired
+    // session) is asked to sign in, and returns to where they were.
+    return signedOutByUser ? <Navigate to="/" replace /> : <Navigate to="/login" replace state={{ from: location }} />
   }
 
   // A temporary password (admin-created account, or one just reset) must be
