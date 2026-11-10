@@ -20,6 +20,21 @@ import { ProtectedRoute } from '@/routes/protected-route'
 // a module a visitor's role never opens (say, Finance for a student) is
 // never fetched at all.
 const LoginPage = lazy(() => import('@/pages/login-page').then((m) => ({ default: m.LoginPage })))
+const PublicCoursesPage = lazy(() => import('@/pages/courses/public-courses-page').then((m) => ({ default: m.PublicCoursesPage })))
+const AboutPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.AboutPage })))
+const ProgramsPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.ProgramsPage })))
+const PricingPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.PricingPage })))
+const BlogPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.BlogPage })))
+const SuccessStoriesPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.SuccessStoriesPage })))
+const LearningPathsPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.LearningPathsPage })))
+const CareerGuidePage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.CareerGuidePage })))
+const CommunityPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.CommunityPage })))
+const FreeResourcesPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.FreeResourcesPage })))
+const FaqPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.FaqPage })))
+const ContactPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.ContactPage })))
+const InstructorPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.InstructorPage })))
+const CareersPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.CareersPage })))
+const AffiliatesPage = lazy(() => import('@/pages/site/site-pages').then((m) => ({ default: m.AffiliatesPage })))
 const RegisterPage = lazy(() => import('@/pages/register-page').then((m) => ({ default: m.RegisterPage })))
 const ForgotPasswordPage = lazy(() =>
   import('@/pages/forgot-password-page').then((m) => ({ default: m.ForgotPasswordPage })),
@@ -220,6 +235,21 @@ export default function App() {
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/courses" element={<PublicCoursesPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/programs" element={<ProgramsPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/success-stories" element={<SuccessStoriesPage />} />
+              <Route path="/learning-paths" element={<LearningPathsPage />} />
+              <Route path="/career-guide" element={<CareerGuidePage />} />
+              <Route path="/community" element={<CommunityPage />} />
+              <Route path="/free-resources" element={<FreeResourcesPage />} />
+              <Route path="/faq" element={<FaqPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/become-an-instructor" element={<InstructorPage />} />
+              <Route path="/careers" element={<CareersPage />} />
+              <Route path="/affiliates" element={<AffiliatesPage />} />
 
               {/* Public: anyone with a certificate ID and code can check it, signed in or not. */}
               <Route path="/verify/:certificateNo" element={<VerifyCertificatePage />} />

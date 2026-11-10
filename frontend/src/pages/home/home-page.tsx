@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowRightIcon,
@@ -12,14 +12,14 @@ import {
   QuoteIcon,
   XIcon,
 } from 'lucide-react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 
 import { assetUrl } from '@/api/branding'
 import type { CourseSummaryResponse } from '@/api/courses'
 import { CourseActions } from '@/components/course-actions'
 import { getPublicCourses } from '@/api/public-site'
 import { BrandMark } from '@/components/brand-mark'
-import { LegalLinks } from '@/components/legal-links'
+import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -76,6 +76,13 @@ function Website() {
   const { branding, name } = useBranding()
   const site = useSite()
   const s = S
+  const hash = useLocation().hash
+  // A footer link such as /#faq, followed from another page, lands on that section once the page has drawn.
+  useEffect(() => {
+    if (!hash) return
+    const timer = window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' }), 150)
+    return () => window.clearTimeout(timer)
+  }, [hash])
   const [menuOpen, setMenuOpen] = useState(false)
   const courses = useQuery({ queryKey: ['public-courses'], queryFn: getPublicCourses, staleTime: 5 * 60_000 })
   const list = courses.data?.content ?? []
@@ -113,13 +120,6 @@ function Website() {
   const whatsappLink = whatsappDigits
     ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(pick(site.whatsappMessage, pick(DEFAULT_WHATSAPP_MESSAGE)))}`
     : ''
-  const socials = [
-    { label: 'WhatsApp', href: whatsappLink },
-    { label: 'Instagram', href: site.social.instagram },
-    { label: 'YouTube', href: site.social.youtube },
-    { label: 'Facebook', href: site.social.facebook },
-    { label: 'LinkedIn', href: site.social.linkedin },
-  ].filter((x) => x.href)
   const announcement = site.announcement.enabled ? pick(site.announcement.text) : ''
 
   return (
@@ -361,26 +361,7 @@ function Website() {
         )}
       </main>
 
-      <footer className="border-t px-4 py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 text-center">
-          <p className="text-sm font-medium">{name}</p>
-          {socials.length > 0 && (
-            <ul aria-label={s.follow} className="flex flex-wrap justify-center gap-2">
-              {socials.map((social) => (
-                <li key={social.label}>
-                  <a href={social.href} target="_blank" rel="noreferrer noopener" className="rounded-full border px-3 py-1 text-xs hover:bg-muted">
-                    {social.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-          <LegalLinks />
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} {name}. {s.rights}
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
 
       {site.whatsappButton && whatsappLink && (
         <a
