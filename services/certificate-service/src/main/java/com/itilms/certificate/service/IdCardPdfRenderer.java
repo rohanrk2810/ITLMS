@@ -134,14 +134,32 @@ public class IdCardPdfRenderer {
         if (address.isEmpty()) {
             text(cb, institute.name(), BaseFont.HELVETICA_BOLD, 9f, Color.WHITE, textLeft, y + H - 46f, textWidth, 32f, align);
         } else {
-            // The name moves up a little to make room for the address under it, in very small letters.
-            int nameLines = textWidth(institute.name(), BaseFont.HELVETICA_BOLD, 8.5f) > textWidth ? 2 : 1;
-            float nameHeight = nameLines * 10f;
-            text(cb, institute.name(), BaseFont.HELVETICA_BOLD, 8.5f, Color.WHITE, textLeft, y + H - 13f - nameHeight, textWidth,
+            // The name, a thin line under it, and the address under the line in very small letters.
+            // A very long name shrinks (down to a limit) so that it still fits on two lines.
+            float nameSize = 8.5f;
+            while (nameSize > 6.5f && textWidth(institute.name(), BaseFont.HELVETICA_BOLD, nameSize) > 1.8f * textWidth) {
+                nameSize -= 0.5f;
+            }
+            float nameWidth = textWidth(institute.name(), BaseFont.HELVETICA_BOLD, nameSize);
+            int nameLines = nameWidth > textWidth ? 2 : 1;
+            float nameHeight = nameLines * (nameSize + 1.5f);
+            float top = y + H - 10f;
+            text(cb, institute.name(), BaseFont.HELVETICA_BOLD, nameSize, Color.WHITE, textLeft, top - nameHeight, textWidth,
                     nameHeight, align);
-            String shortAddress = address.length() > 110 ? address.substring(0, 107) + "..." : address;
-            text(cb, shortAddress, BaseFont.HELVETICA, 4.4f, new Color(0xFF, 0xFF, 0xFF), textLeft,
-                    y + H - 13f - nameHeight - 14f, textWidth, 14f, align);
+            float lineWidth = Math.min(textWidth, nameWidth);
+            float lineX = align == Element.ALIGN_CENTER ? textLeft + (textWidth - lineWidth) / 2 : textLeft;
+            float lineY = top - nameHeight - 1.5f;
+            cb.saveState();
+            cb.setColorStroke(Color.WHITE);
+            cb.setLineWidth(0.5f);
+            cb.moveTo(lineX, lineY);
+            cb.lineTo(lineX + lineWidth, lineY);
+            cb.stroke();
+            cb.restoreState();
+            // Two lines of address under a one-line name, one line under a two-line name.
+            int room = nameLines == 2 ? 62 : 100;
+            String shortAddress = address.length() > room ? address.substring(0, room - 3) + "..." : address;
+            text(cb, shortAddress, BaseFont.HELVETICA, 3.6f, Color.WHITE, textLeft, lineY - 2f - 10f, textWidth, 10f, align);
         }
 
         // photo
