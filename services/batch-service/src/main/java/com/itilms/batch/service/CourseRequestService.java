@@ -11,9 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.itilms.batch.client.AdmissionClient;
 import com.itilms.batch.client.CourseClient;
+import com.itilms.batch.client.FinanceClient;
 import com.itilms.batch.dto.request.CourseRequestDtos.ApproveRequest;
 import com.itilms.batch.dto.request.CourseRequestDtos.CourseRequestResponse;
 import com.itilms.batch.dto.request.CourseRequestDtos.CreateRequest;
+import com.itilms.batch.dto.request.CourseRequestDtos.OpenBatchResponse;
+import com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinRequest;
+import com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinResponse;
 import com.itilms.batch.dto.request.CourseRequestDtos.RejectRequest;
 import com.itilms.batch.dto.request.EnrollStudentRequest;
 import com.itilms.batch.dto.response.EnrollmentResultResponse;
@@ -56,6 +60,7 @@ public class CourseRequestService {
     private final BatchService batchService;
     private final CourseClient courseClient;
     private final AdmissionClient admissionClient;
+    private final FinanceClient financeClient;
     private final EventPublisher events;
 
     // -----------------------------------------------------------------
@@ -228,6 +233,69 @@ public class CourseRequestService {
         events.audit(SERVICE_NAME, "COURSE_REQUEST_REJECTED", "CourseRequest", id, null,
                 Map.of("studentId", request.getStudentId()));
         return CourseRequestResponse.from(request);
+    }
+
+    // -----------------------------------------------------------------
+    // Online purchase: a confirmed payment is the approval
+    // -----------------------------------------------------------------
+
+    /** The first batch of the course that still takes students and has a free seat, preferring {@code preferredBatchId}. */
+    @Transactional(readOnly = true)
+    public java.util.Optional<OpenBatchResponse> openBatch(Long courseId, Long preferredBatchId) {
+        List<Batch> candidates = new java.util.ArrayList<>(batches.findByCourseIdAndStatusInOrderByStartDateAsc(
+                courseId, List.of(com.itilms.batch.entity.BatchStatus.PLANNED, com.itilms.batch.entity.BatchStatus.ONGOING)));
+        if (preferredBatchId != null) {
+            // Stable sort: the preferred batch first, the rest still earliest start first.
+            candidates.sort(java.util.Comparator.comparing(b -> !b.getId().equals(preferredBatchId)));
+        }
+        for (Batch batch : candidates) {
+            long left = batch.getCapacity() - enrollments.countByBatchIdAndStatus(batch.getId(), EnrollmentStatus.ACTIVE);
+            if (left > 0) {
+                return java.util.Optional.of(new OpenBatchResponse(batch.getId(), batch.getBatchCode(), left));
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /**
+     * Places a student who paid online. The payment is confirmed with finance-service (as the student, so it
+     * answers only for their own order); nothing the browser says is trusted.
+     */
+    @Transactional
+    public PaidJoinResponse paidJoin(PaidJoinRequest request) {
+        AppPrincipal me = SecurityUtils.requirePrincipal();
+        if (!me.isStudent() || me.profileId() == null) {
+            throw new ForbiddenOperationException("Only a student can join a course.");
+        }
+        Long studentId = me.profileId();
+        FinanceClient.OnlineOrder order = financeClient.order(request.orderId());
+        if (order == null || !order.paid() || !studentId.equals(order.studentId())
+                || !request.courseId().equals(order.courseId())) {
+            throw new BusinessRuleException("This payment could not be confirmed for this course.");
+        }
+
+        var active = enrollments.findActiveForStudent(studentId).stream()
+                .filter(e -> request.courseId().equals(e.getCourseId())).findFirst();
+        if (active.isPresent()) {
+            return new PaidJoinResponse(active.get().getBatchId(), null, true);
+        }
+
+        OpenBatchResponse open = openBatch(request.courseId(), order.batchId()).orElse(null);
+        if (open == null) {
+            String who = me.email() + " paid for course " + request.courseId() + " but no batch has a free seat";
+            events.notifyRole(Roles.ADMIN, "COURSE_REQUEST", "Paid student needs a batch", who, "/batches");
+            events.notifyRole(Roles.COORDINATOR, "COURSE_REQUEST", "Paid student needs a batch", who, "/batches");
+            throw new BusinessRuleException(
+                    "Your payment is safe, but no batch has a free seat right now. The institute has been told and will place you.");
+        }
+        EnrollmentResultResponse result = batchService.enroll(open.batchId(), new EnrollStudentRequest(List.of(studentId)));
+        if (result.enrolled() == 0) {
+            throw new BusinessRuleException(result.outcomes().stream().findFirst()
+                    .map(EnrollmentResultResponse.Outcome::message).orElse("You could not be placed in the batch."));
+        }
+        events.audit(SERVICE_NAME, "COURSE_JOINED_AFTER_PAYMENT", "Batch", open.batchId(), null,
+                Map.of("studentId", studentId, "orderId", request.orderId()));
+        return new PaidJoinResponse(open.batchId(), open.batchCode(), false);
     }
 
     // -----------------------------------------------------------------

@@ -39,6 +39,13 @@ erDiagram
         timestamptz verified_at
         timestamptz uploaded_at
     }
+    student_photos {
+        bigint student_id PK,FK
+        bytea photo
+        varchar content_type
+        bigint updated_by
+        timestamptz updated_at
+    }
     students {
         bigint id PK
         bigint user_id UK
@@ -66,6 +73,7 @@ erDiagram
         timestamptz updated_at
         bigint created_by
         bigint updated_by
+        boolean has_photo
     }
     trainer_courses {
         bigint id PK
@@ -94,4 +102,5 @@ erDiagram
     leads ||--o{ lead_followups : "lead_id"
     students ||--o{ leads : "converted_student_id"
     students ||--o{ student_documents : "student_id"
+    students ||--o{ student_photos : "student_id"
     trainers ||--o{ trainer_courses : "trainer_id"

@@ -28,6 +28,9 @@ public interface BatchRepository extends JpaRepository<Batch, Long>, JpaSpecific
 
     long countByStatus(BatchStatus status);
 
+    /** Batches of a course that still take students, earliest start first. */
+    List<Batch> findByCourseIdAndStatusInOrderByStartDateAsc(Long courseId, Collection<BatchStatus> statuses);
+
     /** Per-course batch number, used to build {@code JFS-2026-B03}. */
     @Query("SELECT COUNT(b) + 1 FROM Batch b WHERE b.courseId = :courseId")
     long nextSequenceForCourse(@Param("courseId") Long courseId);

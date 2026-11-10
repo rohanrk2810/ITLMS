@@ -462,6 +462,10 @@ services:
       <<: *service-env
       # Connections to the database: more where a whole class works at once, fewer where little happens.
       DB_POOL_MAX: ${FINANCE_DB_POOL_MAX:-5}
+      # Razorpay (Test mode keys first). Online payment stays off while the key id and secret are empty.
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
     healthcheck:
       <<: *health-timing
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8086/actuator/health || exit 1"]

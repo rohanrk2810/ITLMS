@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { lookupCourses, myCourseProgress, searchCourses } from '@/api/courses'
+import { CourseActions } from '@/components/course-actions'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -100,8 +101,8 @@ function BrowseCourses({ enrolledIds }: { enrolledIds: number[] }) {
       {query.isLoading && <Skeleton className="h-32" />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (
-          <Link key={course.id} to={`/app/courses/${course.id}`}>
-            <Card className="h-full transition-colors hover:border-primary">
+          <Card key={course.id} className="h-full transition-colors hover:border-primary">
+            <Link to={`/app/courses/${course.id}`} className="flex flex-col gap-6">
               <CardHeader>
                 <CardTitle className="line-clamp-2">{course.title}</CardTitle>
                 <CardDescription className="line-clamp-2">{course.summary}</CardDescription>
@@ -112,8 +113,11 @@ function BrowseCourses({ enrolledIds }: { enrolledIds: number[] }) {
                 {course.technologyStack && <span className="line-clamp-1">{course.technologyStack}</span>}
                 <span className="ml-auto font-medium text-foreground">{hasCourseFee(course.fee) ? formatMoney(course.fee) : 'Fee to be confirmed'}</span>
               </CardContent>
-            </Card>
-          </Link>
+            </Link>
+            <CardContent className="mt-auto">
+              <CourseActions course={course} />
+            </CardContent>
+          </Card>
         ))}
       </div>
     </section>

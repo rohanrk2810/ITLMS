@@ -14,8 +14,15 @@ import { Label } from '@/components/ui/label'
 import { S as s } from './home-content'
 
 /** The public enquiry form. It lands in the admission team's leads list. */
-export function EnquiryForm({ courses }: { courses: CourseSummaryResponse[] }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', courseId: '', message: '', website: '' })
+export function EnquiryForm({ courses, courseId }: { courses: CourseSummaryResponse[]; courseId?: number }) {
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    courseId: courseId ? String(courseId) : '',
+    message: '',
+    website: '',
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [sent, setSent] = useState(false)
 

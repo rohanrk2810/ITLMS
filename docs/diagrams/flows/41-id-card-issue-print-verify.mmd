@@ -14,16 +14,17 @@ sequenceDiagram
     CE->>CE: STAFF role only
     alt student
         CE->>AD: student by id (Feign)
-        AD-->>CE: name, student code, status
+        AD-->>CE: name, student code, phone, status
         CE->>CE: refuse if the student has dropped out
+        CE->>AD: the photo the student gave (copied onto the card)
         opt a batch was chosen
             CE->>BA: batch name and end date
         end
     else trainer
         CE->>AD: trainer by id
-        AD-->>CE: name, employee code
+        AD-->>CE: name, employee code, phone
     else staff
-        CE->>CE: name and title are typed in (a name is required)
+        CE->>CE: name, title and phone are typed in (a name is required)
     end
     CE->>CE: valid until = the date given, else batch end, else one year (never in the past)
     CE->>CE: revoke any card still in force for this person ("Replaced by a new card")
@@ -41,7 +42,8 @@ sequenceDiagram
     Note over A,CE: Print
     A->>CE: GET /api/id-cards/{id}/pdf, or /sheet?ids=1,2,3
     CE->>CE: refuse a revoked or expired card (a sheet skips them, up to 60 cards)
-    CE->>CE: draw the card: logo and name, photo, name, role, code, batch, valid until
+    CE->>CE: draw the card in the Branding colour: logo and name, photo, name, role, code, batch, valid until
+    CE->>CE: phone under the QR: the person's own, else the institute's from Branding
     CE->>CE: QR code points at ID_VERIFY_URL/{cardNo}?code={code}
     CE->>K: audit.recorded (ID_CARD_PRINTED)
     CE-->>A: PDF, one card or nine to an A4 page

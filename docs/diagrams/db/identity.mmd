@@ -23,6 +23,7 @@ erDiagram
         text ui_config
         bytea app_background
         varchar app_background_type
+        text site_config
     }
     login_otps {
         bigserial id PK
@@ -59,6 +60,14 @@ erDiagram
         timestamptz last_activity_at
         timestamptz session_started_at
         varchar revoke_reason
+    }
+    site_images {
+        bigserial id PK
+        varchar content_type
+        bytea data
+        integer size_bytes
+        bigint created_by
+        timestamptz created_at
     }
     users {
         bigint id PK

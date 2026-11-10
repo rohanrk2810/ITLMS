@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.itilms.batch.dto.request.CourseRequestDtos.ApproveRequest;
 import com.itilms.batch.dto.request.CourseRequestDtos.CourseRequestResponse;
 import com.itilms.batch.dto.request.CourseRequestDtos.CreateRequest;
+import com.itilms.batch.dto.request.CourseRequestDtos.OpenBatchResponse;
+import com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinRequest;
+import com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinResponse;
 import com.itilms.batch.dto.request.CourseRequestDtos.RejectRequest;
 import com.itilms.batch.entity.CourseRequestStatus;
 import com.itilms.batch.service.CourseRequestService;
@@ -41,6 +44,24 @@ public class CourseRequestController {
     @PostMapping
     public ResponseEntity<CourseRequestResponse> create(@Valid @RequestBody CreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
+    }
+
+    @Operation(summary = "Is there a batch a buyer could join?",
+            description = "Used by finance-service before it takes an online payment. 404 when no batch has a free seat.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/open-batch")
+    public ResponseEntity<OpenBatchResponse> openBatch(@RequestParam Long courseId,
+                                                       @RequestParam(required = false) Long batchId) {
+        return service.openBatch(courseId, batchId).map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @Operation(summary = "Join a course after paying online",
+            description = "Students only. The payment is confirmed with finance-service; the student is placed in a batch.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/paid-join")
+    public PaidJoinResponse paidJoin(@Valid @RequestBody PaidJoinRequest request) {
+        return service.paidJoin(request);
     }
 
     @Operation(summary = "My requests", description = "Every request the signed-in student has made, newest first.")

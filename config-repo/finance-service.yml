@@ -28,3 +28,9 @@ itilms:
     # "Today" for due dates is the institute's today, not the server's.
     zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}
     receipt-prefix: RCPT
+
+  # Buying a course online. Empty key id or secret turns it off.
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
