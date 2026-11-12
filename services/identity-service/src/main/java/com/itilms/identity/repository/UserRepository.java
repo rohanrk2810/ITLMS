@@ -41,6 +41,9 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
             """, nativeQuery = true)
     java.util.List<User> findAllByPhoneEndingWith(@Param("last10") String last10);
 
+    /** Everyone who is not a student and can still sign in: the staff the finance desk pays. */
+    List<User> findByRoleNotAndStatusOrderByFirstNameAscLastNameAsc(UserRole role, UserStatus status);
+
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);

@@ -69,6 +69,14 @@ public class UserController {
         return userService.search(role, status, query, pageable);
     }
 
+    @Operation(summary = "The staff directory",
+            description = "Every active user who is not a student. For the finance desk's payroll (ADMIN or FINANCE).")
+    @PreAuthorize(Roles.FINANCE_DESK)
+    @GetMapping("/staff-directory")
+    public java.util.List<com.itilms.identity.dto.response.StaffEntry> staffDirectory() {
+        return userService.staffDirectory();
+    }
+
     @Operation(summary = "Get one user")
     @PreAuthorize(Roles.STAFF)
     @GetMapping("/{id}")

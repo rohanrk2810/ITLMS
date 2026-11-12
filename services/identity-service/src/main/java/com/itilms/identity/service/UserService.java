@@ -16,6 +16,9 @@ import com.itilms.identity.dto.response.UserSummaryResponse;
 /** Account administration, as performed by staff rather than by the account holder. */
 public interface UserService {
 
+    /** The active staff (every role except student): id, name, email and role. For the finance desk's payroll. */
+    java.util.List<com.itilms.identity.dto.response.StaffEntry> staffDirectory();
+
     PageResponse<UserResponse> search(String role, String status, String query, Pageable pageable);
 
     UserResponse get(Long id);
