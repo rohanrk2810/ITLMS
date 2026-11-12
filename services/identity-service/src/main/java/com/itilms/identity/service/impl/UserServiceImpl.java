@@ -55,6 +55,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.List<com.itilms.identity.dto.response.StaffEntry> staffDirectory() {
+        return userRepository.findByRoleNotAndStatusOrderByFirstNameAscLastNameAsc(
+                        com.itilms.identity.entity.UserRole.STUDENT, com.itilms.identity.entity.UserStatus.ACTIVE).stream()
+                .map(com.itilms.identity.dto.response.StaffEntry::from).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResponse<UserResponse> search(String role, String status, String query, Pageable pageable) {
         Specification<User> spec = Specification.allOf(
                 UserSpecifications.hasRole(role),
