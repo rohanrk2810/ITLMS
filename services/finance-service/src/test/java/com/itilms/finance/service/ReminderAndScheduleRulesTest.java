@@ -81,7 +81,7 @@ class ReminderAndScheduleRulesTest {
             FeePlanRequest request = new FeePlanRequest(3L, 1L, null, BigDecimal.valueOf(30_000), null, null, null,
                     List.of(new FeePlanRequest.InstallmentInput(LocalDate.of(2026, 1, 1), BigDecimal.valueOf(10_000)),
                             new FeePlanRequest.InstallmentInput(LocalDate.of(2026, 2, 1), BigDecimal.valueOf(15_000))),
-                    null);
+                    null, null);
 
             assertThatThrownBy(() -> service.create(request))
                     .isInstanceOf(BusinessRuleException.class)

@@ -79,6 +79,13 @@ public class FeePlan extends AuditableEntity {
     @Column(length = 500)
     private String notes;
 
+    /** Why a discount was given, and who gave it. */
+    @Column(name = "discount_reason", length = 255)
+    private String discountReason;
+
+    @Column(name = "discount_set_by")
+    private Long discountSetBy;
+
     /** Raised automatically when the student was placed in a batch, and not changed since. */
     @Column(name = "auto_created", nullable = false)
     @Builder.Default
