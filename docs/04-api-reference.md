@@ -16,7 +16,7 @@ A handful of endpoints are marked **internal only, 404 via gateway** rather than
 
 Regenerate the endpoint/role columns at any time with:
 ```
-node deploy/scripts/check-gateway-routes.mjs   # also confirms the gateway routes match (181 endpoints, 0 misrouted)
+node deploy/scripts/check-gateway-routes.mjs   # also confirms the gateway routes match (361 public endpoints on 2026-11-12, 0 misrouted)
 ```
 
 ---
@@ -87,6 +87,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | DELETE | /api/users/{id}?reason= | ADMIN_ONLY | Soft delete: the account cannot sign in, sessions end, name/e-mail/phone are wiped (so they can be reused), history in other services stays. Not yourself or the last active admin |
 | POST | /api/users/{id}/reset-password | ADMIN_ONLY | Admin-initiated reset |
 | GET | /api/users/stats/counts | STAFF | Active user counts by role |
+| GET | /api/users/staff-directory | FINANCE_DESK | Every active user who is not a student (id, name, email, role): the list payroll is made from |
 | POST | /api/users/internal/lookup | **internal only, 404 via gateway** | *cross-service:* resolve many user ids at once |
 | GET | /api/users/internal/by-role | **internal only, 404 via gateway** | *cross-service:* every active user holding a role |
 
@@ -374,6 +375,9 @@ actually costs, and what it fails as when no Egress worker is running.
 | POST | /api/fee-plans/{id}/charges | FINANCE_DESK | Add a named extra charge (development fee, a book) to one plan; the student is told |
 | POST | /api/fee-plans/charges/batch | FINANCE_DESK | The same charge on every student of a batch who has a fee plan |
 | POST | /api/fee-plans/{id}/cancel | FINANCE_DESK | Cancel |
+| POST | /api/fee-plans/{id}/installments/{installmentId}/waive | ADMIN_ONLY | Waive a late fee that nothing has been paid on (reason audited) |
+
+A discount on `POST` and `PUT /api/fee-plans` needs `discountReason`; one above 10% of the fee (`discount-approval-percent`) must come from an ADMIN. A charge may carry `gstExempt`.
 
 ### `PaymentController` — `/api/payments`
 | Method | Path | Role | Does |
@@ -393,6 +397,92 @@ actually costs, and what it fails as when no Egress worker is running.
 | GET | /api/fees/students/{studentId} | ADMIN, FINANCE, COORDINATOR, STUDENT | A student's fees |
 | GET | /api/fees/dashboard | FINANCE_VIEW | Finance dashboard |
 | GET | /api/fees/overdue | FINANCE_VIEW | Overdue instalments |
+| GET | /api/fees/students/{studentId}/statement | ADMIN, FINANCE, COORDINATOR, STUDENT | A student's fee statement as a PDF: every course, every payment, the balance (a student only their own) |
+
+### `FeeTemplateController` — `/api/fees/templates`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/fees/templates/{courseId} | FINANCE_VIEW | A course's usual fee structure (defaults when none is set) |
+| PUT | /api/fees/templates/{courseId} | FINANCE_DESK | Set it: installments, days to the first due date, extra heads. Used for plans raised from now on |
+
+### `RefundController` — `/api/fees/refunds`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| POST | /api/fees/refunds | FINANCE_DESK | Ask for a refund on a payment (amount, reason) |
+| GET | /api/fees/refunds | FINANCE_VIEW | Refund requests, newest first (`?status=`) |
+| POST | /api/fees/refunds/{id}/approve | ADMIN_ONLY | Approve: the payment's refunded amount grows and the fee is owed again |
+| POST | /api/fees/refunds/{id}/reject | ADMIN_ONLY | Reject (reason) |
+| POST | /api/fees/refunds/{id}/paid | FINANCE_DESK | Record that the money was handed back (method, reference, date); refused inside a closed period |
+| GET | /api/fees/refunds/{id}/credit-note | ADMIN, FINANCE, COORDINATOR, STUDENT | The credit note as a PDF, with the tax of the original receipt in proportion |
+
+### `CashClosingController` — `/api/fees/cash-closings`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/fees/cash-closings/preview | FINANCE_VIEW | The cash the system expects on a day (cash received less cash refunds paid) and whether the day is closed |
+| GET | /api/fees/cash-closings | FINANCE_VIEW | The last 30 closings |
+| POST | /api/fees/cash-closings | FINANCE_DESK | Close a day with the cash counted; a difference needs a note |
+
+### `ExpenseController` — `/api/fees/expenses`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| POST | /api/fees/expenses | FINANCE_DESK | Record an expense (category, amount, what for, GST in it) |
+| GET | /api/fees/expenses?from=&to= | FINANCE_DESK | Expenses in a range |
+| GET | /api/fees/expenses/summary?from=&to= | FINANCE_DESK | Fees collected (net of refunds) less expenses, by category |
+| POST | /api/fees/expenses/{id}/void | FINANCE_DESK | Void with a reason; it stays on record |
+
+### `UpiClaimController` — `/api/fees/upi`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/fees/upi/config | STUDENT | The institute's UPI id (empty means UPI is off) |
+| POST | /api/fees/upi/claims | STUDENT | Report a UPI payment against one's own plan (amount, UTR) |
+| GET | /api/fees/upi/claims/mine | STUDENT | One's own claims |
+| GET | /api/fees/upi/claims | FINANCE_VIEW | Every claim |
+| POST | /api/fees/upi/claims/{id}/confirm | FINANCE_DESK | Record it as an ordinary UPI payment with a receipt |
+| POST | /api/fees/upi/claims/{id}/reject | FINANCE_DESK | Reject (reason); the student is told |
+
+### `PayrollController` — `/api/fees/payroll`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/fees/payroll/staff | FINANCE_DESK | Every active staff member with their pay (named heads) and details |
+| PUT | /api/fees/payroll/staff/{userId} | FINANCE_DESK | Set the pay (earnings, deductions, a percent of basic) and the employee details |
+| GET | /api/fees/payroll/staff/{userId}/history | FINANCE_DESK | Every pay they have had, with who set it and when |
+| GET | /api/fees/payroll/months/{yyyy-MM} | FINANCE_DESK | The month's slips and totals (total, paid, still to pay) |
+| POST | /api/fees/payroll/months/{yyyy-MM}/generate | FINANCE_DESK | A slip for everyone on payroll without one; refused for a month that has not started |
+| GET | /api/fees/payroll/years/{yyyy} | FINANCE_DESK | A year's totals, month by month |
+| PUT | /api/fees/payroll/slips/{id} | FINANCE_DESK | Leave without pay, other deduction, bonus, remark (before approval) |
+| POST | /api/fees/payroll/months/{yyyy-MM}/approve, /slips/{id}/approve | ADMIN_ONLY | PENDING to APPROVED |
+| POST | /api/fees/payroll/months/{yyyy-MM}/pay, /slips/{id}/pay | FINANCE_DESK | APPROVED to PAID: records a SALARY expense; refused inside a closed period |
+| GET | /api/fees/payroll/me | ADMIN, COORDINATOR, TRAINER, PLACEMENT, FINANCE | The caller's own paid slips |
+| GET | /api/fees/payroll/slips/{id}/pdf | same | The salary slip as a PDF (the finance desk any, a member of staff only their own paid slip) |
+
+### `BooksLockController` — `/api/fees/books-lock`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/fees/books-lock | FINANCE_VIEW | The date the books are closed up to |
+| PUT | /api/fees/books-lock | ADMIN_ONLY | Close through a date (up to yesterday); reopening needs a note |
+
+### `GstReportController` — `/api/fees/gst`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/fees/gst/settings | FINANCE_DESK | Rate, GSTIN, SAC and the date it applies from |
+| PUT | /api/fees/gst/settings | ADMIN_ONLY | Set them (rate 0 to 28; 0 switches GST off) |
+| POST | /api/fees/gst/payments | FINANCE_DESK | Record GST paid to the government |
+| GET | /api/fees/gst/summary?from=&to= | FINANCE_DESK | Invoices and, month by month, tax charged, credit on expenses, paid and still payable |
+
+### `BankReconciliationController` — `/api/fees/bank`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| POST | /api/fees/bank/import | FINANCE_DESK | Import statement lines (already imported ones are skipped, clear matches made) |
+| GET | /api/fees/bank/lines?unmatched= | FINANCE_DESK | Lines, newest first |
+| GET | /api/fees/bank/summary | FINANCE_DESK | Matched and unmatched, and bank-money entries missing from the statement |
+| GET | /api/fees/bank/lines/{id}/candidates | FINANCE_DESK | Unmatched book entries of the same amount |
+| POST | /api/fees/bank/lines/{id}/match, /unmatch | FINANCE_DESK | Match or undo by hand |
+| POST | /api/fees/bank/auto-match | FINANCE_DESK | Match everything with one clear answer |
+
+### `BooksController` — `/api/fees/books`
+| Method | Path | Role | Does |
+|---|---|---|---|
+| GET | /api/fees/books?from=&to= | FINANCE_DESK | Double-entry journal, trial balance, profit and loss and balance sheet, derived from the records |
 
 ---
 

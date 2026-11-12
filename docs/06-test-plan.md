@@ -20,12 +20,12 @@ Counts below are the unit-test methods in the source on 2026-11-01 (`@Test` and 
 
 | Service | Test methods | Notable coverage |
 |---|---|---|
-| identity | 79 | login, refresh rotation + reuse-revokes-session-family, password reset, self-registration on/off, lockout after 5 failed attempts, logout / logout-all, single active login, branding |
-| admission | 40 | lead -> follow-up -> convert, student admission, status changes, profile creation from `user-created` |
+| identity | 88 | login, refresh rotation + reuse-revokes-session-family, password reset, self-registration on/off, lockout after 5 failed attempts, logout / logout-all, single active login, branding |
+| admission | 41 | lead -> follow-up -> convert, student admission, status changes, profile creation from `user-created` |
 | course | 62 | curriculum CRUD + reordering, publish validation, who can open the curriculum (`EnrollmentStatus.allowsContentAccess()`), progress, practice editor and video-monitoring fields |
 | batch | 48 | marking the register, attendance from a live class, attendance percentage, correction requires a reason, course requests |
 | assessment | 108 | scoring rules, short-answer and coding marking, question pool and shuffling, extra attempts, typing stats, secure-mode violations, **`AnswerKeyExposureTest`** (the served attempt payload never carries `correct`) |
-| finance | 21 | splitting a fee into instalments, applying payments oldest-first, outstanding-amount formula (Doc S14), reminders |
+| finance | 124 | splitting a fee into instalments, applying payments oldest-first, outstanding-amount formula (Doc S14), reminders, what each payment was for, refunds, discount and late-fee rules, cash count, closing the books, GST (rates by date, IGST, exempt heads, return, credit note), bank matching, the derived books (every entry balances), payroll arithmetic and heads, the receipt, statement, credit note and salary slip PDFs |
 | certificate | 49 | eligibility rules, requests, verification + PDF |
 | placement | 10 | who may apply, editing a job once students have applied, moving through the pipeline (Doc S7.4) |
 | notification | 29 | announcement rules and categories, email composition, retrying failed emails, never storing a password or reset link |
@@ -34,7 +34,7 @@ Counts below are the unit-test methods in the source on 2026-11-01 (`@Test` and 
 | reporting | 56 | attendance percentage, progress report and suggestions, tabular export, dashboard service |
 | codeexec | 121 | Judge0 and Piston runners, rate limit and concurrency cap, static code analysis |
 | api-gateway | 15 | gateway filters |
-| **Total** | **794** | |
+| **Total** | **907** | other services unchanged since 2026-11-01; finance, identity and admission counted again on 2026-11-12 |
 
 **Added since the table above was written (so its counts are out of date):** `TranscriptServiceTest` (liveclass: who may write a transcript, only while live, retries stored once, limits, the clock held inside the class, the text file), `BatchPlacedTest` (batch: placed means ever enrolled), `UserEventConsumerTest` (admission: a new student is reported to administrators and coordinators), and `AttemptServiceImplTest` now includes the new camera events (`FACE_OUT_OF_FRAME`, `FACE_MISMATCH`, `DEVICE_DETECTED`), which warn, are recorded and never end an attempt. The face, phone and subtitle code that runs in the browser has no automated test; it was tried by hand, and the phone detector's threshold was checked against real photographs with the same model.
 
@@ -59,7 +59,7 @@ Both run from `frontend/` and in CI (`frontend` job: build, lint, `npm test`; `f
 
 | Layer | Command | What it is |
 |---|---|---|
-| Unit and component (Vitest, jsdom, Testing Library) | `npm test` | 162 tests in 17 files beside the code (`*.test.ts(x)`): `lib/` helpers, `api/client` error text, the auth store, `nav-items` (every item has real roles; settings pages are admin-only), `ProtectedRoute` (waiting, signed out, wrong role, forced password change), the CSV writer (formula injection, quoting), the layout of every downloadable report, the print page with the institute's letterhead (escaping, wide tables), the Excel cells, and the list of roles a person holds, and the cookie notice rendering inside the router |
+| Unit and component (Vitest, jsdom, Testing Library) | `npm test` | about 170 tests in 30 files (counted 2026-11-12; Vitest does not start on the machine this was written on, with the same "failed to find the current suite" error before and after these changes, so the finance and payroll screens and the new pure helpers, `bank-csv`, `fee-due-card` and the fee percentages in `export-rows`, have tests that were written but not run there) beside the code (`*.test.ts(x)`): `lib/` helpers, `api/client` error text, the auth store, `nav-items` (every item has real roles; settings pages are admin-only), `ProtectedRoute` (waiting, signed out, wrong role, forced password change), the CSV writer (formula injection, quoting), the layout of every downloadable report, the print page with the institute's letterhead (escaping, wide tables), the Excel cells, and the list of roles a person holds, and the cookie notice rendering inside the router |
 | Browser (Playwright, Chrome) | `npm run e2e` | 61 tests in `frontend/e2e/`: the built app is served and every call to the API is answered by a mock (`e2e/helpers.ts`), so no Docker stack is needed. Sign-in and sign-out, the sidebar for each role, route guards, the ID card screens (issue, search, withdraw, print selection, a student's own card) the public ID check page, and who holds extra duties (a trainer who also coordinates: menus, route guards, a duty given or taken back while the person works, the Duties dialog), the downloads (the Users page, the finance desk, the video watch report, students, leads, dashboard and progress report as Excel with the letterhead read back from the .xlsx file, as the printed page, and as CSV) |
 
 Locally, `PW_CHANNEL=chrome npm run e2e` uses the Chrome already installed; CI downloads Chromium. A call the mock does not know returns 404 and is listed in `unmocked`, so a page that starts asking for something new is noticed.

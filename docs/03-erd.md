@@ -646,7 +646,7 @@ Three read models, all fed by Kafka events; nothing here is written directly by 
 | batch | itilms_batch | 5 |
 | liveclass | itilms_liveclass | 3 |
 | assessment | itilms_assessment | 9 |
-| finance | itilms_finance | 3 |
+| finance | itilms_finance | 19 (after V20; 3 at V1) |
 | certificate | itilms_certificate | 1 |
 | placement | itilms_placement | 5 |
 | notification | itilms_notification | 5 |
@@ -670,7 +670,8 @@ The ERD above describes each service's first migration (`V1`). Every later chang
 | assessment (17) | V2 short-answer and coding questions, V3 secure test mode, V4 camera monitoring, V5 coding run stats, V6 language choice, V7 microphone monitoring, V8 code suggestions, V9 face oval guide, V11 identity and device checks, V12 SQL setup, V13 camera checks choice, V14 typing replay, V15 remote tool violation, V16 question pool and typing stats, V17 shuffle options, V18 extra attempts |
 | certificate (2) | V2 certificate requests |
 | notification (2) | V2 announcement category |
-| admission, finance, placement, file, reporting | V1 only |
+| finance (20) | V2 online orders, V3 order kind, V4 extra charges and auto plans, V5 course fee templates, V6 refunds, V7 discount reason, V8 late fee, V9 cash closings, V10 expenses, V11 UPI claims, V12 payroll, V13 refund pay-out, V14 books lock, V15 staff pay history, V16 bank reconciliation, V17 GST settings, V18 GST-exempt heads, V19 GST on expenses and GST payments, V20 payslip heads and employee details |
+| admission, placement, file, reporting | V1 only |
 
 codeexec-service is stateless and has no database. To regenerate the full table and column list, read the migrations in order or run `\d` against each database.
 

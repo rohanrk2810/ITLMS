@@ -24,7 +24,7 @@ Success looks like:
 | TRAINER | Their batches: classes, attendance, tests, assignments, question bank |
 | STUDENT | Own courses, tests, classes, fees, certificates, progress, jobs |
 | PLACEMENT | Companies, job openings, applications, interview pipeline |
-| FINANCE | Fee plans, payments, receipts, overdue follow-up |
+| FINANCE | Fee plans, payments, receipts, refunds, expenses, GST, bank reconciliation, payroll |
 
 ## 3. Scope and requirements
 
@@ -59,7 +59,15 @@ Success looks like:
 
 ### Finance
 - R-40 Fee plans with instalments, payments, receipts, reversal; outstanding computed from payments.
-- R-41 Overdue reminders; finance dashboard.
+- R-41 Overdue reminders (by email as well as in the portal); finance dashboard with collected and pending percent.
+- R-42 Receipt in the college layout: fee heads paid, student phone, due amount, batch and time, paid and balance percent, tax information on every receipt, optional note and signature lines; a student's fee statement as a PDF ([24](24-new-students-and-fees.md)).
+- R-43 A course's usual fee structure; extra charges; late fee (optional); discounts need a reason and a large one the administrator.
+- R-44 Refunds: asked by the finance desk, approved by the administrator, marked paid out, with a credit note.
+- R-45 Online payment by Razorpay, and by UPI QR with the finance desk confirming the reference.
+- R-46 Day-end cash count; expenses with profit and loss; the administrator can close the books through a date.
+- R-47 GST: set by the administrator, tax on every receipt (CGST and SGST, or IGST), exempt heads, credit on expenses, GST paid, a return and an invoice register, credit notes.
+- R-48 Bank reconciliation from the bank's CSV; double-entry books (journal, trial balance, profit and loss, balance sheet) derived from the records.
+- R-49 Staff payroll: each person's pay as named earnings and deductions with their details, a salary slip per month, approval, payment into an expense, and the slip as a PDF the person can download.
 
 ### Certificates and placement
 - R-50 Certificate completion rule checked live across services; student request, admin approval, PDF issue, public verification by code.
@@ -99,7 +107,8 @@ Recorded in [02-documentation-review.md](02-documentation-review.md): microservi
 ## 6. Out of scope for now
 
 - Kubernetes manifests (Docker Compose is the supported deployment).
-- Online payment of installments and refunds through the gateway. Buying a course online with Razorpay is built ([34](34-online-payments.md)); other fees are still recorded by finance staff.
+- Refunds through the payment gateway: a refund is recorded as paid out by the finance desk, the money is handed back outside the system. Online payment by Razorpay is built ([34](34-online-payments.md)), and by UPI QR.
+- Payroll tax (PF, TDS and tax slabs are entered by the desk, not worked out), automatic leave from attendance, filing GST returns with the government, accrual accounting and depreciation.
 - Remote control of a student's own computer (not possible from a browser; see "Open questions").
 
 ## 7. Open questions

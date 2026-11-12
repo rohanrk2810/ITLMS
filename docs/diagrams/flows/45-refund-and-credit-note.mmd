@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor F as Finance desk
+    actor A as Administrator
+    actor S as Student
+    participant FI as finance-service
+    participant K as Kafka
+    participant NO as notification-service
+
+    F->>FI: POST /api/fees/refunds (payment, amount, reason)
+    FI->>FI: refuse if the payment was reversed, or the amount is more than is left to refund (less requests still pending)
+    FI->>K: notify the administrator (Refund to approve)
+
+    alt Administrator approves
+        A->>FI: POST /api/fees/refunds/{id}/approve
+        FI->>FI: lock the payment, add the amount to refunded_amount
+        FI->>FI: paid = payment - refunded, so the plan owes the money again (SETTLED to ACTIVE)
+        FI->>K: notify the student by email and in the portal (Refund approved)
+        K->>NO: queue the email
+    else Administrator rejects
+        A->>FI: POST /api/fees/refunds/{id}/reject (reason)
+        FI->>FI: status REJECTED, nothing changes on the payment
+    end
+
+    Note over F,FI: The money is handed back outside the system, then recorded
+    F->>FI: POST /api/fees/refunds/{id}/paid (cash, UPI, bank transfer or cheque, reference, date)
+    FI->>FI: refuse a date inside a closed period
+    FI->>FI: status PAID with how, when and by whom
+    FI->>FI: a cash refund lowers that day's expected cash in the day-end count
+    FI->>K: notify the student (Refund paid)
+
+    opt Credit note
+        F->>FI: GET /api/fees/refunds/{id}/credit-note (or the student, their own)
+        FI->>FI: the tax of the original receipt, in proportion to the refund
+        FI-->>F: PDF: credit note no, the receipt it credits, taxable value, CGST and SGST or IGST, reason
+    end
