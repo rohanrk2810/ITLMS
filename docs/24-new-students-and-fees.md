@@ -41,6 +41,27 @@ The finance desk adds a named charge on top of the course fee, for one student o
 - **Changing a plan later keeps the charges.** The desk edits the plan's total as before; extra charges stay as they are and only the course-fee installments are re-split.
 - Audited as `FEE_CHARGE_ADDED` and `BATCH_CHARGE_ADDED`.
 
+### Finance desk additions (2026-11-12)
+
+All under `/api/fees/...` (already routed). Migrations V5 to V11 in finance-service.
+
+| What | How it works |
+|---|---|
+| **Receipt in the college layout** | Logo and name, "Student Fees Receipt", a boxed block (receipt no, date, student, reg no, course, batch, financial year April to March), a particulars table, total in words, payment mode with reference, bank line, remarks. The **particulars** list each fee head the payment went towards: a payment covers the stretch of the installment queue (oldest due first) after the money paid before it, so a development fee shows as its own line. The **bank** line is `INSTITUTE_BANK`; the batch comes from batch-service. |
+| **Fee structure per course** (V5) | `PUT /api/fees/templates/{courseId}` (ADMIN, FINANCE): installments, days to the first due date, and extra heads. A student placed in a batch gets a plan that follows it. Plans already raised are not changed. |
+| **Statement** | `GET /api/fees/students/{id}/statement`: every course, every payment, the balance, as a PDF. A student only their own. |
+| **Collection report** | Finance page: payments between two dates by method, with a download. Built from `GET /api/payments`. |
+| **Reminders** | The morning scan (already there) now emails the student as well as notifying them, naming the fee head. |
+| **Refunds** (V6) | The finance desk asks from a payment; **only the administrator** approves or rejects. Approving adds to `payments.refunded_amount`; what a student has paid is the payment minus that, so the fee is owed again and the dashboard follows. The money is handed back outside the system. |
+| **Concessions** (V7) | A discount needs a reason (kept on the plan). One above `discount-approval-percent` (10) of the fee needs the administrator. Only a new or changed discount is checked. |
+| **Late fee** (V8) | Off unless `LATE_FEE` is above 0. Once an installment is unpaid more than `LATE_FEE_AFTER_DAYS` (7) days, a flat charge named "Late fee" is added once. The administrator can waive one nothing has been paid on. |
+| **Day-end cash count** (V9) | The desk counts the drawer; the system says how much cash it recorded that day. A difference needs a note. One closing per day. |
+| **Expenses** (V10) | By category (salary, rent, utilities, marketing, supplies, maintenance, other). Voided with a reason, never deleted. Profit is fees collected (net of refunds) less expenses. ADMIN and FINANCE only. |
+| **UPI by QR** (V11) | With `INSTITUTE_UPI_ID` set, the student sees a QR for the amount, pays from their own app and sends the UTR. The desk matches it with the bank and **confirms**, which records an ordinary UPI payment with a receipt; or rejects it. The same UTR cannot be claimed twice. |
+| **Fees due** | The student's dashboard lists the next fee dates, how far away and what is left. Hidden with the dashboard setting `fee-due`. |
+
+Not done: the admission-time discount (set by the coordinator when converting a lead) is not subject to the 10% rule; only changes made on the finance side are.
+
 ### Not covered
 The course has only a total. Instalments (how many, when) are decided per student when finance raises the fee plan, so they cannot be shown before the student is placed. Showing a standard schedule up front would need a course-level instalment setting.
 
