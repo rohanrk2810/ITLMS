@@ -1,4 +1,73 @@
 erDiagram
+    bank_statement_lines {
+        bigint id PK
+        date line_date
+        varchar description
+        varchar reference
+        numeric debit
+        numeric credit
+        varchar import_key UK
+        varchar matched_kind
+        bigint matched_id
+        timestamptz matched_at
+        bigint matched_by
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    books_lock {
+        smallint id PK
+        date locked_through
+        varchar note
+        bigint set_by
+        timestamptz set_at
+    }
+    cash_closings {
+        bigint id PK
+        date closing_date UK
+        numeric expected_cash
+        numeric counted_cash
+        numeric difference
+        varchar note
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    course_fee_template_charges {
+        bigint id PK
+        bigint course_id FK
+        integer sort_order
+        varchar label
+        numeric amount
+        integer due_days
+    }
+    course_fee_templates {
+        bigint course_id PK
+        integer installment_count
+        integer first_due_days
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    expenses {
+        bigint id PK
+        date expense_date
+        varchar category
+        numeric amount
+        varchar description
+        varchar paid_to
+        varchar reference_no
+        timestamptz voided_at
+        varchar void_reason
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        numeric gst_amount
+    }
     fee_installments {
         bigint id PK
         bigint fee_plan_id FK
@@ -8,6 +77,8 @@ erDiagram
         integer last_reminder_days
         timestamptz overdue_notified_at
         varchar label
+        timestamptz late_fee_charged_at
+        boolean gst_exempt
     }
     fee_plans {
         bigint id PK
@@ -30,6 +101,30 @@ erDiagram
         bigint created_by
         bigint updated_by
         boolean auto_created
+        varchar discount_reason
+        bigint discount_set_by
+    }
+    gst_payments {
+        bigint id PK
+        date paid_on
+        varchar for_month
+        numeric amount
+        varchar method
+        varchar reference
+        varchar note
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    gst_settings {
+        smallint id PK
+        numeric percent
+        varchar gstin
+        varchar sac_code
+        date effective_from
+        bigint set_by
+        timestamptz set_at
     }
     online_orders {
         bigint id PK
@@ -70,6 +165,141 @@ erDiagram
         timestamptz updated_at
         bigint created_by
         bigint updated_by
+        numeric refunded_amount
     }
+    payslip_items {
+        bigint id PK
+        bigint slip_id FK
+        varchar kind
+        varchar name
+        numeric amount
+        integer sort_order
+    }
+    payslips {
+        bigint id PK
+        varchar slip_no UK
+        varchar month_key
+        bigint user_id
+        varchar staff_name
+        varchar designation
+        integer days_in_month
+        numeric basic
+        numeric allowances
+        numeric fixed_deduction
+        numeric lwp_days
+        numeric lwp_deduction
+        numeric other_deduction
+        numeric bonus
+        numeric gross
+        numeric net
+        varchar note
+        varchar status
+        bigint approved_by
+        timestamptz approved_at
+        date paid_on
+        varchar pay_method
+        varchar pay_reference
+        bigint expense_id
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        varchar employee_code
+        varchar pan
+        varchar bank_name
+        varchar bank_account
+        varchar pf_number
+        varchar uan
+        varchar esi_number
+        date hired_on
+        varchar department
+        varchar location
+    }
+    refunds {
+        bigint id PK
+        bigint payment_id FK
+        bigint fee_plan_id
+        bigint student_id
+        numeric amount
+        varchar reason
+        varchar status
+        bigint decided_by
+        timestamptz decided_at
+        varchar decision_note
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        date paid_on
+        varchar pay_method
+        varchar pay_reference
+        bigint paid_by
+    }
+    staff_pay {
+        bigint user_id PK
+        varchar staff_name
+        varchar role_name
+        numeric basic
+        numeric allowances
+        numeric fixed_deduction
+        boolean active
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+        varchar employee_code
+        varchar pan
+        varchar bank_name
+        varchar bank_account
+        varchar pf_number
+        varchar uan
+        varchar esi_number
+        date hired_on
+        varchar department
+        varchar location
+    }
+    staff_pay_heads {
+        bigint id PK
+        bigint user_id
+        varchar kind
+        varchar name
+        numeric amount
+        numeric percent_of_basic
+        boolean is_basic
+        integer sort_order
+    }
+    staff_pay_history {
+        bigint id PK
+        bigint user_id
+        numeric basic
+        numeric allowances
+        numeric fixed_deduction
+        boolean active
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    upi_claims {
+        bigint id PK
+        bigint fee_plan_id FK
+        bigint student_id
+        numeric amount
+        varchar utr
+        varchar status
+        bigint decided_by
+        timestamptz decided_at
+        varchar decision_note
+        bigint payment_id FK
+        timestamptz created_at
+        timestamptz updated_at
+        bigint created_by
+        bigint updated_by
+    }
+    course_fee_templates ||--o{ course_fee_template_charges : "course_id"
     fee_plans ||--o{ fee_installments : "fee_plan_id"
     fee_plans ||--o{ payments : "fee_plan_id"
+    payslips ||--o{ payslip_items : "slip_id"
+    payments ||--o{ refunds : "payment_id"
+    fee_plans ||--o{ upi_claims : "fee_plan_id"
+    payments ||--o{ upi_claims : "payment_id"

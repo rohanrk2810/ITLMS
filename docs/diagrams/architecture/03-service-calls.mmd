@@ -19,10 +19,12 @@ flowchart LR
     AS -->|"does trainer teach batch,<br/>is student in batch"| BA
     AS -->|"run tests, analyse"| CX
     LC -->|"batch, roster, trainer"| BA
-    FN -->|"student profile"| AD
+    FN -->|"student profile, phone, state"| AD
     FN -->|"course fee and state"| CR
     FN -->|"institute branding for receipts"| ID
+    FN -->|"staff directory for payroll"| ID
     FN -->|"open batch, place a paid student"| BA
+    FN -->|"batch name and class time for receipts"| BA
     BA -->|"is the online order paid"| FN
     CE -->|"student"| AD
     CE -->|"test results"| AS

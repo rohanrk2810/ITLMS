@@ -101,6 +101,10 @@ Each question has a proposed answer. If nobody objects, the proposal will be bui
 
 ---
 
+### Departures added with the finance desk (2026-11-12)
+
+The PDF has fee plans, payments and receipts. These were added at the owner's request and are written up in [24](24-new-students-and-fees.md): refunds with approval and pay-out, discounts with a reason and approval, late fees, UPI by QR, a day-end cash count, expenses, closing the books, GST with returns and credit notes, bank reconciliation, double-entry books derived from the records, and staff payroll with salary slips. Payroll, expenses and the books are outside the PDF's scope (it has no staff or accounting module).
+
 ## 5. Known limitations
 
 - **Android app (2026-11-03):** the PDF has no mobile client. The app is a native sign-in plus the whole website in a WebView ([33-mobile-app.md](33-mobile-app.md)), so it never lags behind the web. The secure-test lock-down (screen pinning) and a native LiveKit room are not part of it; secure tests stay on the Windows desktop app.

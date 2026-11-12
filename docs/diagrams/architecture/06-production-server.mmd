@@ -10,7 +10,7 @@ flowchart TB
             LKS["livekit<br/>127.0.0.1:7880 + media ports open"]
             SVC["13 services, Kafka, Redis,<br/>PostgreSQL"]
         end
-        BK[("~/backups<br/>pg_dump files,<br/>copies before a change")]
+        BK[("~/backups<br/>daily pg_dump of every database<br/>(cron 02:30, 14 days + monthly),<br/>copies before a change")]
         SCRIPT["manual update:<br/>scp changed files,<br/>mvn package,<br/>docker compose up -d --build --no-deps"]
     end
 

@@ -1,0 +1,35 @@
+sequenceDiagram
+    autonumber
+    actor F as Finance desk
+    actor A as Administrator
+    actor E as Staff member
+    participant FI as finance-service
+    participant ID as identity-service
+    participant K as Kafka
+
+    F->>FI: GET /api/fees/payroll/staff
+    FI->>ID: staff directory (Feign): every active user who is not a student
+    FI-->>F: each person with their pay and details, if set
+    F->>FI: PUT /api/fees/payroll/staff/{id} (earnings, deductions, employee code, PAN, bank, PF, UAN, hire date)
+    FI->>FI: heads become amounts (a percent of basic for provident fund), totals are checked
+    FI->>FI: keep the pay history: who set it, when
+
+    F->>FI: POST /api/fees/payroll/months/2026-11/generate
+    FI->>FI: refuse a month that has not started
+    FI->>FI: one slip per person on payroll who has none: copy the heads and the details as they are now
+    F->>FI: adjust a slip: leave without pay (days), other deduction, bonus, remark
+    FI->>FI: leave at (basic + allowances) / days in the month per day, and net must not be below zero
+
+    A->>FI: POST /api/fees/payroll/months/2026-11/approve
+    FI->>FI: PENDING to APPROVED (who, when)
+
+    F->>FI: POST /api/fees/payroll/months/2026-11/pay (method, reference, date)
+    FI->>FI: refuse a date inside a closed period
+    loop each approved slip
+        FI->>FI: record a SALARY expense, so profit and loss counts it
+        FI->>FI: slip PAID with method, reference, date and the expense id
+        FI->>K: notify the person (Salary slip ready)
+    end
+
+    E->>FI: GET /api/fees/payroll/me, then the slip PDF (own paid slip only)
+    FI-->>E: salary slip: employee details, earnings beside deductions, net pay in words

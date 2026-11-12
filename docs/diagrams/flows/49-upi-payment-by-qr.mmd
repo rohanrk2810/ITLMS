@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor S as Student
+    actor F as Finance desk
+    participant W as Portal
+    participant FI as finance-service
+    participant K as Kafka
+
+    S->>W: Pay online, then Pay by UPI
+    W->>FI: GET /api/fees/upi/config
+    FI-->>W: the institute's UPI id (empty means UPI is off)
+    W->>W: a QR code from upi://pay for the amount chosen
+    S->>S: pays from their own UPI app, copies the transaction reference (UTR)
+    S->>FI: POST /api/fees/upi/claims (plan, amount, UTR)
+    FI->>FI: own plan only, amount not more than is owed, UTR shape checked, one claim per UTR
+    FI->>K: notify the finance desk (UPI payment to check)
+
+    F->>FI: GET /api/fees/upi/claims, find the UTR in the bank statement
+    alt found
+        F->>FI: POST /api/fees/upi/claims/{id}/confirm
+        FI->>FI: record an ordinary UPI payment (receipt number, refuses a closed period)
+        FI->>K: receipt email with the PDF
+        FI->>FI: claim CONFIRMED with the payment id
+    else not found
+        F->>FI: POST /api/fees/upi/claims/{id}/reject (reason)
+        FI->>K: notify the student (UPI payment not found)
+    end

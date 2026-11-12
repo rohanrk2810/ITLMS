@@ -1,0 +1,35 @@
+sequenceDiagram
+    autonumber
+    actor Ad as Administrator
+    actor F as Finance desk
+    participant FI as finance-service
+    participant AD as admission-service
+
+    Ad->>FI: PUT /api/fees/gst/settings (rate, GSTIN, SAC, applies from)
+    FI->>FI: rate 0 to 28, GSTIN shape checked, a start date inside a closed period is refused
+    FI->>FI: audit the change
+
+    F->>FI: record a payment, or download its receipt
+    FI->>AD: student's phone and state (Feign)
+    FI->>FI: rate in force on the payment date (zero before the start date)
+    FI->>FI: each fee head it went towards is taxed, a head marked no GST is exempt
+    alt the student's state differs from the state in the GSTIN
+        FI->>FI: IGST
+    else same state, or unknown
+        FI->>FI: CGST and SGST, half each
+    end
+    FI-->>F: Tax Invoice cum Fees Receipt (taxable value, taxes, place of supply, GSTIN, SAC). With no GST it says so
+
+    F->>FI: add an expense with the GST in it
+    FI->>FI: the GST is a credit against what is owed
+    F->>FI: POST /api/fees/gst/payments (challan: month, amount, method, reference)
+    FI->>FI: refuse a date inside a closed period
+
+    F->>FI: GET /api/fees/gst/summary (from, to)
+    FI->>FI: invoices = payments net of refunds, with their tax
+    FI->>FI: month by month: tax charged - credit on expenses - paid = still payable
+    FI-->>F: GST return and invoice register (both download)
+
+    F->>FI: GET /api/fees/books (from, to)
+    FI->>FI: journal worked out from plans, payments, refunds, expenses and GST payments
+    FI-->>F: trial balance, profit and loss, balance sheet, each entry balanced

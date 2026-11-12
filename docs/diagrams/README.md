@@ -1,6 +1,6 @@
 # Diagrams
 
-Forty-four diagrams of IT-ILMS, each as Mermaid source (`.mmd`) and a rendered picture (`.svg`) beside it. GitHub and VS Code (Markdown preview) show the pictures below; the `.mmd` files are what you edit.
+Forty-nine diagrams of IT-ILMS, each as Mermaid source (`.mmd`) and a rendered picture (`.svg`) beside it. GitHub and VS Code (Markdown preview) show the pictures below; the `.mmd` files are what you edit.
 
 The short diagrams inside [../19-system-design-hld-lld.md](../19-system-design-hld-lld.md) are an overview. These go deeper: every service's real schema, every event, and each flow step by step.
 
@@ -8,7 +8,7 @@ The short diagrams inside [../19-system-design-hld-lld.md](../19-system-design-h
 |---|---|---|
 | Architecture | [architecture/](architecture) | 6 |
 | Database (ER, one per service) | [db/](db) | 12 |
-| Flows (sequence) | [flows/](flows) | 16 |
+| Flows (sequence) | [flows/](flows) | 21 |
 | State machines | [states/](states) | 4 |
 | Security | [security/](security) | 3 |
 | Frontend | [frontend/](frontend) | 3 |
@@ -19,10 +19,10 @@ The short diagrams inside [../19-system-design-hld-lld.md](../19-system-design-h
 |---|---|---|
 | 01 | [System context](architecture/01-system-context.svg) | People, clients and external systems around IT-ILMS |
 | 02 | [Containers](architecture/02-containers.svg) | Gateway, platform services, 13 business services, data stores |
-| 03 | [Service calls](architecture/03-service-calls.svg) | Every synchronous (Feign) call between services |
+| 03 | [Service calls](architecture/03-service-calls.svg) | Every synchronous (Feign) call between services (finance now also reads the staff directory and the batch time) |
 | 04 | [Kafka events](architecture/04-kafka-events.svg) | Producer, topic and consumer for each event |
 | 05 | [Deployment, Docker Compose](architecture/05-deployment-compose.svg) | Ports, internal-only containers, volumes |
-| 06 | [Production server](architecture/06-production-server.svg) | HTTPS proxy, stack, backups, manual update path |
+| 06 | [Production server](architecture/06-production-server.svg) | HTTPS proxy, stack, daily database backups, manual update path |
 
 ![System context](architecture/01-system-context.svg)
 
@@ -67,6 +67,11 @@ Foreign keys are only drawn inside one database. Ids that point at another servi
 | 42 | Extra duties: given by the administrator, applied at the next request | [flows/42-extra-duties-change.svg](flows/42-extra-duties-change.svg) |
 | 43 | Online course payment (Razorpay) | [flows/43-online-course-payment.svg](flows/43-online-course-payment.svg) |
 | 44 | Extending a course: a batch, or one student | [flows/44-extend-course-validity.svg](flows/44-extend-course-validity.svg) |
+| 45 | Refund: request, approval, pay-out, credit note | [flows/45-refund-and-credit-note.svg](flows/45-refund-and-credit-note.svg) |
+| 46 | Payroll: pay structure, the month's slips, approval, payment, the slip | [flows/46-payroll-month.svg](flows/46-payroll-month.svg) |
+| 47 | GST: settings, tax on a receipt, return, invoice register and the books | [flows/47-gst-invoice-return-and-books.svg](flows/47-gst-invoice-return-and-books.svg) |
+| 48 | Bank reconciliation: import, matching, what is left | [flows/48-bank-reconciliation.svg](flows/48-bank-reconciliation.svg) |
+| 49 | Paying by UPI QR and the finance desk's check | [flows/49-upi-payment-by-qr.svg](flows/49-upi-payment-by-qr.svg) |
 
 ## State machines
 

@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor F as Finance desk
+    participant FI as finance-service
+
+    F->>F: download the bank statement as CSV
+    F->>FI: POST /api/fees/bank/import (lines read in the browser: date, narration, reference, debit, credit)
+    FI->>FI: skip lines already imported (same file twice adds nothing)
+    loop each unmatched line
+        alt money in
+            FI->>FI: candidates: recorded payments by bank, UPI, card, cheque or online
+        else money out
+            FI->>FI: candidates: expenses, and refunds paid by a non-cash method
+        end
+        FI->>FI: same amount, and the entry's reference found in the narration
+        alt exactly one
+            FI->>FI: match it
+        else amount only, one entry within 3 days
+            FI->>FI: match it
+        else two or more equal
+            FI->>FI: leave it for a person: never guess
+        end
+    end
+    FI-->>F: lines imported, duplicates, matched
+
+    F->>FI: GET /api/fees/bank/summary
+    FI-->>F: in the bank but not in the books, and in the books as bank money but not on the statement
+
+    F->>FI: GET /api/fees/bank/lines/{id}/candidates, then POST .../match (or .../unmatch)
+    FI->>FI: amounts must be equal, money in matches a payment, one bank line per entry
+    FI->>FI: audit the match
