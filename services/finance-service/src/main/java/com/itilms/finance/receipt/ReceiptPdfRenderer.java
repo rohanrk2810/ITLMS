@@ -40,11 +40,18 @@ public class ReceiptPdfRenderer {
     private static final Color LINE = new Color(0xDD, 0xDD, 0xDD);
     private static final DateTimeFormatter DATE_SLASH = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH);
 
-    /** Everything on the receipt. The institute and the logo may be null. */
+    /** One line of the particulars table: what part of the fee this payment went towards. */
+    public record Particular(String label, BigDecimal amount) {
+    }
+
+    /**
+     * Everything on the receipt. The institute and the logo may be null; {@code particulars} may be empty, and the
+     * receipt then shows the whole amount as one course-fee line.
+     */
     public record Data(String receiptNo, LocalDate date, String studentName, String studentCode,
                        String courseTitle, String currencySymbol, BigDecimal amount, String method, String referenceNo,
                        BigDecimal netFee, BigDecimal paidToDate, BigDecimal balance, boolean reversed,
-                       BrandingClient.Branding institute, byte[] logo) {
+                       BrandingClient.Branding institute, byte[] logo, java.util.List<Particular> particulars) {
     }
 
     public byte[] render(Data d) {
@@ -172,15 +179,22 @@ public class ReceiptPdfRenderer {
             h.setHorizontalAlignment(i == 2 ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
             t.addCell(h);
         }
-        t.addCell(plain("1", Font.NORMAL, 10));
-        t.addCell(plain(d.courseTitle() == null ? "Course fee" : d.courseTitle() + " - course fee", Font.NORMAL, 10));
-        PdfPCell amt = plain(money("", d.amount()).trim(), Font.NORMAL, 10);
-        amt.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        t.addCell(amt);
+        java.util.List<Particular> lines = d.particulars() == null || d.particulars().isEmpty()
+                ? java.util.List.of(new Particular(d.courseTitle() == null ? "Course fee" : d.courseTitle() + " - course fee",
+                d.amount()))
+                : d.particulars();
+        int no = 1;
+        for (Particular line : lines) {
+            t.addCell(plain(String.valueOf(no++), Font.NORMAL, 10));
+            t.addCell(plain(line.label(), Font.NORMAL, 10));
+            PdfPCell amt = plain(money("", line.amount()).trim(), Font.NORMAL, 10);
+            amt.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            t.addCell(amt);
+        }
         PdfPCell blank = new PdfPCell(new Phrase(" "));
         blank.setBorder(Rectangle.NO_BORDER);
         blank.setColspan(3);
-        blank.setFixedHeight(150);
+        blank.setFixedHeight(Math.max(30, 150 - 20 * lines.size()));
         t.addCell(blank);
 
         PdfPTable rows = new PdfPTable(new float[]{2f, 7f});

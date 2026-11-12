@@ -154,4 +154,43 @@ class FeeLedgerTest {
                     .containsExactly(LocalDate.of(2026, 1, 31), LocalDate.of(2026, 2, 28), LocalDate.of(2026, 3, 31));
         }
     }
+
+    @Nested
+    @DisplayName("What one payment was for")
+    class Slices {
+
+        private Payment withId(Payment p, long id) {
+            p.setId(id);
+            return p;
+        }
+
+        @Test
+        @DisplayName("A payment covers the stretch after the money paid before it")
+        void secondPaymentContinuesWhereTheFirstStopped() {
+            FeePlan plan = plan();
+            Payment first = withId(paid(15_000), 1);
+            Payment second = withId(paid(10_000), 2);
+
+            var slices = FeeLedger.slicesOf(plan, List.of(first, second), second);
+
+            assertThat(slices).hasSize(2);
+            assertThat(slices.get(0).installment().getInstallmentNo()).isEqualTo(2);
+            assertThat(slices.get(0).amount()).isEqualByComparingTo("5000");
+            assertThat(slices.get(1).installment().getInstallmentNo()).isEqualTo(3);
+            assertThat(slices.get(1).amount()).isEqualByComparingTo("5000");
+        }
+
+        @Test
+        @DisplayName("A reversed payment before it does not push it along")
+        void reversedMoneyIsIgnored() {
+            FeePlan plan = plan();
+            Payment bounced = withId(reversed(10_000), 1);
+            Payment good = withId(paid(10_000), 2);
+
+            var slices = FeeLedger.slicesOf(plan, List.of(bounced, good), good);
+
+            assertThat(slices).hasSize(1);
+            assertThat(slices.get(0).installment().getInstallmentNo()).isEqualTo(1);
+        }
+    }
 }

@@ -53,6 +53,47 @@ public final class FeeLedger {
         }
     }
 
+    /** Part of a payment, and the installment it went towards. */
+    public record Slice(FeeInstallment installment, BigDecimal amount) {
+    }
+
+    /**
+     * Which installments one payment covers.
+     *
+     * <p>Money is applied to installments oldest-due first, as {@link #of} does for the whole plan. A payment covers the
+     * stretch of that queue after everything paid before it (by date, then id), so a receipt can say what it was for.
+     * Whatever is left over (an overpayment) is not attributed to any installment.
+     */
+    public static List<Slice> slicesOf(FeePlan plan, List<Payment> payments, Payment target) {
+        BigDecimal before = payments.stream()
+                .filter(Payment::counts)
+                .filter(p -> p.getPaymentDate().isBefore(target.getPaymentDate())
+                        || (p.getPaymentDate().isEqual(target.getPaymentDate())
+                        && p.getId() != null && target.getId() != null && p.getId() < target.getId()))
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal toPlace = target.getAmount();
+        List<Slice> slices = new ArrayList<>();
+        List<FeeInstallment> ordered = plan.getInstallments().stream()
+                .sorted(Comparator.comparing(FeeInstallment::getDueDate)
+                        .thenComparingInt(FeeInstallment::getInstallmentNo))
+                .toList();
+        for (FeeInstallment installment : ordered) {
+            if (toPlace.signum() <= 0) {
+                break;
+            }
+            BigDecimal skipped = before.min(installment.getAmount());
+            before = before.subtract(skipped);
+            BigDecimal room = installment.getAmount().subtract(skipped);
+            BigDecimal taken = toPlace.min(room);
+            if (taken.signum() > 0) {
+                slices.add(new Slice(installment, taken));
+                toPlace = toPlace.subtract(taken);
+            }
+        }
+        return slices;
+    }
+
     private final BigDecimal netFee;
     private final BigDecimal paid;
     private final BigDecimal outstanding;

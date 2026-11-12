@@ -1,6 +1,7 @@
 package com.itilms.finance.receipt;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,8 @@ import com.itilms.finance.config.FinanceProperties;
 import com.itilms.finance.entity.FeePlan;
 import com.itilms.finance.entity.Payment;
 import com.itilms.finance.entity.PaymentStatus;
+import com.itilms.finance.ledger.FeeLedger;
+import com.itilms.finance.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +30,7 @@ public class ReceiptDocument {
     private final BrandingClient branding;
     private final CourseClient courses;
     private final FinanceProperties props;
+    private final PaymentRepository payments;
 
     /** The institute as printed on the receipt, or null when identity-service cannot be reached. */
     public BrandingClient.Branding institute() {
@@ -51,10 +55,42 @@ public class ReceiptDocument {
 
     public byte[] pdf(Payment payment, FeePlan plan, BigDecimal paidToDate, BigDecimal balance) {
         BrandingClient.Branding institute = institute();
+        String course = courseTitle(plan.getCourseId());
         return renderer.render(new ReceiptPdfRenderer.Data(payment.getReceiptNo(), payment.getPaymentDate(),
-                plan.getStudentName(), plan.getStudentCode(), courseTitle(plan.getCourseId()), props.getCurrencySymbol(),
+                plan.getStudentName(), plan.getStudentCode(), course, props.getCurrencySymbol(),
                 payment.getAmount(), payment.getMethod().name(), payment.getReferenceNo(), plan.getNetFee(), paidToDate,
-                balance, payment.getStatus() == PaymentStatus.REVERSED, institute, logo(institute)));
+                balance, payment.getStatus() == PaymentStatus.REVERSED, institute, logo(institute),
+                particulars(payment, plan, course)));
+    }
+
+    /**
+     * What the payment was for: each installment it went towards, named by its label (a development fee, a book) or as
+     * a part of the course fee. Empty when it cannot be worked out, and the receipt then shows one line.
+     */
+    List<ReceiptPdfRenderer.Particular> particulars(Payment payment, FeePlan plan, String course) {
+        try {
+            List<FeeLedger.Slice> slices = FeeLedger.slicesOf(plan,
+                    payments.findByFeePlanIdOrderByPaymentDateAscIdAsc(plan.getId()), payment);
+            boolean single = plan.getInstallments().stream()
+                    .filter(i -> i.getLabel() == null || i.getLabel().isBlank()).count() <= 1;
+            List<ReceiptPdfRenderer.Particular> lines = new java.util.ArrayList<>();
+            BigDecimal placed = BigDecimal.ZERO;
+            for (FeeLedger.Slice slice : slices) {
+                String label = slice.installment().getLabel();
+                if (label == null || label.isBlank()) {
+                    label = course + (single ? " - course fee" : " - fee, installment " + slice.installment().getInstallmentNo());
+                }
+                lines.add(new ReceiptPdfRenderer.Particular(label, slice.amount()));
+                placed = placed.add(slice.amount());
+            }
+            BigDecimal extra = payment.getAmount().subtract(placed);
+            if (!lines.isEmpty() && extra.signum() > 0) {
+                lines.add(new ReceiptPdfRenderer.Particular("Paid in advance", extra));
+            }
+            return lines;
+        } catch (RuntimeException e) {
+            return List.of();
+        }
     }
 
     private byte[] logo(BrandingClient.Branding institute) {
