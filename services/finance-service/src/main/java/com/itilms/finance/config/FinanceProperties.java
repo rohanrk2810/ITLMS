@@ -23,6 +23,9 @@ public class FinanceProperties {
 
     private String receiptPrefix = "RCPT";
 
+    /** A line printed on every receipt, such as the refund policy. Empty prints nothing. */
+    private String receiptNote = "(Fee once paid will not be refunded)";
+
     /** GST on fees, as a percent. The fee is taken to include it. Zero (the default) means no GST is shown or reported. */
     private java.math.BigDecimal gstPercent = java.math.BigDecimal.ZERO;
 

@@ -35,6 +35,7 @@ public class ReceiptDocument {
     private final PaymentRepository payments;
     private final BatchLookupClient batches;
     private final GstSettingsService gstSettings;
+    private final com.itilms.finance.client.AdmissionClient admission;
 
     /** The institute as printed on the receipt, or null when identity-service cannot be reached. */
     public BrandingClient.Branding institute() {
@@ -60,6 +61,7 @@ public class ReceiptDocument {
     public byte[] pdf(Payment payment, FeePlan plan, BigDecimal paidToDate, BigDecimal balance) {
         BrandingClient.Branding institute = institute();
         String course = courseTitle(plan.getCourseId());
+        BatchLookupClient.Batch batch = lookupBatch(plan.getBatchId());
         GstSettingsService.Settings current = gstSettings.current();
         // The rate in force on the day of the payment, so a receipt reprinted later shows what it showed then.
         record Gst(java.math.BigDecimal percent, String gstin, String sacCode) {
@@ -69,21 +71,51 @@ public class ReceiptDocument {
                 plan.getStudentName(), plan.getStudentCode(), course, props.getCurrencySymbol(),
                 payment.getAmount(), payment.getMethod().name(), payment.getReferenceNo(), plan.getNetFee(), paidToDate,
                 balance, payment.getStatus() == PaymentStatus.REVERSED, institute, logo(institute),
-                particulars(payment, plan, course), batchName(plan.getBatchId()), props.getBank(),
-                gst.percent(), gst.gstin(), gst.sacCode()));
+                particulars(payment, plan, course), batchName(batch), props.getBank(),
+                gst.percent(), gst.gstin(), gst.sacCode(), phoneOf(plan.getStudentId()), timing(batch), props.getReceiptNote()));
     }
 
-    /** The batch name, or null when the plan has no batch or batch-service cannot be reached. */
-    String batchName(Long batchId) {
+    /** The batch, or null when the plan has none or batch-service cannot be reached. */
+    BatchLookupClient.Batch lookupBatch(Long batchId) {
         if (batchId == null) {
             return null;
         }
         try {
-            BatchLookupClient.Batch batch = batches.get(batchId);
-            if (batch == null) {
-                return null;
-            }
-            return batch.name() != null && !batch.name().isBlank() ? batch.name() : batch.batchCode();
+            return batches.get(batchId);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    static String batchName(BatchLookupClient.Batch batch) {
+        if (batch == null) {
+            return null;
+        }
+        return batch.name() != null && !batch.name().isBlank() ? batch.name() : batch.batchCode();
+    }
+
+    /** "Mon, Wed, Fri 09:00-11:00", or what is known of it. */
+    static String timing(BatchLookupClient.Batch batch) {
+        if (batch == null) {
+            return null;
+        }
+        String days = batch.classDays() == null ? "" : batch.classDays().stream()
+                .map(d -> d.length() <= 3 ? d : d.substring(0, 1).toUpperCase() + d.substring(1, 3).toLowerCase())
+                .collect(java.util.stream.Collectors.joining(", "));
+        String time = batch.startTime() == null ? "" : hhmm(batch.startTime()) + (batch.endTime() == null ? "" : "-" + hhmm(batch.endTime()));
+        String both = (days + " " + time).trim();
+        return both.isEmpty() ? null : both;
+    }
+
+    private static String hhmm(String t) {
+        return t.length() >= 5 ? t.substring(0, 5) : t;
+    }
+
+    /** The student's phone number from admission-service, or null. */
+    private String phoneOf(Long studentId) {
+        try {
+            var found = admission.lookup(List.of(studentId));
+            return found == null || found.isEmpty() ? null : found.get(0).phone();
         } catch (RuntimeException e) {
             return null;
         }

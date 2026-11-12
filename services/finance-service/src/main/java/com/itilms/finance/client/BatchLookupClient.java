@@ -14,7 +14,7 @@ public interface BatchLookupClient {
     @GetMapping("/{id}")
     Batch get(@PathVariable("id") Long id);
 
-    record Batch(Long id, String batchCode, String name) {
+    record Batch(Long id, String batchCode, String name, java.util.List<String> classDays, String startTime, String endTime) {
     }
 
     /** No answer: the receipt is drawn without the batch. */
