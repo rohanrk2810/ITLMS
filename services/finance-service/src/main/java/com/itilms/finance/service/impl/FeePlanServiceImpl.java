@@ -257,6 +257,7 @@ public class FeePlanServiceImpl implements FeePlanService {
                     "This student already has a fee plan for this course. Update it instead.");
         }
         requireValidTerms(request.totalFee(), request.discount());
+        requireConcessionAllowed(request.totalFee(), request.discount(), BigDecimal.ZERO, request.discountReason());
 
         FeePlan plan = FeePlan.builder()
                 .studentId(student.id())
@@ -269,6 +270,7 @@ public class FeePlanServiceImpl implements FeePlanService {
                 .notes(trim(request.notes()))
                 .build();
         plan.setTerms(request.totalFee(), request.discount());
+        recordConcession(plan, request.discountReason());
         plan.replaceInstallments(schedule(plan.getNetFee(), request.installmentCount(),
                 request.firstDueDate(), request.installments()));
         plan.setStatus(plan.getNetFee().signum() == 0 ? FeePlanStatus.SETTLED : FeePlanStatus.ACTIVE);
@@ -292,6 +294,7 @@ public class FeePlanServiceImpl implements FeePlanService {
             throw new BusinessRuleException("A cancelled fee plan cannot be changed.");
         }
         requireValidTerms(request.totalFee(), request.discount());
+        requireConcessionAllowed(request.totalFee(), request.discount(), plan.getDiscount(), request.discountReason());
 
         List<Payment> payments = paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(id);
         BigDecimal alreadyPaid = FeeLedger.of(plan, payments, today()).paid();
@@ -305,7 +308,11 @@ public class FeePlanServiceImpl implements FeePlanService {
         Map<String, Object> before = Map.of("totalFee", plan.getTotalFee().toPlainString(),
                 "discount", plan.getDiscount().toPlainString(), "installments", plan.getInstallments().size());
         boolean netChanged = newNet.compareTo(plan.getNetFee()) != 0;
+        BigDecimal oldDiscount = plan.getDiscount();
         plan.setTerms(request.totalFee(), request.discount());
+        if (plan.getDiscount().compareTo(oldDiscount) != 0) {
+            recordConcession(plan, request.discountReason());
+        }
         if (request.notes() != null) {
             plan.setNotes(trim(request.notes()));
         }
@@ -349,6 +356,39 @@ public class FeePlanServiceImpl implements FeePlanService {
                         "discount", plan.getDiscount().toPlainString(),
                         "installments", plan.getInstallments().size()));
         return response(plan, payments);
+    }
+
+    /**
+     * A discount is given for a reason, and a large one by the administrator.
+     *
+     * <p>Only a discount that is new or changed is checked: a plan that already carries one (agreed at admission) can be
+     * edited for other reasons without being asked to justify it again.
+     */
+    private void requireConcessionAllowed(BigDecimal totalFee, BigDecimal discount, BigDecimal previous, String reason) {
+        BigDecimal wanted = discount == null ? BigDecimal.ZERO : FeePlan.money(discount);
+        if (wanted.signum() <= 0 || wanted.compareTo(previous) == 0) {
+            return;
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessRuleException("Say why this discount is given.");
+        }
+        BigDecimal percent = totalFee.signum() == 0 ? BigDecimal.ZERO
+                : wanted.multiply(BigDecimal.valueOf(100)).divide(totalFee, 2, java.math.RoundingMode.HALF_UP);
+        if (percent.compareTo(BigDecimal.valueOf(props.getDiscountApprovalPercent())) > 0
+                && !SecurityUtils.requirePrincipal().hasRole(com.itilms.common.security.Roles.ADMIN)) {
+            throw new BusinessRuleException("A discount above %d%% of the fee must be given by the administrator."
+                    .formatted(props.getDiscountApprovalPercent()));
+        }
+    }
+
+    private void recordConcession(FeePlan plan, String reason) {
+        if (plan.getDiscount().signum() > 0) {
+            plan.setDiscountReason(trim(reason));
+            plan.setDiscountSetBy(SecurityUtils.requirePrincipal().userId());
+        } else {
+            plan.setDiscountReason(null);
+            plan.setDiscountSetBy(null);
+        }
     }
 
     @Override

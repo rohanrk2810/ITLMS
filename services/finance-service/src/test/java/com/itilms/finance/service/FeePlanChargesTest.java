@@ -229,7 +229,7 @@ class FeePlanChargesTest {
                 new UsernamePasswordAuthenticationToken(desk, null, desk.authorities()));
         try {
             // The desk lowers the whole plan (course fee 30,000 plus the 500 charge) to 20,500: the course fee is 20,000.
-            service.update(11L, new FeePlanRequest(null, null, null, new BigDecimal("20500"), BigDecimal.ZERO, 2, today(), null, null));
+            service.update(11L, new FeePlanRequest(null, null, null, new BigDecimal("20500"), BigDecimal.ZERO, 2, today(), null, null, null));
 
             assertThat(plan.getNetFee()).isEqualByComparingTo("20500");
             assertThat(plan.getInstallments()).hasSize(3);

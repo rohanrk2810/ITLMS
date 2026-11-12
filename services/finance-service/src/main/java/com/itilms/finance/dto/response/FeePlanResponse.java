@@ -39,7 +39,9 @@ public record FeePlanResponse(
         String notes,
         List<InstallmentResponse> installments,
         @Schema(description = "Present on the single-plan and student views")
-        List<PaymentResponse> payments
+        List<PaymentResponse> payments,
+        @Schema(description = "Why the discount was given")
+        String discountReason
 ) {
 
     @Schema(description = "One installment and how much of it is paid")
@@ -71,6 +73,6 @@ public record FeePlanResponse(
                         l.installment().getId(), l.installment().getInstallmentNo(),
                         l.installment().getDueDate(), l.installment().getAmount(),
                         l.paid(), l.remaining(), l.state().name(), l.installment().getLabel())).toList(),
-                payments);
+                payments, plan.getDiscountReason());
     }
 }

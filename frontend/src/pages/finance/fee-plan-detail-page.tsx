@@ -18,6 +18,7 @@ import { DownloadReceiptButton } from '@/components/download-receipt-button'
 import { AddChargeButton } from '@/components/add-charge-dialogs'
 import { DownloadStatementButton } from '@/components/download-statement-button'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
+import { ConcessionButton } from '@/components/concession-dialog'
 import { RefundDialog } from '@/components/refund-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -90,6 +91,12 @@ export function FeePlanDetailPage() {
           <p className="text-muted-foreground">
             {plan.studentCode} &middot; Course #{plan.courseId} &middot; Net fee {formatMoney(plan.netFee, plan.currency)}
           </p>
+          {plan.discount > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Discount {formatMoney(plan.discount, plan.currency)}
+              {plan.discountReason ? ` - ${plan.discountReason}` : ''}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <DownloadStatementButton studentId={plan.studentId} />
@@ -97,6 +104,7 @@ export function FeePlanDetailPage() {
           {plan.status === 'ACTIVE' && plan.paid === 0 && (
             <CancelPlanDialog onConfirm={(reason) => cancelMutation.mutate(reason)} pending={cancelMutation.isPending} />
           )}
+          {canRefund && plan.status !== 'CANCELLED' && <ConcessionButton plan={plan} onDone={invalidate} />}
           {plan.status !== 'CANCELLED' && <AddChargeButton feePlanId={plan.id} onAdded={invalidate} />}
           {plan.status === 'ACTIVE' && (
             <RecordPaymentDialog feePlanId={plan.id} onRecorded={invalidate} />

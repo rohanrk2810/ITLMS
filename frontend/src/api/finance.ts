@@ -52,6 +52,7 @@ export interface FeePlanResponse {
   notes: string | null
   installments: InstallmentResponse[]
   payments: PaymentResponse[] | null
+  discountReason?: string | null
 }
 
 export interface ReceiptResponse {
@@ -115,6 +116,8 @@ export interface FeePlanInput {
   installmentCount?: number
   firstDueDate?: string
   notes?: string
+  /** Why the discount is given; required when it is set or changed. */
+  discountReason?: string
 }
 
 /** Each fee plan with its schedule, what's paid, outstanding and every payment made (Doc S14). */
@@ -302,5 +305,11 @@ export async function approveRefund(id: number, note?: string): Promise<RefundRe
 
 export async function rejectRefund(id: number, reason: string): Promise<RefundResponse> {
   const { data } = await apiClient.post<RefundResponse>(`/api/fees/refunds/${id}/reject`, { reason })
+  return data
+}
+
+/** Changes a plan's terms. The server keeps the schedule when only the discount moves. */
+export async function updateFeePlan(id: number | string, input: FeePlanInput): Promise<FeePlanResponse> {
+  const { data } = await apiClient.put<FeePlanResponse>(`/api/fee-plans/${id}`, input)
   return data
 }

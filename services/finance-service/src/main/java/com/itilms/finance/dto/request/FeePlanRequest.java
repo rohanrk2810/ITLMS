@@ -51,7 +51,11 @@ public record FeePlanRequest(
         List<InstallmentInput> installments,
 
         @Size(max = 500)
-        String notes
+        String notes,
+
+        @Schema(description = "Why the discount is given. Required whenever the discount is set or changed.")
+        @Size(max = 255)
+        String discountReason
 ) {
 
     public record InstallmentInput(
