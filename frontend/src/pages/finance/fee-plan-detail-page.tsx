@@ -17,6 +17,8 @@ import {
 import { DownloadReceiptButton } from '@/components/download-receipt-button'
 import { AddChargeButton } from '@/components/add-charge-dialogs'
 import { DownloadStatementButton } from '@/components/download-statement-button'
+import { hasRole, useAuthStore } from '@/stores/auth-store'
+import { RefundDialog } from '@/components/refund-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -40,6 +42,7 @@ const STATE_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destr
 export function FeePlanDetailPage() {
   const { feePlanId } = useParams<{ feePlanId: string }>()
   const queryClient = useQueryClient()
+  const canRefund = hasRole(useAuthStore((state) => state.roles), ['ADMIN', 'FINANCE'])
   const [receiptPaymentId, setReceiptPaymentId] = useState<number | null>(null)
 
   const query = useQuery({
@@ -154,7 +157,14 @@ export function FeePlanDetailPage() {
             {plan.payments?.map((payment) => (
               <TableRow key={payment.id}>
                 <TableCell>{formatDate(payment.paymentDate)}</TableCell>
-                <TableCell>{formatMoney(payment.amount, plan.currency)}</TableCell>
+                <TableCell>
+                  {formatMoney(payment.amount, plan.currency)}
+                  {payment.refundedAmount > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      refunded {formatMoney(payment.refundedAmount, plan.currency)}
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell>{payment.method}</TableCell>
                 <TableCell>{payment.receiptNo}</TableCell>
                 <TableCell>
@@ -165,6 +175,9 @@ export function FeePlanDetailPage() {
                     <Receipt className="size-3.5" />
                   </Button>
                   <DownloadReceiptButton paymentId={payment.id} receiptNo={payment.receiptNo} label="" variant="ghost" />
+                  {payment.status !== 'REVERSED' && canRefund && (
+                    <RefundDialog paymentId={payment.id} available={payment.amount - payment.refundedAmount} />
+                  )}
                   {payment.status !== 'REVERSED' && (
                     <ReverseDialog
                       onConfirm={(reason) => reverseMutation.mutate({ paymentId: payment.id, reason })}

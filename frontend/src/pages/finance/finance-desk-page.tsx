@@ -7,6 +7,7 @@ import { searchStudents, type StudentSummaryResponse } from '@/api/students'
 import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { CollectionReportCard } from '@/components/collection-report-card'
 import { ExportMenu } from '@/components/export-menu'
+import { RefundsCard } from '@/components/refunds-card'
 import { FeeTemplateCard } from '@/components/fee-template-card'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -88,6 +89,8 @@ export function FinanceDeskPage() {
           </CardContent>
         </Card>
       )}
+
+      <RefundsCard />
 
       <CollectionReportCard />
 

@@ -28,6 +28,8 @@ export interface PaymentResponse {
   reversalReason: string | null
   notes: string | null
   recordedAt: string
+  /** How much of this payment has been given back. */
+  refundedAmount: number
 }
 
 export interface FeePlanResponse {
@@ -265,4 +267,40 @@ export async function paymentsBetween(from: string, to: string): Promise<Payment
     last = data.last || data.content.length === 0
   }
   return all
+}
+
+export interface RefundResponse {
+  id: number
+  paymentId: number
+  feePlanId: number
+  studentId: number
+  studentName: string | null
+  receiptNo: string | null
+  amount: number
+  reason: string
+  /** REQUESTED, APPROVED or REJECTED. */
+  status: string
+  requestedAt: string
+  decidedAt: string | null
+  decisionNote: string | null
+}
+
+export async function listRefunds(status?: string): Promise<RefundResponse[]> {
+  const { data } = await apiClient.get<RefundResponse[]>('/api/fees/refunds', { params: { status } })
+  return data
+}
+
+export async function requestRefund(input: { paymentId: number; amount: number; reason: string }): Promise<RefundResponse> {
+  const { data } = await apiClient.post<RefundResponse>('/api/fees/refunds', input)
+  return data
+}
+
+export async function approveRefund(id: number, note?: string): Promise<RefundResponse> {
+  const { data } = await apiClient.post<RefundResponse>(`/api/fees/refunds/${id}/approve`, note ? { reason: note } : undefined)
+  return data
+}
+
+export async function rejectRefund(id: number, reason: string): Promise<RefundResponse> {
+  const { data } = await apiClient.post<RefundResponse>(`/api/fees/refunds/${id}/reject`, { reason })
+  return data
 }
