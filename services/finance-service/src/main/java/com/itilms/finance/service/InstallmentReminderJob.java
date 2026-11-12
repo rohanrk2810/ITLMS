@@ -16,6 +16,7 @@ import com.itilms.common.event.DomainEvent;
 import com.itilms.common.event.EventPublisher;
 import com.itilms.common.event.InstallmentOverdueEvent;
 import com.itilms.common.event.KafkaTopics;
+import com.itilms.common.event.NotificationRequestedEvent;
 import com.itilms.common.security.Roles;
 import com.itilms.finance.config.FinanceProperties;
 import com.itilms.finance.entity.FeeInstallment;
@@ -33,7 +34,7 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>Before a due date the student gets a reminder at each configured step -
  * 7, 3 and 1 days by default. The first morning an installment is overdue, the
- * student and the finance desk are told once. Each message is recorded on the
+ * student (by email as well as in the portal) and the finance desk are told once. Each message is recorded on the
  * installment so it goes out once, not every morning.
  *
  * <p>Amounts in every message are what is still unpaid on the installment, as
@@ -123,11 +124,17 @@ public class InstallmentReminderJob {
             return;
         }
         String when = daysUntil == 0 ? "today" : daysUntil == 1 ? "tomorrow" : "in " + daysUntil + " days";
-        events.notifyUsers(List.of(plan.getStudentUserId()), "FEE_DUE",
-                "Fee installment due " + when,
-                "Installment %d: %s %s due on %s.".formatted(line.installment().getInstallmentNo(),
+        events.publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED, NotificationRequestedEvent.toUsersWithEmail(
+                List.of(plan.getStudentUserId()), "FEE_DUE", "Fee installment due " + when,
+                "%s: %s %s due on %s.".formatted(describe(line.installment()),
                         props.getCurrencySymbol(), line.remaining().toPlainString(), line.installment().getDueDate()),
-                "/student/fees");
+                "/student/fees"));
+    }
+
+    /** "Development fee" for a named charge, "Installment 2" for a part of the course fee. */
+    private static String describe(FeeInstallment installment) {
+        return installment.getLabel() != null && !installment.getLabel().isBlank()
+                ? installment.getLabel() : "Installment " + installment.getInstallmentNo();
     }
 
     private void announceOverdue(FeePlan plan, FeeLedger.Line line) {
@@ -137,11 +144,11 @@ public class InstallmentReminderJob {
                         installment.getInstallmentNo(), plan.getStudentId(), plan.getStudentUserId(),
                         installment.getDueDate(), line.remaining()));
 
-        String message = "Installment %d of %s %s was due on %s.".formatted(installment.getInstallmentNo(),
+        String message = "%s of %s %s was due on %s.".formatted(describe(installment),
                 props.getCurrencySymbol(), line.remaining().toPlainString(), installment.getDueDate());
         if (plan.getStudentUserId() != null) {
-            events.notifyUsers(List.of(plan.getStudentUserId()), "FEE_OVERDUE", "Fee overdue", message,
-                    "/student/fees");
+            events.publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED, NotificationRequestedEvent.toUsersWithEmail(
+                    List.of(plan.getStudentUserId()), "FEE_OVERDUE", "Fee overdue", message, "/student/fees"));
         }
         events.notifyRole(Roles.FINANCE, "FEE_OVERDUE",
                 "Overdue: " + (plan.getStudentName() == null ? "student " + plan.getStudentId() : plan.getStudentName()),
