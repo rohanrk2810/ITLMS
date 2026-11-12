@@ -286,6 +286,9 @@ export interface RefundResponse {
   requestedAt: string
   decidedAt: string | null
   decisionNote: string | null
+  paidOn: string | null
+  payMethod: string | null
+  payReference: string | null
 }
 
 export async function listRefunds(status?: string): Promise<RefundResponse[]> {
@@ -444,5 +447,11 @@ export async function confirmUpiClaim(id: number): Promise<UpiClaim> {
 
 export async function rejectUpiClaim(id: number, reason: string): Promise<UpiClaim> {
   const { data } = await apiClient.post<UpiClaim>(`/api/fees/upi/claims/${id}/reject`, { reason })
+  return data
+}
+
+/** Records that an approved refund was handed back: how, when and with what reference. */
+export async function markRefundPaid(id: number, input: { method: string; reference?: string; paidOn?: string }): Promise<RefundResponse> {
+  const { data } = await apiClient.post<RefundResponse>(`/api/fees/refunds/${id}/paid`, input)
   return data
 }

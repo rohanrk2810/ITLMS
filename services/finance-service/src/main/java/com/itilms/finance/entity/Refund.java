@@ -29,7 +29,7 @@ import lombok.Setter;
 @Table(name = "refunds")
 public class Refund extends AuditableEntity {
 
-    public enum Status { REQUESTED, APPROVED, REJECTED }
+    public enum Status { REQUESTED, APPROVED, REJECTED, PAID }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,4 +63,17 @@ public class Refund extends AuditableEntity {
 
     @Column(name = "decision_note", length = 255)
     private String decisionNote;
+
+    /** When, how and by whom the money was handed back; empty until it is. */
+    @Column(name = "paid_on")
+    private java.time.LocalDate paidOn;
+
+    @Column(name = "pay_method", length = 20)
+    private String payMethod;
+
+    @Column(name = "pay_reference", length = 80)
+    private String payReference;
+
+    @Column(name = "paid_by")
+    private Long paidBy;
 }

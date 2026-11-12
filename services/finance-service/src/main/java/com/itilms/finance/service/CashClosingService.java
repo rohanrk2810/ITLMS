@@ -27,6 +27,7 @@ public class CashClosingService {
     private final PaymentRepository payments;
     private final FinanceProperties props;
     private final EventPublisher events;
+    private final com.itilms.finance.repository.RefundRepository refunds;
 
     public record Preview(LocalDate date, BigDecimal expectedCash, long cashPayments, Closing closing) {
     }
@@ -42,8 +43,13 @@ public class CashClosingService {
     @Transactional(readOnly = true)
     public Preview preview(LocalDate date) {
         LocalDate day = date != null ? date : LocalDate.now(props.getZone());
-        return new Preview(day, payments.cashReceivedOn(day), payments.cashPaymentsOn(day),
+        return new Preview(day, expectedOn(day), payments.cashPaymentsOn(day),
                 closings.findByClosingDate(day).map(Closing::from).orElse(null));
+    }
+
+    /** The cash the drawer should hold for a day: cash received, less cash handed back in refunds. */
+    private BigDecimal expectedOn(LocalDate day) {
+        return payments.cashReceivedOn(day).subtract(refunds.cashPaidOutOn(day));
     }
 
     @Transactional(readOnly = true)
@@ -60,7 +66,7 @@ public class CashClosingService {
         if (closings.findByClosingDate(date).isPresent()) {
             throw new BusinessRuleException("This day has already been closed.");
         }
-        BigDecimal expected = FeePlan.money(payments.cashReceivedOn(date));
+        BigDecimal expected = FeePlan.money(expectedOn(date));
         BigDecimal counted = FeePlan.money(countedCash);
         BigDecimal difference = counted.subtract(expected);
         if (difference.signum() != 0 && (note == null || note.isBlank())) {
