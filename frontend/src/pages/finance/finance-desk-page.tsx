@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { allFeePlans, type FeePlanResponse, getFinanceDashboard, getOverdueInstallments, searchFeePlans } from '@/api/finance'
 import { searchStudents, type StudentSummaryResponse } from '@/api/students'
 import { ChargeBatchButton } from '@/components/add-charge-dialogs'
+import { CollectionReportCard } from '@/components/collection-report-card'
 import { ExportMenu } from '@/components/export-menu'
 import { FeeTemplateCard } from '@/components/fee-template-card'
 import { Badge } from '@/components/ui/badge'
@@ -87,6 +88,8 @@ export function FinanceDeskPage() {
           </CardContent>
         </Card>
       )}
+
+      <CollectionReportCard />
 
       <FeeTemplateCard />
 
