@@ -40,6 +40,14 @@ public class ReceiptPdfRenderer {
     private static final Color LINE = new Color(0xDD, 0xDD, 0xDD);
     private static final DateTimeFormatter DATE_SLASH = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH);
 
+    /** The tax in this payment: rate, taxable value, exempt part, the three taxes, and the place of supply. */
+    public record TaxInfo(BigDecimal rate, BigDecimal taxable, BigDecimal exempt, BigDecimal cgst, BigDecimal sgst,
+                          BigDecimal igst, String placeOfSupply) {
+        public boolean charged() {
+            return rate != null && rate.signum() > 0;
+        }
+    }
+
     /** One line of the particulars table: what part of the fee this payment went towards. */
     public record Particular(String label, BigDecimal amount) {
     }
@@ -53,7 +61,7 @@ public class ReceiptPdfRenderer {
                        BigDecimal netFee, BigDecimal paidToDate, BigDecimal balance, boolean reversed,
                        BrandingClient.Branding institute, byte[] logo, java.util.List<Particular> particulars,
                        String batchName, String bank, java.math.BigDecimal gstPercent, String gstin,
-                       String sacCode, String studentPhone, String batchTiming, String footerNote) {
+                       String sacCode, String studentPhone, String batchTiming, String footerNote, TaxInfo tax) {
     }
 
     public byte[] render(Data d) {
@@ -66,7 +74,8 @@ public class ReceiptPdfRenderer {
             Color brand = brand(d.institute());
             doc.add(header(d, brand));
 
-            Paragraph title = new Paragraph(d.reversed() ? "STUDENT FEES RECEIPT - CANCELLED" : "STUDENT FEES RECEIPT",
+            String heading = d.tax() != null && d.tax().charged() ? "TAX INVOICE CUM FEES RECEIPT" : "STUDENT FEES RECEIPT";
+            Paragraph title = new Paragraph(d.reversed() ? heading + " - CANCELLED" : heading,
                     font(Font.BOLD, 12, d.reversed() ? new Color(0xB3, 0x26, 0x1E) : Color.BLACK));
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingBefore(14);
@@ -258,16 +267,30 @@ public class ReceiptPdfRenderer {
         if (d.bank() != null && !d.bank().isBlank()) {
             labelled(rows, "Bank :", d.bank());
         }
-        if (d.gstPercent() != null && d.gstPercent().signum() > 0) {
-            com.itilms.finance.ledger.GstMath.Split gst = com.itilms.finance.ledger.GstMath.split(d.amount(), d.gstPercent());
-            String half = d.gstPercent().divide(java.math.BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP)
+        // Tax information is on every receipt: the break-up when GST was charged, and a plain statement when it was not.
+        if (d.tax() != null && d.tax().charged()) {
+            TaxInfo tx = d.tax();
+            String sym = d.currencySymbol();
+            labelled(rows, "Taxable value :", money(sym, tx.taxable()));
+            if (tx.exempt().signum() > 0) {
+                labelled(rows, "Exempt (no GST) :", money(sym, tx.exempt()));
+            }
+            String half = tx.rate().divide(java.math.BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP)
                     .stripTrailingZeros().toPlainString();
-            labelled(rows, "Taxable value :", money(d.currencySymbol(), gst.taxable()));
-            labelled(rows, "CGST @ " + half + "% :", money(d.currencySymbol(), gst.cgst()));
-            labelled(rows, "SGST @ " + half + "% :", money(d.currencySymbol(), gst.sgst()));
+            if (tx.igst().signum() > 0) {
+                labelled(rows, "IGST @ " + tx.rate().stripTrailingZeros().toPlainString() + "% :", money(sym, tx.igst()));
+            } else {
+                labelled(rows, "CGST @ " + half + "% :", money(sym, tx.cgst()));
+                labelled(rows, "SGST @ " + half + "% :", money(sym, tx.sgst()));
+            }
+            if (tx.placeOfSupply() != null && !tx.placeOfSupply().isBlank()) {
+                labelled(rows, "Place of Supply :", tx.placeOfSupply());
+            }
             if (d.gstin() != null && !d.gstin().isBlank()) {
                 labelled(rows, "GSTIN :", d.gstin() + (d.sacCode() == null || d.sacCode().isBlank() ? "" : "   SAC : " + d.sacCode()));
             }
+        } else {
+            labelled(rows, "Tax :", "No GST charged on this payment");
         }
         labelled(rows, "Remarks :", d.reversed() ? "This payment was cancelled" : "Fees received");
 

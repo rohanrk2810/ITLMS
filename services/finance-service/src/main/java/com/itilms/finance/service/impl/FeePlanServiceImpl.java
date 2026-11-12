@@ -199,7 +199,7 @@ public class FeePlanServiceImpl implements FeePlanService {
     @Transactional
     public FeePlanResponse addCharge(Long planId, ChargeRequest request) {
         FeePlan plan = requirePlan(planId);
-        applyCharge(plan, request.title(), request.amount(), request.dueDate());
+        applyCharge(plan, request.title(), request.amount(), request.dueDate(), Boolean.TRUE.equals(request.gstExempt()));
         plan = planRepository.save(plan);
         return response(plan, paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(planId));
     }
@@ -210,7 +210,7 @@ public class FeePlanServiceImpl implements FeePlanService {
         List<FeePlan> plans = planRepository.findByBatchIdAndStatusNot(request.batchId(), FeePlanStatus.CANCELLED);
         int added = 0;
         for (FeePlan plan : plans) {
-            applyCharge(plan, request.title(), request.amount(), request.dueDate());
+            applyCharge(plan, request.title(), request.amount(), request.dueDate(), Boolean.TRUE.equals(request.gstExempt()));
             added++;
         }
         planRepository.saveAll(plans);
@@ -221,7 +221,7 @@ public class FeePlanServiceImpl implements FeePlanService {
     }
 
     /** Adds the charge to a plan and tells the student; the caller saves. */
-    private void applyCharge(FeePlan plan, String title, BigDecimal amount, LocalDate dueDate) {
+    private void applyCharge(FeePlan plan, String title, BigDecimal amount, LocalDate dueDate, boolean gstExempt) {
         if (plan.getStatus() == FeePlanStatus.CANCELLED) {
             throw new BusinessRuleException("A cancelled fee plan cannot be charged.");
         }
@@ -229,7 +229,7 @@ public class FeePlanServiceImpl implements FeePlanService {
             throw new BusinessRuleException("The due date cannot be in the past.");
         }
         String label = title.trim();
-        plan.addCharge(label, amount, dueDate);
+        plan.addCharge(label, amount, dueDate, gstExempt);
         plan.setAutoCreated(false);
         events.audit(SERVICE_NAME, "FEE_CHARGE_ADDED", "FeePlan", plan.getId(), null,
                 Map.of("title", label, "amount", FeePlan.money(amount).toPlainString(), "dueDate", dueDate.toString()));

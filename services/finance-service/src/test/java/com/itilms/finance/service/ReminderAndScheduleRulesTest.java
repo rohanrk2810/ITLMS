@@ -76,7 +76,7 @@ class ReminderAndScheduleRulesTest {
             SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken(desk, null, desk.authorities()));
             when(admission.lookup(List.of(3L))).thenReturn(
-                    List.of(new AdmissionClient.StudentSummary(3L, 30L, "STU-1", "Asha", "ACTIVE", "9800000000")));
+                    List.of(new AdmissionClient.StudentSummary(3L, 30L, "STU-1", "Asha", "ACTIVE", "9800000000", "Maharashtra")));
 
             FeePlanRequest request = new FeePlanRequest(3L, 1L, null, BigDecimal.valueOf(30_000), null, null, null,
                     List.of(new FeePlanRequest.InstallmentInput(LocalDate.of(2026, 1, 1), BigDecimal.valueOf(10_000)),

@@ -61,6 +61,11 @@ public class FeeInstallment {
     @Column(name = "last_reminder_days")
     private Integer lastReminderDays;
 
+    /** True for a fee head that carries no GST. */
+    @Column(name = "gst_exempt", nullable = false)
+    @Builder.Default
+    private boolean gstExempt = false;
+
     /** When a late fee was added for this installment; null until then. */
     @Column(name = "late_fee_charged_at")
     private Instant lateFeeChargedAt;

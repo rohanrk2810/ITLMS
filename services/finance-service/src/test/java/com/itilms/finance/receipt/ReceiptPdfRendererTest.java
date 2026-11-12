@@ -19,7 +19,9 @@ class ReceiptPdfRendererTest {
                 new ReceiptPdfRenderer.Particular("Java Full Stack - course fee", new BigDecimal("10000.00")),
                 new ReceiptPdfRenderer.Particular("Development fee", new BigDecimal("5000.00"))),
                 "Morning Java 2026", "CANARA BANK, JALGAON - 1647201001212", BigDecimal.ZERO, "", "", "9800000001",
-                "Mon, Wed, Fri 09:00-11:00", "");
+                "Mon, Wed, Fri 09:00-11:00", "",
+                new ReceiptPdfRenderer.TaxInfo(BigDecimal.ZERO, new BigDecimal("15000.00"), BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.ZERO, BigDecimal.ZERO, null));
     }
 
     @Test
@@ -57,11 +59,36 @@ class ReceiptPdfRendererTest {
         var withGst = new ReceiptPdfRenderer.Data(d.receiptNo(), d.date(), d.studentName(), d.studentCode(), d.courseTitle(),
                 d.currencySymbol(), new BigDecimal("11800.00"), d.method(), d.referenceNo(), d.netFee(), d.paidToDate(),
                 d.balance(), false, null, null, d.particulars(), d.batchName(), d.bank(), new BigDecimal("18"),
-                "27ABCDE1234F1Z5", "999293", "9800000001", null, null);
+                "27ABCDE1234F1Z5", "999293", "9800000001", null, null,
+                new ReceiptPdfRenderer.TaxInfo(new BigDecimal("18"), new BigDecimal("10000.00"), BigDecimal.ZERO,
+                        new BigDecimal("900.00"), new BigDecimal("900.00"), BigDecimal.ZERO, "Maharashtra (27)"));
 
         String text = text(new ReceiptPdfRenderer().render(withGst));
 
-        assertThat(text).contains("Taxable value", "10,000.00", "CGST @ 9%", "SGST @ 9%", "900.00", "27ABCDE1234F1Z5", "999293", "GST No: 27ABCDE1234F1Z5");
+        assertThat(text).contains("Taxable value", "10,000.00", "CGST @ 9%", "SGST @ 9%", "900.00", "27ABCDE1234F1Z5", "999293", "GST No: 27ABCDE1234F1Z5", "TAX INVOICE CUM FEES RECEIPT", "Place of Supply", "Maharashtra (27)");
+    }
+
+    @Test
+    void everyReceiptCarriesTaxInformationEvenWhenNoGstWasCharged() {
+        String text = text(new ReceiptPdfRenderer().render(data(null)));
+
+        assertThat(text).contains("Tax :", "No GST charged on this payment", "STUDENT FEES RECEIPT");
+    }
+
+    @Test
+    void anOutOfStatePaymentShowsIgstInsteadOfCgstAndSgst() {
+        var d = data(null);
+        var inter = new ReceiptPdfRenderer.Data(d.receiptNo(), d.date(), d.studentName(), d.studentCode(), d.courseTitle(),
+                d.currencySymbol(), new BigDecimal("11800.00"), d.method(), d.referenceNo(), d.netFee(), d.paidToDate(),
+                d.balance(), false, null, null, d.particulars(), d.batchName(), d.bank(), new BigDecimal("18"),
+                "27ABCDE1234F1Z5", "999293", null, null, null,
+                new ReceiptPdfRenderer.TaxInfo(new BigDecimal("18"), new BigDecimal("10000.00"), new BigDecimal("2000.00"),
+                        BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("1800.00"), "Karnataka (29)"));
+
+        String text = text(new ReceiptPdfRenderer().render(inter));
+
+        assertThat(text).contains("IGST @ 18%", "1,800.00", "Exempt (no GST)", "2,000.00", "Karnataka (29)");
+        assertThat(text).doesNotContain("CGST @");
     }
 
     @Test

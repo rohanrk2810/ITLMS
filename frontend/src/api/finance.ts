@@ -143,6 +143,8 @@ export interface ChargeInput {
   title: string
   amount: number
   dueDate: string
+  /** True when the charge carries no GST. */
+  gstExempt?: boolean
 }
 
 /** Adds a named extra charge (a development fee, a book) to one student's fee plan. The student is told. */
