@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import com.itilms.finance.client.BatchLookupClient;
 import com.itilms.finance.client.BrandingClient;
 import com.itilms.finance.client.CourseClient;
 import com.itilms.finance.config.FinanceProperties;
@@ -31,6 +32,7 @@ public class ReceiptDocument {
     private final CourseClient courses;
     private final FinanceProperties props;
     private final PaymentRepository payments;
+    private final BatchLookupClient batches;
 
     /** The institute as printed on the receipt, or null when identity-service cannot be reached. */
     public BrandingClient.Branding institute() {
@@ -60,7 +62,23 @@ public class ReceiptDocument {
                 plan.getStudentName(), plan.getStudentCode(), course, props.getCurrencySymbol(),
                 payment.getAmount(), payment.getMethod().name(), payment.getReferenceNo(), plan.getNetFee(), paidToDate,
                 balance, payment.getStatus() == PaymentStatus.REVERSED, institute, logo(institute),
-                particulars(payment, plan, course)));
+                particulars(payment, plan, course), batchName(plan.getBatchId()), props.getBank()));
+    }
+
+    /** The batch name, or null when the plan has no batch or batch-service cannot be reached. */
+    String batchName(Long batchId) {
+        if (batchId == null) {
+            return null;
+        }
+        try {
+            BatchLookupClient.Batch batch = batches.get(batchId);
+            if (batch == null) {
+                return null;
+            }
+            return batch.name() != null && !batch.name().isBlank() ? batch.name() : batch.batchCode();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     /**

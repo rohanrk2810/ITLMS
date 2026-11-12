@@ -28,6 +28,8 @@ itilms:
     # "Today" for due dates is the institute's today, not the server's.
     zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}
     receipt-prefix: RCPT
+    # Printed on every receipt as "Bank". Leave empty to print no bank line.
+    bank: ${INSTITUTE_BANK:}
 
   # Buying a course online. Empty key id or secret turns it off.
   razorpay:

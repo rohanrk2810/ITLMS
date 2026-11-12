@@ -51,7 +51,8 @@ public class ReceiptPdfRenderer {
     public record Data(String receiptNo, LocalDate date, String studentName, String studentCode,
                        String courseTitle, String currencySymbol, BigDecimal amount, String method, String referenceNo,
                        BigDecimal netFee, BigDecimal paidToDate, BigDecimal balance, boolean reversed,
-                       BrandingClient.Branding institute, byte[] logo, java.util.List<Particular> particulars) {
+                       BrandingClient.Branding institute, byte[] logo, java.util.List<Particular> particulars,
+                       String batchName, String bank) {
     }
 
     public byte[] render(Data d) {
@@ -136,6 +137,9 @@ public class ReceiptPdfRenderer {
         info(t, "Receipt No :", d.receiptNo(), "Receipt Date :", d.date().format(DATE_SLASH));
         info(t, "Student :", d.studentName(), "Financial Yr :", financialYear(d.date()));
         info(t, "Reg. No :", d.studentCode(), "Course :", d.courseTitle());
+        if (d.batchName() != null && !d.batchName().isBlank()) {
+            info(t, "Batch :", d.batchName(), "", "");
+        }
         return boxed(t, 4);
     }
 
@@ -208,6 +212,9 @@ public class ReceiptPdfRenderer {
         labelled(rows, "In words :", IndianWords.rupees(d.amount()));
         labelled(rows, "Pay't Mode :", pretty(d.method())
                 + (d.referenceNo() == null || d.referenceNo().isBlank() ? "" : ", REF. NO : " + d.referenceNo()));
+        if (d.bank() != null && !d.bank().isBlank()) {
+            labelled(rows, "Bank :", d.bank());
+        }
         labelled(rows, "Remarks :", d.reversed() ? "This payment was cancelled" : "Fees received");
 
         PdfPTable both = new PdfPTable(1);
