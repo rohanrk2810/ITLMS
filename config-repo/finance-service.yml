@@ -29,7 +29,7 @@ itilms:
     zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}
     receipt-prefix: RCPT
     # Printed in bold on every receipt (for example the refund policy). Empty = nothing.
-    receipt-note: ${INSTITUTE_RECEIPT_NOTE:(Fee once paid will not be refunded)}
+    receipt-note: ${INSTITUTE_RECEIPT_NOTE:}
     # GST on fees (fees are taken as tax-inclusive). 0 = no GST on receipts or reports.
     gst-percent: ${GST_PERCENT:0}
     gstin: ${INSTITUTE_GSTIN:}
