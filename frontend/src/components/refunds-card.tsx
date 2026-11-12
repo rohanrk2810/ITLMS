@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
-import { approveRefund, listRefunds, markRefundPaid, rejectRefund } from '@/api/finance'
+import { approveRefund, downloadCreditNote, listRefunds, markRefundPaid, rejectRefund } from '@/api/finance'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -87,6 +87,12 @@ export function RefundsCard() {
                   <Badge variant={r.status === 'REJECTED' ? 'destructive' : r.status === 'REQUESTED' ? 'default' : 'secondary'}>
                     {r.status === 'APPROVED' ? 'APPROVED, NOT PAID YET' : r.status}
                   </Badge>
+                  {(r.status === 'APPROVED' || r.status === 'PAID') && (
+                    <button type="button" className="block text-xs underline-offset-4 hover:underline"
+                      onClick={() => void downloadCreditNote(r.id).catch((e) => toast.error(apiErrorMessage(e, 'Could not download the credit note.')))}>
+                      Credit note
+                    </button>
+                  )}
                   {r.paidOn && (
                     <div className="text-xs text-muted-foreground">
                       {formatDate(r.paidOn)} by {(r.payMethod ?? '').replace('_', ' ').toLowerCase()}

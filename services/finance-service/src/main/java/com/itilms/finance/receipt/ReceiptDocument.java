@@ -145,7 +145,7 @@ public class ReceiptDocument {
     }
 
     /** "Maharashtra (27)": the student's state, or the institute's own when the student's is not known. */
-    static String placeOfSupply(String studentState, String gstin) {
+    public static String placeOfSupply(String studentState, String gstin) {
         String code = StateCodes.codeOf(studentState);
         if (code != null) {
             return StateCodes.nameOf(code) + " (" + code + ")";

@@ -617,3 +617,16 @@ export async function recordGstPayment(input: { paidOn?: string; forMonth?: stri
   const { data } = await apiClient.post<GstPaymentRow>('/api/fees/gst/payments', input)
   return data
 }
+
+/** Saves the credit note of an approved refund as a PDF. */
+export async function downloadCreditNote(refundId: number): Promise<void> {
+  const { data } = await apiClient.get<ArrayBuffer>(`/api/fees/refunds/${refundId}/credit-note`, { responseType: 'arraybuffer' })
+  const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `Credit-note-${refundId}.pdf`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}

@@ -32,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class RefundController {
 
     private final RefundService service;
+    private final com.itilms.finance.receipt.CreditNoteDocument creditNotes;
 
     @Operation(summary = "Ask for a refund", description = "ADMIN or FINANCE. The administrator then approves or rejects it.")
     @PreAuthorize(Roles.FINANCE_DESK)
@@ -39,6 +40,20 @@ public class RefundController {
     @ResponseStatus(HttpStatus.CREATED)
     public RefundResponse request(@Valid @RequestBody RefundRequest request) {
         return service.request(request);
+    }
+
+    @Operation(summary = "The credit note for a refund as a PDF",
+            description = "Once the refund is approved. The finance desk, or the student the refund is for. Carries the tax of the original receipt in proportion.")
+    @PreAuthorize("hasAnyRole('ADMIN','FINANCE','COORDINATOR','STUDENT')")
+    @GetMapping(value = "/{id}/credit-note", produces = org.springframework.http.MediaType.APPLICATION_PDF_VALUE)
+    public org.springframework.http.ResponseEntity<byte[]> creditNote(@PathVariable Long id) {
+        var note = creditNotes.pdf(id);
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.attachment().filename(note.fileName()).build().toString())
+                .body(note.bytes());
     }
 
     @Operation(summary = "Refund requests", description = "Finance desk, administrator or coordinator.")
