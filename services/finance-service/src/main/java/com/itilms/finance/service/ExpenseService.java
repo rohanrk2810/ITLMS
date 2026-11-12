@@ -30,6 +30,7 @@ public class ExpenseService {
     private final PaymentRepository payments;
     private final FinanceProperties props;
     private final EventPublisher events;
+    private final BooksLockService booksLock;
 
     public record ExpenseRequest(LocalDate date, Expense.Category category, BigDecimal amount, String description,
                                  String paidTo, String referenceNo) {
@@ -54,6 +55,7 @@ public class ExpenseService {
         if (date.isAfter(today)) {
             throw new BusinessRuleException("An expense cannot be dated in the future.");
         }
+        booksLock.requireOpen(date, "an expense");
         Expense saved = expenses.save(Expense.builder().expenseDate(date).category(request.category())
                 .amount(FeePlan.money(request.amount())).description(request.description().trim())
                 .paidTo(blankToNull(request.paidTo())).referenceNo(blankToNull(request.referenceNo())).build());
@@ -74,6 +76,7 @@ public class ExpenseService {
         if (!expense.counts()) {
             throw new BusinessRuleException("This expense has already been voided.");
         }
+        booksLock.requireOpen(expense.getExpenseDate(), "an expense");
         expense.setVoidedAt(Instant.now());
         expense.setVoidReason(reason.trim());
         expenses.save(expense);

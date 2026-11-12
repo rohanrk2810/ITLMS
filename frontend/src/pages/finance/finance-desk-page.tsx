@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { allFeePlans, type FeePlanResponse, getFinanceDashboard, getOverdueInstallments, searchFeePlans } from '@/api/finance'
 import { searchStudents, type StudentSummaryResponse } from '@/api/students'
+import { BooksLockCard } from '@/components/books-lock-card'
 import { CashClosingCard } from '@/components/cash-closing-card'
 import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { CollectionReportCard } from '@/components/collection-report-card'
@@ -112,6 +113,8 @@ export function FinanceDeskPage() {
           </CardContent>
         </Card>
       )}
+
+      {canSeeExpenses && <BooksLockCard />}
 
       <UpiClaimsCard />
 

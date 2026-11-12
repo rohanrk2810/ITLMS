@@ -35,6 +35,7 @@ import com.itilms.finance.repository.FeePlanRepository;
 import com.itilms.finance.repository.PaymentRepository;
 import com.itilms.finance.receipt.ReceiptDocument;
 import com.itilms.finance.receipt.ReceiptEmailer;
+import com.itilms.finance.service.BooksLockService;
 import com.itilms.finance.service.PaymentService;
 
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final EventPublisher events;
     private final ReceiptEmailer receiptEmailer;
     private final ReceiptDocument receiptDocument;
+    private final BooksLockService booksLock;
 
     @Override
     @Transactional
@@ -79,6 +81,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         LocalDate today = today();
+        booksLock.requireOpen(request.paymentDate() != null ? request.paymentDate() : today, "a payment");
         List<Payment> payments = new ArrayList<>(
                 paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(plan.getId()));
         FeeLedger before = FeeLedger.of(plan, payments, today);
@@ -138,6 +141,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment.getStatus() == PaymentStatus.REVERSED) {
             throw new BusinessRuleException("This payment has already been reversed.");
         }
+        booksLock.requireOpen(payment.getPaymentDate(), "a payment");
         payment.reverse(reason.trim(), caller.userId(), Instant.now());
         paymentRepository.save(payment);
 

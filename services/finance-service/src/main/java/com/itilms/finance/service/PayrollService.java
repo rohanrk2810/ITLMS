@@ -48,6 +48,7 @@ public class PayrollService {
     private final ExpenseService expenses;
     private final FinanceProperties props;
     private final EventPublisher events;
+    private final BooksLockService booksLock;
 
     // ------------------------------------------------------------------ views
 
@@ -261,6 +262,7 @@ public class PayrollService {
         }
         LocalDate today = LocalDate.now(props.getZone());
         LocalDate paidOn = request.paidOn() != null ? request.paidOn() : today;
+        booksLock.requireOpen(paidOn, "a salary payment");
         int done = 0;
         for (Payslip slip : target(month, onlySlip)) {
             if (slip.getStatus() != Payslip.Status.APPROVED) {

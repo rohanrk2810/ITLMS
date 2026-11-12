@@ -455,3 +455,21 @@ export async function markRefundPaid(id: number, input: { method: string; refere
   const { data } = await apiClient.post<RefundResponse>(`/api/fees/refunds/${id}/paid`, input)
   return data
 }
+
+export interface BooksLock {
+  lockedThrough: string | null
+  note: string | null
+  setBy: number | null
+  setAt: string | null
+}
+
+export async function getBooksLock(): Promise<BooksLock> {
+  const { data } = await apiClient.get<BooksLock>('/api/fees/books-lock')
+  return data
+}
+
+/** Closes the books through a date (or reopens them with null). Administrator only. */
+export async function setBooksLock(lockedThrough: string | null, note?: string): Promise<BooksLock> {
+  const { data } = await apiClient.put<BooksLock>('/api/fees/books-lock', { lockedThrough, note })
+  return data
+}
