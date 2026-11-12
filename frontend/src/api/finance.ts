@@ -319,3 +319,34 @@ export async function waiveLateFee(feePlanId: number | string, installmentId: nu
   const { data } = await apiClient.post<FeePlanResponse>(`/api/fee-plans/${feePlanId}/installments/${installmentId}/waive`, { reason })
   return data
 }
+
+export interface CashClosing {
+  id: number
+  date: string
+  expectedCash: number
+  countedCash: number
+  difference: number
+  note: string | null
+}
+
+export interface CashPreview {
+  date: string
+  expectedCash: number
+  cashPayments: number
+  closing: CashClosing | null
+}
+
+export async function cashPreview(date?: string): Promise<CashPreview> {
+  const { data } = await apiClient.get<CashPreview>('/api/fees/cash-closings/preview', { params: { date } })
+  return data
+}
+
+export async function recentCashClosings(): Promise<CashClosing[]> {
+  const { data } = await apiClient.get<CashClosing[]>('/api/fees/cash-closings')
+  return data
+}
+
+export async function closeCashDay(input: { date: string; countedCash: number; note?: string }): Promise<CashClosing> {
+  const { data } = await apiClient.post<CashClosing>('/api/fees/cash-closings', input)
+  return data
+}
