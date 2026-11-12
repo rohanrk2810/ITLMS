@@ -73,6 +73,22 @@ Not done: the admission-time discount (set by the coordinator when converting a 
 - **Totals:** the month shows total salary, paid, still to pay and people; the year lists each month. The Finance page now has a *Finance overview* (fees collected and still to come as a percent, this month's income, salary, expenses and profit) with a download, and every fee download has paid and balance percent, discount and its reason, and installments paid.
 - Not done: no PF or TDS (use *other deduction*), no automatic leave from attendance, no stamp on the slip.
 
+### Completing the finance department (2026-11-12)
+
+Migrations V13 to V16 in finance-service.
+
+| What | How it works |
+|---|---|
+| **Backups** | `deploy/scripts/backup-databases.sh` (see [07](07-deployment-guide.md) section 8): every `itilms_*` database daily into `~/backups/YYYY-MM-DD/`, tested, 14 days plus the first of each month for a year, optional off-server copy with rclone. Run from cron at 02:30 on the server. Uploaded files are not included. |
+| **Refund pay-out** (V13) | An approved refund is not finished until it is marked **paid** (method, date, reference, by whom). The books show it as paid out, and a cash refund reduces that day's expected cash in the day-end count. |
+| **Closing the books** (V14) | The administrator closes the books through a date (up to yesterday). Nothing dated on or before it can be recorded, reversed, voided, paid out or counted. Moving the date back needs a note; every move is audited. |
+| **Salary history** (V15) | Every time a person's pay is set it is kept with who and when; **History** beside the person on the payroll page. |
+| **GST** (config) | Off while `GST_PERCENT` is 0. When on, fees are taken as tax-inclusive: the receipt shows taxable value, CGST, SGST, the institute's GSTIN and SAC (`INSTITUTE_GSTIN`, `INSTITUTE_SAC`), and **GST on fees** on the Finance page gives the tax per month, net of refunds, with a download. |
+| **Bank reconciliation** (V16) | Import the bank's statement CSV (Date, Narration, Reference, Debit, Credit; dates as 12/03/2026, 2026-03-12 or 12-Mar-2026). Lines are matched to payments (money in) and expenses or non-cash refunds (money out) by a reference found in the narration, or else by a single entry of the same amount within 3 days; two equal candidates are never guessed between. The rest is listed: in the bank but not the books, and in the books as bank money but not on the statement. Match or undo by hand. Importing the same file twice adds nothing. |
+| **Books** (`/app/finance/books`) | Double-entry journal, trial balance, profit and loss and balance sheet, **derived** from fee plans, payments, refunds and expenses, so nothing is posted twice and nothing can disagree with the records. Every entry balances; the page says so. Accounts: cash, bank, UPI and online, fees receivable, GST payable, refunds payable, fee income, discounts, and expenses by category. |
+
+What the books are not: fees are income when the plan is raised and money in when received. Extra charges, late fees and a changed discount are booked on the plan's creation date, because the plan keeps no history of when they were added. Salary is an expense when paid, not when earned. An expense is credited to cash or bank by the salary's payment method, otherwise to "Cash or bank, source not recorded". There is no accrual, depreciation or tax filing: it is a record the institute's accountant can start from, not a replacement for them.
+
 ### Not covered
 The course has only a total. Instalments (how many, when) are decided per student when finance raises the fee plan, so they cannot be shown before the student is placed. Showing a standard schedule up front would need a course-level instalment setting.
 
