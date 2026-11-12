@@ -33,14 +33,19 @@ public class ExpenseService {
     private final BooksLockService booksLock;
 
     public record ExpenseRequest(LocalDate date, Expense.Category category, BigDecimal amount, String description,
-                                 String paidTo, String referenceNo) {
+                                 String paidTo, String referenceNo, BigDecimal gstAmount) {
+
+        public ExpenseRequest(LocalDate date, Expense.Category category, BigDecimal amount, String description,
+                              String paidTo, String referenceNo) {
+            this(date, category, amount, description, paidTo, referenceNo, null);
+        }
     }
 
     public record ExpenseView(Long id, LocalDate date, String category, BigDecimal amount, String description,
-                              String paidTo, String referenceNo, boolean voided, String voidReason) {
+                              String paidTo, String referenceNo, boolean voided, String voidReason, BigDecimal gstAmount) {
         static ExpenseView from(Expense e) {
             return new ExpenseView(e.getId(), e.getExpenseDate(), e.getCategory().name(), e.getAmount(),
-                    e.getDescription(), e.getPaidTo(), e.getReferenceNo(), !e.counts(), e.getVoidReason());
+                    e.getDescription(), e.getPaidTo(), e.getReferenceNo(), !e.counts(), e.getVoidReason(), e.getGstAmount());
         }
     }
 
@@ -56,8 +61,13 @@ public class ExpenseService {
             throw new BusinessRuleException("An expense cannot be dated in the future.");
         }
         booksLock.requireOpen(date, "an expense");
+        BigDecimal amount = FeePlan.money(request.amount());
+        BigDecimal gst = request.gstAmount() == null ? BigDecimal.ZERO : FeePlan.money(request.gstAmount());
+        if (gst.signum() < 0 || gst.compareTo(amount) > 0) {
+            throw new BusinessRuleException("The GST in an expense cannot be negative or more than the amount.");
+        }
         Expense saved = expenses.save(Expense.builder().expenseDate(date).category(request.category())
-                .amount(FeePlan.money(request.amount())).description(request.description().trim())
+                .amount(amount).gstAmount(gst).description(request.description().trim())
                 .paidTo(blankToNull(request.paidTo())).referenceNo(blankToNull(request.referenceNo())).build());
         events.audit("finance-service", "EXPENSE_RECORDED", "Expense", saved.getId(), null,
                 Map.of("category", saved.getCategory().name(), "amount", saved.getAmount().toPlainString()));

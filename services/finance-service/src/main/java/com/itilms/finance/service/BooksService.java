@@ -38,6 +38,7 @@ public class BooksService {
     private final PayslipRepository slips;
     private final FinanceProperties props;
     private final GstSettingsService gstSettings;
+    private final com.itilms.finance.repository.GstPaymentRepository gstPayments;
 
     public record Balance(String code, String name, String type, BigDecimal debit, BigDecimal credit) {
     }
@@ -62,7 +63,7 @@ public class BooksService {
         Map<Long, String> salaryMethods = slips.findAll().stream().filter(p -> p.getExpenseId() != null)
                 .collect(Collectors.toMap(Payslip::getExpenseId, p -> p.getPayMethod() == null ? "" : p.getPayMethod(), (a, b) -> a));
         List<Entry> all = BooksBuilder.build(plans.findAll(), payments.findAll(), refunds.findAll(), expenses.findAll(),
-                salaryMethods, rateByDate(), props.getZone());
+                salaryMethods, rateByDate(), props.getZone(), gstPayments.findAllByOrderByPaidOnDescIdDesc());
         return compose(from, to, all);
     }
 

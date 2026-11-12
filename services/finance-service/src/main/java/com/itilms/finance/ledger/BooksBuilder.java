@@ -105,6 +105,14 @@ public final class BooksBuilder {
     public static List<Entry> build(List<FeePlan> plans, List<Payment> payments, List<Refund> refunds,
                                     List<Expense> expenses, Map<Long, String> salaryMethodByExpenseId,
                                     java.util.function.Function<LocalDate, BigDecimal> gstRateOn, ZoneId zone) {
+        return build(plans, payments, refunds, expenses, salaryMethodByExpenseId, gstRateOn, zone, List.of());
+    }
+
+    /** As above, with the GST paid to the government. */
+    public static List<Entry> build(List<FeePlan> plans, List<Payment> payments, List<Refund> refunds,
+                                    List<Expense> expenses, Map<Long, String> salaryMethodByExpenseId,
+                                    java.util.function.Function<LocalDate, BigDecimal> gstRateOn, ZoneId zone,
+                                    List<com.itilms.finance.entity.GstPayment> gstPayments) {
         List<Entry> out = new ArrayList<>();
 
         for (FeePlan plan : plans) {
@@ -145,12 +153,30 @@ public final class BooksBuilder {
             String source = e.getId() != null && salaryMethodByExpenseId.containsKey(e.getId())
                     ? moneyAccount(salaryMethodByExpenseId.get(e.getId())) : UNSOURCED;
             String ref = "EXP-" + e.getId();
-            out.add(entry(e.getExpenseDate(), ref, e.getCategory() + ": " + e.getDescription(),
-                    dr(expenseAccount(e.getCategory()), e.getAmount()), cr(source, e.getAmount())));
-            if (!e.counts() && e.getVoidedAt() != null) {
-                out.add(entry(e.getVoidedAt().atZone(zone).toLocalDate(), ref, "Expense voided",
-                        dr(source, e.getAmount()), cr(expenseAccount(e.getCategory()), e.getAmount())));
+            BigDecimal gst = e.getGstAmount() == null ? BigDecimal.ZERO : e.getGstAmount();
+            BigDecimal cost = e.getAmount().subtract(gst);
+            // The GST in an expense is a credit against the GST owed, so it goes to the GST account, not to the cost.
+            List<Line> spend = new ArrayList<>();
+            spend.add(dr(expenseAccount(e.getCategory()), cost));
+            if (gst.signum() > 0) {
+                spend.add(dr(GST_PAYABLE, gst));
             }
+            spend.add(cr(source, e.getAmount()));
+            out.add(new Entry(e.getExpenseDate(), ref, e.getCategory() + ": " + e.getDescription(), spend));
+            if (!e.counts() && e.getVoidedAt() != null) {
+                List<Line> undo = new ArrayList<>();
+                undo.add(dr(source, e.getAmount()));
+                undo.add(cr(expenseAccount(e.getCategory()), cost));
+                if (gst.signum() > 0) {
+                    undo.add(cr(GST_PAYABLE, gst));
+                }
+                out.add(new Entry(e.getVoidedAt().atZone(zone).toLocalDate(), ref, "Expense voided", undo));
+            }
+        }
+
+        for (com.itilms.finance.entity.GstPayment g : gstPayments) {
+            out.add(entry(g.getPaidOn(), "GST-" + g.getId(), "GST paid to the government",
+                    dr(GST_PAYABLE, g.getAmount()), cr(moneyAccount(g.getMethod()), g.getAmount())));
         }
 
         out.sort(Comparator.comparing(Entry::date).thenComparing(Entry::reference));
