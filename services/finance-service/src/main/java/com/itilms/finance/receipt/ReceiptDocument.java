@@ -62,7 +62,8 @@ public class ReceiptDocument {
                 plan.getStudentName(), plan.getStudentCode(), course, props.getCurrencySymbol(),
                 payment.getAmount(), payment.getMethod().name(), payment.getReferenceNo(), plan.getNetFee(), paidToDate,
                 balance, payment.getStatus() == PaymentStatus.REVERSED, institute, logo(institute),
-                particulars(payment, plan, course), batchName(plan.getBatchId()), props.getBank()));
+                particulars(payment, plan, course), batchName(plan.getBatchId()), props.getBank(),
+                props.getGstPercent(), props.getGstin(), props.getSacCode()));
     }
 
     /** The batch name, or null when the plan has no batch or batch-service cannot be reached. */

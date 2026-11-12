@@ -52,7 +52,8 @@ public class ReceiptPdfRenderer {
                        String courseTitle, String currencySymbol, BigDecimal amount, String method, String referenceNo,
                        BigDecimal netFee, BigDecimal paidToDate, BigDecimal balance, boolean reversed,
                        BrandingClient.Branding institute, byte[] logo, java.util.List<Particular> particulars,
-                       String batchName, String bank) {
+                       String batchName, String bank, java.math.BigDecimal gstPercent, String gstin,
+                       String sacCode) {
     }
 
     public byte[] render(Data d) {
@@ -214,6 +215,17 @@ public class ReceiptPdfRenderer {
                 + (d.referenceNo() == null || d.referenceNo().isBlank() ? "" : ", REF. NO : " + d.referenceNo()));
         if (d.bank() != null && !d.bank().isBlank()) {
             labelled(rows, "Bank :", d.bank());
+        }
+        if (d.gstPercent() != null && d.gstPercent().signum() > 0) {
+            com.itilms.finance.ledger.GstMath.Split gst = com.itilms.finance.ledger.GstMath.split(d.amount(), d.gstPercent());
+            String half = d.gstPercent().divide(java.math.BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP)
+                    .stripTrailingZeros().toPlainString();
+            labelled(rows, "Taxable value :", money(d.currencySymbol(), gst.taxable()));
+            labelled(rows, "CGST @ " + half + "% :", money(d.currencySymbol(), gst.cgst()));
+            labelled(rows, "SGST @ " + half + "% :", money(d.currencySymbol(), gst.sgst()));
+            if (d.gstin() != null && !d.gstin().isBlank()) {
+                labelled(rows, "GSTIN :", d.gstin() + (d.sacCode() == null || d.sacCode().isBlank() ? "" : "   SAC : " + d.sacCode()));
+            }
         }
         labelled(rows, "Remarks :", d.reversed() ? "This payment was cancelled" : "Fees received");
 

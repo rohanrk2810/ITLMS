@@ -473,3 +473,28 @@ export async function setBooksLock(lockedThrough: string | null, note?: string):
   const { data } = await apiClient.put<BooksLock>('/api/fees/books-lock', { lockedThrough, note })
   return data
 }
+
+export interface GstMonth {
+  month: string
+  payments: number
+  received: number
+  taxable: number
+  cgst: number
+  sgst: number
+}
+
+export interface GstReport {
+  enabled: boolean
+  ratePercent: number
+  gstin: string | null
+  received: number
+  taxable: number
+  cgst: number
+  sgst: number
+  months: GstMonth[]
+}
+
+export async function gstSummary(from: string, to: string): Promise<GstReport> {
+  const { data } = await apiClient.get<GstReport>('/api/fees/gst/summary', { params: { from, to } })
+  return data
+}

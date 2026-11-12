@@ -18,7 +18,7 @@ class ReceiptPdfRendererTest {
                 new BigDecimal("15000.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, false, institute, null, java.util.List.of(
                 new ReceiptPdfRenderer.Particular("Java Full Stack - course fee", new BigDecimal("10000.00")),
                 new ReceiptPdfRenderer.Particular("Development fee", new BigDecimal("5000.00"))),
-                "Morning Java 2026", "CANARA BANK, JALGAON - 1647201001212");
+                "Morning Java 2026", "CANARA BANK, JALGAON - 1647201001212", BigDecimal.ZERO, "", "");
     }
 
     @Test
@@ -48,6 +48,19 @@ class ReceiptPdfRendererTest {
         assertThat(ReceiptPdfRenderer.percentLeft(new BigDecimal("12500"), new BigDecimal("50000"))).isEqualTo("75");
         assertThat(ReceiptPdfRenderer.percentPaid(new BigDecimal("1"), new BigDecimal("3"))).isEqualTo("33.3");
         assertThat(ReceiptPdfRenderer.percentPaid(BigDecimal.ZERO, BigDecimal.ZERO)).isEqualTo("100");
+    }
+
+    @Test
+    void showsTheTaxBreakUpWhenGstIsOn() {
+        var d = data(null);
+        var withGst = new ReceiptPdfRenderer.Data(d.receiptNo(), d.date(), d.studentName(), d.studentCode(), d.courseTitle(),
+                d.currencySymbol(), new BigDecimal("11800.00"), d.method(), d.referenceNo(), d.netFee(), d.paidToDate(),
+                d.balance(), false, null, null, d.particulars(), d.batchName(), d.bank(), new BigDecimal("18"),
+                "27ABCDE1234F1Z5", "999293");
+
+        String text = text(new ReceiptPdfRenderer().render(withGst));
+
+        assertThat(text).contains("Taxable value", "10,000.00", "CGST @ 9%", "SGST @ 9%", "900.00", "27ABCDE1234F1Z5", "999293");
     }
 
     @Test
