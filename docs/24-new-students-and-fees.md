@@ -62,6 +62,17 @@ All under `/api/fees/...` (already routed). Migrations V5 to V11 in finance-serv
 
 Not done: the admission-time discount (set by the coordinator when converting a lead) is not subject to the 10% rule; only changes made on the finance side are.
 
+### Payroll and the finance overview (2026-11-12)
+
+- **Staff** means every active user who is not a student. identity-service gives the list (`GET /api/users/staff-directory`, ADMIN or FINANCE); finance-service keeps only each person's pay.
+- **Salary structure** (`staff_pay`, V12): monthly basic, allowances, a fixed deduction, and whether the person is on payroll. A person with a basic of 0 gets no slip.
+- **A month** (`/app/finance/payroll`, ADMIN and FINANCE): *Make this month's slips* creates one slip per person on payroll who has none (never for a month that has not started). A slip copies the figures, so changing a structure later does not rewrite slips already made. *Adjust* sets leave without pay (days), another deduction (advance, fine), a bonus and a remark, while the slip is still pending.
+- **Maths** (`PayslipMath`): gross = basic + allowances + bonus. Leave without pay is charged at (basic + allowances) / days of the month per day. Net = gross - fixed deduction - leave deduction - other deduction, and is refused if it would be below zero. Leave is entered by the desk; it is not read from attendance.
+- **Status:** PENDING, then APPROVED by the administrator, then PAID by the desk with a method and an optional reference. Paying records a `SALARY` expense, so profit and loss already counts it, and tells the person their slip is ready. Approving and paying work for one slip or the whole month.
+- **Salary slip PDF:** the same plain boxed layout as the receipt: logo and name, slip no, employee, designation, month, earnings beside deductions, net pay in words, and how and when it was paid. The finance desk can download any slip; a member of staff only their own, and only once paid (**My salary**, every staff role).
+- **Totals:** the month shows total salary, paid, still to pay and people; the year lists each month. The Finance page now has a *Finance overview* (fees collected and still to come as a percent, this month's income, salary, expenses and profit) with a download, and every fee download has paid and balance percent, discount and its reason, and installments paid.
+- Not done: no PF or TDS (use *other deduction*), no automatic leave from attendance, no stamp on the slip.
+
 ### Not covered
 The course has only a total. Instalments (how many, when) are decided per student when finance raises the fee plan, so they cannot be shown before the student is placed. Showing a standard schedule up front would need a course-level instalment setting.
 
