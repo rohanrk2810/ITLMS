@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   TrendingUp,
   UserRound,
+  Wallet,
   UserPlus,
   Users,
   Video,
@@ -77,6 +78,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // A student's own fees, or the finance desk for everyone who runs it (Doc S6.12).
     roles: ['ADMIN', 'COORDINATOR', 'FINANCE', 'STUDENT'],
   },
+  { label: 'My salary', to: '/app/my-salary', icon: Wallet, roles: ['ADMIN', 'COORDINATOR', 'TRAINER', 'PLACEMENT', 'FINANCE'] },
   { label: 'Certificates', to: '/app/certificates', icon: Award, roles: ['ADMIN', 'STUDENT'] },
   { label: 'Placements', to: '/app/placements', icon: Briefcase, roles: ['ADMIN', 'PLACEMENT', 'STUDENT'] },
   { label: 'Files', to: '/app/files', icon: FileText, roles: ALL_ROLES },

@@ -12,6 +12,7 @@ import { RefundsCard } from '@/components/refunds-card'
 import { UpiClaimsCard } from '@/components/upi-claims-card'
 import { ExpensesCard } from '@/components/expenses-card'
 import { FeeTemplateCard } from '@/components/fee-template-card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -58,6 +59,11 @@ export function FinanceDeskPage() {
           <p className="text-muted-foreground">Fee position across the institute (Doc S15).</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {canSeeExpenses && (
+            <Button asChild variant="outline">
+              <Link to="/app/finance/payroll">Payroll</Link>
+            </Button>
+          )}
           <ChargeBatchButton />
           <ExportMenu label="Download every student's fees" report="FEE_POSITION" build={feePositionSheet} />
         </div>

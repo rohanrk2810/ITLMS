@@ -89,6 +89,8 @@ const ClassReviewPage = lazy(() =>
 const FinanceIndexPage = lazy(() =>
   import('@/pages/finance/finance-index-page').then((m) => ({ default: m.FinanceIndexPage })),
 )
+const PayrollPage = lazy(() => import('@/pages/finance/payroll-page').then((m) => ({ default: m.PayrollPage })))
+const MySalaryPage = lazy(() => import('@/pages/payroll/my-salary-page').then((m) => ({ default: m.MySalaryPage })))
 const FeePlanDetailPage = lazy(() =>
   import('@/pages/finance/fee-plan-detail-page').then((m) => ({ default: m.FeePlanDetailPage })),
 )
@@ -177,6 +179,7 @@ const CERTIFICATE_ROLES: readonly Role[] = ['ADMIN', 'STUDENT']
 const ADMISSION_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 const STUDENT_RECORD_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
 const BATCH_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER']
+const STAFF_PAY_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'TRAINER', 'PLACEMENT', 'FINANCE']
 const USER_MANAGEMENT_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR']
 const PLACEMENT_ROLES: readonly Role[] = ['ADMIN', 'PLACEMENT', 'STUDENT']
 const COURSE_REQUEST_ROLES: readonly Role[] = ['ADMIN', 'COORDINATOR', 'STUDENT']
@@ -188,6 +191,7 @@ const BUILT_PATHS = new Set([
   '/app/live-classes',
   '/app/assessments',
   '/app/finance',
+  '/app/my-salary',
   '/app/certificates',
   '/app/admissions',
   '/app/students',
@@ -305,6 +309,12 @@ export default function App() {
 
                   <Route element={<ProtectedRoute roles={['ADMIN', 'COORDINATOR', 'TRAINER']} />}>
                     <Route path="/app/lecture-material" element={<LectureMaterialPage />} />
+                  </Route>
+                  <Route element={<ProtectedRoute roles={['ADMIN', 'FINANCE']} />}>
+                    <Route path="/app/finance/payroll" element={<PayrollPage />} />
+                  </Route>
+                  <Route element={<ProtectedRoute roles={STAFF_PAY_ROLES} />}>
+                    <Route path="/app/my-salary" element={<MySalaryPage />} />
                   </Route>
                   <Route element={<ProtectedRoute roles={FINANCE_ROLES} />}>
                     <Route path="/app/finance" element={<FinanceIndexPage />} />
