@@ -68,8 +68,10 @@ public class InstallmentReminderJob {
 
         int reminders = 0;
         int overdue = 0;
+        int lateFees = 0;
         for (FeePlan plan : plans) {
             FeeLedger ledger = FeeLedger.of(plan, payments.getOrDefault(plan.getId(), List.of()), today);
+            List<FeeInstallment> penalised = new java.util.ArrayList<>();
             for (FeeLedger.Line line : ledger.lines()) {
                 if (!line.isOpen()) {
                     continue;
@@ -78,6 +80,9 @@ public class InstallmentReminderJob {
                 long daysUntil = ChronoUnit.DAYS.between(today, installment.getDueDate());
 
                 if (daysUntil < 0) {
+                    if (lateFeeDue(installment, -daysUntil)) {
+                        penalised.add(installment);
+                    }
                     if (installment.getOverdueNotifiedAt() == null) {
                         announceOverdue(plan, line);
                         installment.setOverdueNotifiedAt(Instant.now());
@@ -93,9 +98,13 @@ public class InstallmentReminderJob {
                     reminders++;
                 }
             }
+            for (FeeInstallment late : penalised) {
+                addLateFee(plan, late, today);
+                lateFees++;
+            }
         }
         planRepository.saveAll(plans);
-        log.info("Fee scan: {} reminder(s), {} newly overdue installment(s)", reminders, overdue);
+        log.info("Fee scan: {} reminder(s), {} newly overdue installment(s), {} late fee(s)", reminders, overdue, lateFees);
     }
 
     /**
@@ -129,6 +138,30 @@ public class InstallmentReminderJob {
                 "%s: %s %s due on %s.".formatted(describe(line.installment()),
                         props.getCurrencySymbol(), line.remaining().toPlainString(), line.installment().getDueDate()),
                 "/student/fees"));
+    }
+
+    /** Whether this installment has earned a late fee: late fees are on, it is unpaid long enough, and not charged yet. */
+    boolean lateFeeDue(FeeInstallment installment, long daysOverdue) {
+        return props.getLateFee().signum() > 0
+                && !installment.isLateFee()
+                && installment.getLateFeeChargedAt() == null
+                && daysOverdue > props.getLateFeeAfterDays();
+    }
+
+    /** Adds the late fee as a charge of its own, due today, and tells the student. */
+    private void addLateFee(FeePlan plan, FeeInstallment late, LocalDate today) {
+        plan.addCharge(FeeInstallment.LATE_FEE_LABEL, props.getLateFee(), today);
+        late.setLateFeeChargedAt(Instant.now());
+        if (plan.getStudentUserId() != null) {
+            events.publishAfterCommit(KafkaTopics.NOTIFICATION_REQUESTED, NotificationRequestedEvent.toUsersWithEmail(
+                    List.of(plan.getStudentUserId()), "FEE_OVERDUE", "Late fee added",
+                    "%s of %s %s was added because %s was not paid by %s."
+                            .formatted(FeeInstallment.LATE_FEE_LABEL, props.getCurrencySymbol(),
+                                    props.getLateFee().toPlainString(), describe(late), late.getDueDate()),
+                    "/student/fees"));
+        }
+        events.audit("finance-service", "LATE_FEE_ADDED", "FeePlan", plan.getId(), null,
+                java.util.Map.of("installmentNo", late.getInstallmentNo(), "amount", props.getLateFee().toPlainString()));
     }
 
     /** "Development fee" for a named charge, "Installment 2" for a part of the course fee. */

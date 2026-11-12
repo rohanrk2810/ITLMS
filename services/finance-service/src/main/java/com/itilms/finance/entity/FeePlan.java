@@ -142,6 +142,12 @@ public class FeePlan extends AuditableEntity {
         return charge;
     }
 
+    /** Takes an extra charge back off the plan (a waived late fee): the total shrinks by the amount. */
+    public void removeCharge(FeeInstallment charge) {
+        installments.remove(charge);
+        setTerms(totalFee.subtract(charge.getAmount()), discount);
+    }
+
     public void cancel(String reason, Instant at) {
         this.status = FeePlanStatus.CANCELLED;
         this.cancelledReason = reason;

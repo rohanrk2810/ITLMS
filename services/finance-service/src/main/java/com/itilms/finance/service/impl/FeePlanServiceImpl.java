@@ -393,6 +393,36 @@ public class FeePlanServiceImpl implements FeePlanService {
 
     @Override
     @Transactional
+    public FeePlanResponse waiveLateFee(Long planId, Long installmentId, String reason) {
+        FeePlan plan = requirePlan(planId);
+        FeeInstallment charge = plan.getInstallments().stream()
+                .filter(i -> installmentId.equals(i.getId())).findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Installment", installmentId));
+        if (!charge.isLateFee()) {
+            throw new BusinessRuleException("Only a late fee can be waived.");
+        }
+        List<Payment> payments = paymentRepository.findByFeePlanIdOrderByPaymentDateAscIdAsc(planId);
+        FeeLedger.Line line = FeeLedger.of(plan, payments, today()).lineFor(installmentId);
+        if (line != null && line.paid().signum() > 0) {
+            throw new BusinessRuleException("Money has already been paid towards this late fee, so it cannot be waived.");
+        }
+        BigDecimal amount = charge.getAmount();
+        plan.removeCharge(charge);
+        FeeLedger after = FeeLedger.of(plan, payments, today());
+        plan.setStatus(after.isSettled() ? FeePlanStatus.SETTLED : FeePlanStatus.ACTIVE);
+        plan = planRepository.save(plan);
+        events.audit(SERVICE_NAME, "LATE_FEE_WAIVED", "FeePlan", planId, null,
+                Map.of("amount", amount.toPlainString(), "reason", reason.trim()));
+        if (plan.getStudentUserId() != null) {
+            events.notifyUsers(List.of(plan.getStudentUserId()), "FEE_PLAN", "Late fee waived",
+                    "The late fee of %s %s has been removed from your fees.".formatted(props.getCurrencySymbol(),
+                            amount.toPlainString()), "/student/fees");
+        }
+        return response(plan, payments);
+    }
+
+    @Override
+    @Transactional
     public FeePlanResponse cancel(Long id, String reason) {
         FeePlan plan = requirePlan(id);
         if (plan.getStatus() == FeePlanStatus.CANCELLED) {

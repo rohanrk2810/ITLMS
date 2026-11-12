@@ -90,6 +90,14 @@ public class FeePlanController {
         return feePlanService.addChargeToBatch(request);
     }
 
+    @Operation(summary = "Waive a late fee", description = "ADMIN only. Only a late fee nothing has been paid on; the reason is audited.")
+    @PreAuthorize(Roles.ADMIN_ONLY)
+    @PostMapping("/{id}/installments/{installmentId}/waive")
+    public FeePlanResponse waive(@PathVariable Long id, @PathVariable Long installmentId,
+                                 @Valid @RequestBody ReasonRequest request) {
+        return feePlanService.waiveLateFee(id, installmentId, request.reason());
+    }
+
     @Operation(summary = "Cancel a fee plan", description = "Only when no money has been received on it.")
     @PreAuthorize(Roles.FINANCE_DESK)
     @PostMapping("/{id}/cancel")

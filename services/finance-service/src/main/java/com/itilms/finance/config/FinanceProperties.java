@@ -23,6 +23,12 @@ public class FinanceProperties {
 
     private String receiptPrefix = "RCPT";
 
+    /** The late fee added to an installment that stays unpaid after its grace period. Zero switches late fees off. */
+    private java.math.BigDecimal lateFee = java.math.BigDecimal.ZERO;
+
+    /** Days after the due date before the late fee is added. */
+    private int lateFeeAfterDays = 7;
+
     /** A concession above this share of the course fee can only be given by the administrator. */
     private int discountApprovalPercent = 10;
 
