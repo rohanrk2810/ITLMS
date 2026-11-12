@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -12,13 +12,13 @@ import {
   listStaffPay,
   payMonth,
   paySlip,
-  saveStaffPay,
   staffPayHistory,
   type SlipView,
   type StaffRow,
   updateSlip,
 } from '@/api/payroll'
 import { DownloadSlipButton } from '@/components/download-slip-button'
+import { payTotals, StaffPayDialog } from '@/components/staff-pay-dialog'
 import { ExportMenu } from '@/components/export-menu'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -289,7 +289,10 @@ function StaffSection() {
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">Staff pay</CardTitle>
-        <CardDescription>The monthly pay of every member of staff. Changes apply to slips made from now on.</CardDescription>
+        <CardDescription>
+          The monthly pay of every member of staff as named earnings and deductions, and the details their salary slip shows.
+          Changes apply to slips made from now on.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {staff.isLoading && <Skeleton className="h-24" />}
@@ -297,59 +300,39 @@ function StaffSection() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Basic</TableHead>
-              <TableHead>Allowances</TableHead>
-              <TableHead>Fixed deduction</TableHead>
+              <TableHead>Gross</TableHead>
+              <TableHead>Deductions</TableHead>
+              <TableHead>Net</TableHead>
               <TableHead>On payroll</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {staff.data?.map((row) => <StaffLine key={row.userId} row={row} />)}
+            {staff.data?.map((row) => {
+              const t = payTotals(row.heads)
+              return (
+                <TableRow key={row.userId}>
+                  <TableCell>
+                    {row.name}
+                    <div className="text-xs text-muted-foreground">{row.role}{row.profile.employeeCode ? ` - ${row.profile.employeeCode}` : ''}</div>
+                  </TableCell>
+                  <TableCell>{row.configured ? formatMoney(t.gross || row.basic + row.allowances) : <span className="text-muted-foreground">not set</span>}</TableCell>
+                  <TableCell>{row.configured ? formatMoney(t.deductions || row.fixedDeduction) : ''}</TableCell>
+                  <TableCell className="font-medium">{row.configured ? formatMoney(t.net || row.basic + row.allowances - row.fixedDeduction) : ''}</TableCell>
+                  <TableCell>{row.active ? 'Yes' : 'No'}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <StaffPayDialog row={row} />
+                      <PayHistory row={row} />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
-  )
-}
-
-function StaffLine({ row }: { row: StaffRow }) {
-  const queryClient = useQueryClient()
-  const [basic, setBasic] = useState(String(row.basic))
-  const [allowances, setAllowances] = useState(String(row.allowances))
-  const [deduction, setDeduction] = useState(String(row.fixedDeduction))
-  const [active, setActive] = useState(row.active)
-  useEffect(() => {
-    setBasic(String(row.basic))
-    setAllowances(String(row.allowances))
-    setDeduction(String(row.fixedDeduction))
-    setActive(row.active)
-  }, [row])
-  const save = useMutation({
-    mutationFn: () => saveStaffPay(row.userId, { basic: Number(basic) || 0, allowances: Number(allowances) || 0, fixedDeduction: Number(deduction) || 0, active }),
-    onSuccess: () => {
-      toast.success(`${row.name}'s pay saved`)
-      void queryClient.invalidateQueries({ queryKey: ['payroll'] })
-    },
-    onError: (error) => toast.error(apiErrorMessage(error, 'Could not save.')),
-  })
-  return (
-    <TableRow>
-      <TableCell>
-        {row.name}
-        <div className="text-xs text-muted-foreground">{row.role}</div>
-      </TableCell>
-      <TableCell><Input aria-label={`Basic for ${row.name}`} type="number" min={0} className="h-8 w-28" value={basic} onChange={(e) => setBasic(e.target.value)} /></TableCell>
-      <TableCell><Input aria-label={`Allowances for ${row.name}`} type="number" min={0} className="h-8 w-28" value={allowances} onChange={(e) => setAllowances(e.target.value)} /></TableCell>
-      <TableCell><Input aria-label={`Deduction for ${row.name}`} type="number" min={0} className="h-8 w-28" value={deduction} onChange={(e) => setDeduction(e.target.value)} /></TableCell>
-      <TableCell><input type="checkbox" aria-label={`${row.name} on payroll`} checked={active} onChange={(e) => setActive(e.target.checked)} /></TableCell>
-      <TableCell>
-        <div className="flex gap-1">
-          <Button size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate()}>Save</Button>
-          <PayHistory row={row} />
-        </div>
-      </TableCell>
-    </TableRow>
   )
 }
 
