@@ -43,6 +43,7 @@ import com.itilms.finance.entity.Payment;
 import com.itilms.finance.entity.PaymentStatus;
 import com.itilms.finance.ledger.FeeLedger;
 import com.itilms.finance.ledger.ScheduleBuilder;
+import com.itilms.finance.repository.CourseFeeTemplateRepository;
 import com.itilms.finance.repository.FeePlanRepository;
 import com.itilms.finance.repository.PaymentRepository;
 import com.itilms.finance.service.FeePlanService;
@@ -63,6 +64,7 @@ public class FeePlanServiceImpl implements FeePlanService {
     private final CourseClient courseClient;
     private final FinanceProperties props;
     private final EventPublisher events;
+    private final CourseFeeTemplateRepository templates;
 
     // -----------------------------------------------------------------
     // Raising plans
@@ -170,7 +172,16 @@ public class FeePlanServiceImpl implements FeePlanService {
                 .autoCreated(true)
                 .build();
         plan.setTerms(fee, BigDecimal.ZERO);
-        plan.replaceInstallments(schedule(plan.getNetFee(), 1, today().plusDays(AUTO_PLAN_DUE_DAYS), null));
+        var template = templates.findById(event.courseId());
+        int count = template.map(t -> t.getInstallmentCount()).orElse(1);
+        int firstDueDays = template.map(t -> t.getFirstDueDays()).orElse(AUTO_PLAN_DUE_DAYS);
+        plan.replaceInstallments(schedule(plan.getNetFee(), count, today().plusDays(firstDueDays), null));
+        // The extra heads the course usually carries (a development fee, a book), each its own labelled installment.
+        if (template.isPresent()) {
+            for (var c : template.get().getCharges()) {
+                plan.addCharge(c.getLabel(), c.getAmount(), today().plusDays(c.getDueDays()));
+            }
+        }
         plan = planRepository.save(plan);
         announce(plan);
         events.audit(SERVICE_NAME, "FEE_PLAN_RAISED_AT_PLACEMENT", "FeePlan", plan.getId(), null,

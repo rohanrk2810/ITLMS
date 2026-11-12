@@ -6,6 +6,7 @@ import { allFeePlans, type FeePlanResponse, getFinanceDashboard, getOverdueInsta
 import { searchStudents, type StudentSummaryResponse } from '@/api/students'
 import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { ExportMenu } from '@/components/export-menu'
+import { FeeTemplateCard } from '@/components/fee-template-card'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -86,6 +87,8 @@ export function FinanceDeskPage() {
           </CardContent>
         </Card>
       )}
+
+      <FeeTemplateCard />
 
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
