@@ -24,12 +24,14 @@ class CashClosingServiceTest {
 
     private final CashClosingRepository closings = mock(CashClosingRepository.class);
     private final PaymentRepository payments = mock(PaymentRepository.class);
+    private final com.itilms.finance.repository.RefundRepository refunds = mock(com.itilms.finance.repository.RefundRepository.class);
     private final CashClosingService service =
-            new CashClosingService(closings, payments, new FinanceProperties(), mock(EventPublisher.class));
+            new CashClosingService(closings, payments, new FinanceProperties(), mock(EventPublisher.class), refunds);
     private final LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
 
     private void cashRecorded(String amount) {
         when(payments.cashReceivedOn(today)).thenReturn(new BigDecimal(amount));
+        when(refunds.cashPaidOutOn(today)).thenReturn(BigDecimal.ZERO);
         when(closings.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -50,6 +52,14 @@ class CashClosingServiceTest {
                 .isInstanceOf(BusinessRuleException.class).hasMessageContaining("difference");
         assertThat(service.close(today, new BigDecimal("4900"), "Tea for the trainers").difference())
                 .isEqualByComparingTo("-100");
+    }
+
+    @Test
+    void cashHandedBackInARefundIsExpectedToBeOutOfTheDrawer() {
+        cashRecorded("5000");
+        when(refunds.cashPaidOutOn(today)).thenReturn(new BigDecimal("1500"));
+
+        assertThat(service.close(today, new BigDecimal("3500"), null).difference()).isEqualByComparingTo("0");
     }
 
     @Test

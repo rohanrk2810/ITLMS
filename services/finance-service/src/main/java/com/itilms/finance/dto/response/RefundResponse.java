@@ -7,11 +7,13 @@ import com.itilms.finance.entity.Refund;
 
 public record RefundResponse(Long id, Long paymentId, Long feePlanId, Long studentId, String studentName,
                              String receiptNo, BigDecimal amount, String reason, String status, Long requestedBy,
-                             Instant requestedAt, Long decidedBy, Instant decidedAt, String decisionNote) {
+                             Instant requestedAt, Long decidedBy, Instant decidedAt, String decisionNote,
+                             java.time.LocalDate paidOn, String payMethod, String payReference) {
 
     public static RefundResponse from(Refund r, String studentName, String receiptNo) {
         return new RefundResponse(r.getId(), r.getPaymentId(), r.getFeePlanId(), r.getStudentId(), studentName,
                 receiptNo, r.getAmount(), r.getReason(), r.getStatus().name(), r.getCreatedBy(), r.getCreatedAt(),
-                r.getDecidedBy(), r.getDecidedAt(), r.getDecisionNote());
+                r.getDecidedBy(), r.getDecidedAt(), r.getDecisionNote(), r.getPaidOn(), r.getPayMethod(),
+                r.getPayReference());
     }
 }

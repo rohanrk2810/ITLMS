@@ -119,6 +119,41 @@ public class RefundService {
         return view(refund);
     }
 
+    /** The money has been handed back: record how, when and by whom. Only an approved refund can be paid out. */
+    @Transactional
+    public RefundResponse payOut(Long id, String method, String reference, LocalDate paidOn) {
+        AppPrincipal desk = SecurityUtils.requirePrincipal();
+        Refund refund = refunds.findById(id).orElseThrow(() -> new ResourceNotFoundException("Refund", id));
+        if (refund.getStatus() != Refund.Status.APPROVED) {
+            throw new BusinessRuleException("Only an approved refund can be marked as paid.");
+        }
+        String how = method == null ? "" : method.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!java.util.Set.of("CASH", "UPI", "BANK_TRANSFER", "CHEQUE").contains(how)) {
+            throw new BusinessRuleException("Choose how it was paid: cash, UPI, bank transfer or cheque.");
+        }
+        LocalDate today = LocalDate.now(props.getZone());
+        LocalDate day = paidOn != null ? paidOn : today;
+        if (day.isAfter(today)) {
+            throw new BusinessRuleException("A refund cannot be dated in the future.");
+        }
+        refund.setStatus(Refund.Status.PAID);
+        refund.setPaidOn(day);
+        refund.setPayMethod(how);
+        refund.setPayReference(reference == null || reference.isBlank() ? null : reference.trim());
+        refund.setPaidBy(desk.userId());
+        refunds.save(refund);
+        FeePlan plan = plans.findById(refund.getFeePlanId()).orElse(null);
+        if (plan != null && plan.getStudentUserId() != null) {
+            events.notifyUsers(List.of(plan.getStudentUserId()), "REFUND", "Refund paid",
+                    "%s %s has been returned to you (%s).".formatted(props.getCurrencySymbol(),
+                            refund.getAmount().toPlainString(), how.toLowerCase(java.util.Locale.ROOT).replace('_', ' ')),
+                    "/student/fees");
+        }
+        events.audit(SERVICE_NAME, "REFUND_PAID_OUT", "Refund", id, null,
+                Map.of("amount", refund.getAmount().toPlainString(), "method", how, "paidOn", day.toString()));
+        return view(refund);
+    }
+
     private Refund requireOpen(Long id) {
         Refund refund = refunds.findById(id).orElseThrow(() -> new ResourceNotFoundException("Refund", id));
         if (refund.getStatus() != Refund.Status.REQUESTED) {

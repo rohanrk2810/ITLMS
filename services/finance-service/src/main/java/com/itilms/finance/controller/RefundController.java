@@ -55,6 +55,18 @@ public class RefundController {
         return service.approve(id, note == null ? null : note.reason());
     }
 
+    public record PayOutBody(@jakarta.validation.constraints.NotBlank String method,
+                             @jakarta.validation.constraints.Size(max = 80) String reference,
+                             java.time.LocalDate paidOn) {
+    }
+
+    @Operation(summary = "Record that an approved refund was paid out", description = "ADMIN or FINANCE. How, when and by whom the money was returned.")
+    @PreAuthorize(Roles.FINANCE_DESK)
+    @PostMapping("/{id}/paid")
+    public RefundResponse paid(@PathVariable Long id, @Valid @RequestBody PayOutBody body) {
+        return service.payOut(id, body.method(), body.reference(), body.paidOn());
+    }
+
     @Operation(summary = "Reject a refund", description = "ADMIN only.")
     @PreAuthorize(Roles.ADMIN_ONLY)
     @PostMapping("/{id}/reject")
