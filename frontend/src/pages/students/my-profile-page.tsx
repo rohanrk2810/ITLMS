@@ -45,6 +45,12 @@ export function MyProfilePage() {
   if (query.isLoading) return <Skeleton className="h-96 max-w-3xl" />
   const student = query.data
   if (!student) return null
+  // Same rule as the server: a student enters the details once; after that only the office changes them.
+  const filled =
+    !!student.dateOfBirth ||
+    student.graduationYear != null ||
+    [student.gender, student.highestEducation, student.college, student.addressLine, student.city, student.state,
+      student.pincode, student.guardianName, student.guardianPhone, student.emergencyContact].some((v) => !!v?.trim())
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -55,8 +61,13 @@ export function MyProfilePage() {
             {student.fullName} &middot; {student.studentCode}
           </p>
         </div>
-        <EditStudentDialog student={student} isAdmin={false} self />
+        {!filled && <EditStudentDialog student={student} isAdmin={false} self />}
       </div>
+      {filled && (
+        <p className="text-sm text-muted-foreground">
+          Your details were saved at admission. To change them, ask the institute office.
+        </p>
+      )}
 
       <Card>
         <CardHeader>

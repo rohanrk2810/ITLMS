@@ -88,13 +88,25 @@ public class StudentController {
 
     @Operation(summary = "Update my profile",
             description = "A student may correct their own address, guardian and education details. "
-                    + "Name, email and phone are changed through the account, not here.")
+                    + "Only once: when the details are still empty. After that only ADMIN or COORDINATOR change them.")
     @PreAuthorize("hasRole('STUDENT')")
     @PutMapping("/me")
     public StudentResponse updateMe(@AuthenticationPrincipal AppPrincipal principal,
                                     @Valid @RequestBody UpdateStudentRequest request) {
         StudentResponse mine = studentService.getByUserId(principal.userId());
+        if (detailsFilled(mine)) {
+            throw new BusinessRuleException(
+                    "Your details are already saved. To change them, ask the institute office.");
+        }
         return studentService.update(mine.id(), request);
+    }
+
+    /** The details a student may enter once; any of them present means admission already recorded them. */
+    static boolean detailsFilled(StudentResponse s) {
+        return s.dateOfBirth() != null || s.graduationYear() != null
+                || java.util.stream.Stream.of(s.gender(), s.highestEducation(), s.college(), s.addressLine(), s.city(),
+                s.state(), s.pincode(), s.guardianName(), s.guardianPhone(), s.emergencyContact())
+                .anyMatch(v -> v != null && !v.isBlank());
     }
 
     @Operation(summary = "Add my photo",
