@@ -67,7 +67,7 @@ class ReminderAndScheduleRulesTest {
         private final AdmissionClient admission = mock(AdmissionClient.class);
         private final FeePlanServiceImpl service = new FeePlanServiceImpl(plans, mock(PaymentRepository.class),
                 admission, mock(com.itilms.finance.client.CourseClient.class), new FinanceProperties(),
-                mock(EventPublisher.class));
+                mock(EventPublisher.class), mock(com.itilms.finance.repository.CourseFeeTemplateRepository.class));
 
         @Test
         @DisplayName("An explicit schedule that does not add up to the net fee is refused")

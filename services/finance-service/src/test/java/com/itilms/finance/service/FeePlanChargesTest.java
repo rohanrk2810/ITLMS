@@ -53,7 +53,8 @@ class FeePlanChargesTest {
     private final EventPublisher events = mock(EventPublisher.class);
     private final FinanceProperties props = new FinanceProperties();
     private final FeePlanServiceImpl service =
-            new FeePlanServiceImpl(plans, payments, mock(AdmissionClient.class), courses, props, events);
+            new FeePlanServiceImpl(plans, payments, mock(AdmissionClient.class), courses, props, events,
+                    mock(com.itilms.finance.repository.CourseFeeTemplateRepository.class));
 
     private LocalDate today() {
         return LocalDate.now(ZoneId.of("Asia/Kolkata"));

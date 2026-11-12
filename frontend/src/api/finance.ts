@@ -212,3 +212,31 @@ export async function reversePayment(id: number | string, reason: string): Promi
   const { data } = await apiClient.post<PaymentResponse>(`/api/payments/${id}/reverse`, { reason })
   return data
 }
+
+export interface FeeTemplateCharge {
+  label: string
+  amount: number
+  dueDays: number
+}
+
+export interface FeeTemplate {
+  courseId: number
+  configured: boolean
+  installmentCount: number
+  firstDueDays: number
+  charges: FeeTemplateCharge[]
+}
+
+/** The usual fee structure of a course: installments, first due date and extra heads. */
+export async function getFeeTemplate(courseId: number): Promise<FeeTemplate> {
+  const { data } = await apiClient.get<FeeTemplate>(`/api/fees/templates/${courseId}`)
+  return data
+}
+
+export async function saveFeeTemplate(
+  courseId: number,
+  input: { installmentCount: number; firstDueDays: number; charges: FeeTemplateCharge[] },
+): Promise<FeeTemplate> {
+  const { data } = await apiClient.put<FeeTemplate>(`/api/fees/templates/${courseId}`, input)
+  return data
+}
