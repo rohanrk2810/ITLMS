@@ -23,6 +23,14 @@ public class FinanceProperties {
 
     private String receiptPrefix = "RCPT";
 
+    /** GST on fees, as a percent. The fee is taken to include it. Zero (the default) means no GST is shown or reported. */
+    private java.math.BigDecimal gstPercent = java.math.BigDecimal.ZERO;
+
+    /** The institute's GST number and the service accounting code, printed on the receipt when GST is on. */
+    private String gstin = "";
+
+    private String sacCode = "";
+
     /** The institute's UPI id students can pay to, such as "institute@okbank". Empty switches UPI payment off. */
     private String upiId = "";
 

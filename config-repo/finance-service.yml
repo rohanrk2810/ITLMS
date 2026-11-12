@@ -28,6 +28,10 @@ itilms:
     # "Today" for due dates is the institute's today, not the server's.
     zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}
     receipt-prefix: RCPT
+    # GST on fees (fees are taken as tax-inclusive). 0 = no GST on receipts or reports.
+    gst-percent: ${GST_PERCENT:0}
+    gstin: ${INSTITUTE_GSTIN:}
+    sac-code: ${INSTITUTE_SAC:}
     # The UPI id students pay to (the QR code is made from it). Empty = no UPI payment screen.
     upi-id: ${INSTITUTE_UPI_ID:}
     upi-name: ${INSTITUTE_UPI_NAME:}

@@ -28,6 +28,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByFeePlanIdOrderByPaymentDateAscIdAsc(Long feePlanId);
 
+    List<Payment> findByPaymentDateBetweenAndStatus(LocalDate from, LocalDate to, PaymentStatus status);
+
     List<Payment> findByFeePlanIdIn(Collection<Long> feePlanIds);
 
     List<Payment> findByStudentIdOrderByPaymentDateDescIdDesc(Long studentId);

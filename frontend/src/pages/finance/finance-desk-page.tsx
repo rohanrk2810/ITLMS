@@ -13,6 +13,7 @@ import { FinanceOverviewCard } from '@/components/finance-overview-card'
 import { percentOf } from '@/lib/export-rows'
 import { RefundsCard } from '@/components/refunds-card'
 import { UpiClaimsCard } from '@/components/upi-claims-card'
+import { GstCard } from '@/components/gst-card'
 import { ExpensesCard } from '@/components/expenses-card'
 import { FeeTemplateCard } from '@/components/fee-template-card'
 import { Button } from '@/components/ui/button'
@@ -125,6 +126,8 @@ export function FinanceDeskPage() {
       <CollectionReportCard />
 
       {canSeeExpenses && <ExpensesCard />}
+
+      {canSeeExpenses && <GstCard />}
 
       <FeeTemplateCard />
 
