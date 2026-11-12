@@ -248,14 +248,42 @@ const total = (items: { currency: string }[], pick: (i: never) => number) => {
   return currencies.size > 1 ? 'mixed currencies' : String(sum(items.map((i) => pick(i as never))))
 }
 
+/** Share of the net fee, in percent with one decimal: a plan with nothing to pay counts as fully paid. */
+export const percentOf = (part: number, net: number): number => (net > 0 ? Math.round((part / net) * 1000) / 10 : 100)
+
+/** "2 of 3": installments paid in full out of all of them. */
+const installmentsPaid = (p: FeePlanResponse): string =>
+  `${p.installments?.filter((i) => i.remaining <= 0).length ?? 0} of ${p.installments?.length ?? 0}`
+
+/** The figures every fee report carries: how much is billed, how much is in, and how far along that is. */
+function feeSummary(plans: FeePlanResponse[]): [string, string][] {
+  const mixed = new Set(plans.map((p) => p.currency)).size > 1
+  if (mixed) return [['Collected %', 'mixed currencies']]
+  const net = sum(plans.map((p) => p.netFee))
+  const paid = sum(plans.map((p) => p.paid))
+  return [
+    ['Net fee', String(net)],
+    ['Collected', String(paid)],
+    ['Collected %', `${percentOf(paid, net)}%`],
+    ['Balance %', `${Math.round((100 - percentOf(paid, net)) * 10) / 10}%`],
+  ]
+}
+
 /** Every student with their contact details and fee position, one row per fee plan (a student without a plan still gets a row). */
 export function feePositionReport(students: StudentSummaryResponse[], plans: FeePlanResponse[]): Report {
   const rows = students.flatMap((student) => {
     const mine = plans.filter((plan) => plan.studentId === student.id)
     const who: Cell[] = [student.studentCode, student.fullName, student.email, student.phone, student.status]
     return mine.length === 0
-      ? [[...who, '', '', '', '', '', '', ''] as Cell[]]
-      : mine.map((plan) => [...who, plan.status, plan.currency, plan.netFee, plan.paid, plan.outstanding, plan.overdue, plan.nextDueDate] as Cell[])
+      ? [[...who, '', '', '', '', '', '', '', '', '', '', '', '', ''] as Cell[]]
+      : mine.map(
+          (plan) =>
+            [
+              ...who, plan.status, plan.currency, plan.totalFee, plan.discount, plan.discountReason, plan.netFee, plan.paid,
+              percentOf(plan.paid, plan.netFee), plan.outstanding, Math.round((100 - percentOf(plan.paid, plan.netFee)) * 10) / 10,
+              plan.overdue, installmentsPaid(plan), plan.nextDueDate,
+            ] as Cell[],
+        )
   })
   return {
     title: 'Fee position of every student',
@@ -265,8 +293,12 @@ export function feePositionReport(students: StudentSummaryResponse[], plans: Fee
       ['Fee plans', String(plans.length)],
       ['Outstanding', total(plans, (p: FeePlanResponse) => p.outstanding)],
       ['Overdue', total(plans, (p: FeePlanResponse) => p.overdue)],
+      ...feeSummary(plans),
     ],
-    header: ['Student code', 'Name', 'Email', 'Phone', 'Student status', 'Plan status', 'Currency', 'Net fee', 'Paid', 'Outstanding', 'Overdue', 'Next due'],
+    header: [
+      'Student code', 'Name', 'Email', 'Phone', 'Student status', 'Plan status', 'Currency', 'Total fee', 'Discount',
+      'Discount reason', 'Net fee', 'Paid', 'Paid %', 'Outstanding', 'Balance %', 'Overdue', 'Installments paid', 'Next due',
+    ],
     rows,
   }
 }
@@ -281,11 +313,16 @@ export function feePlansReport(plans: FeePlanResponse[], status = ''): Report {
       ['Net fee', total(plans, (p: FeePlanResponse) => p.netFee)],
       ['Paid', total(plans, (p: FeePlanResponse) => p.paid)],
       ['Outstanding', total(plans, (p: FeePlanResponse) => p.outstanding)],
+      ...feeSummary(plans),
     ],
-    header: ['Student code', 'Student', 'Currency', 'Total fee', 'Discount', 'Net fee', 'Paid', 'Outstanding', 'Overdue', 'Status', 'Next due', 'Next amount'],
+    header: [
+      'Student code', 'Student', 'Currency', 'Total fee', 'Discount', 'Discount reason', 'Net fee', 'Paid', 'Paid %',
+      'Outstanding', 'Balance %', 'Overdue', 'Installments paid', 'Status', 'Next due', 'Next amount',
+    ],
     rows: plans.map((p) => [
-      p.studentCode, p.studentName, p.currency, p.totalFee, p.discount, p.netFee, p.paid, p.outstanding, p.overdue, p.status,
-      p.nextDueDate, p.nextDueAmount,
+      p.studentCode, p.studentName, p.currency, p.totalFee, p.discount, p.discountReason, p.netFee, p.paid,
+      percentOf(p.paid, p.netFee), p.outstanding, Math.round((100 - percentOf(p.paid, p.netFee)) * 10) / 10, p.overdue,
+      installmentsPaid(p), p.status, p.nextDueDate, p.nextDueAmount,
     ]),
   }
 }

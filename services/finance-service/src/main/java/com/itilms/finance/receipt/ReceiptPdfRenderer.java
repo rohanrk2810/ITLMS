@@ -249,9 +249,23 @@ public class ReceiptPdfRenderer {
         t.setHorizontalAlignment(Element.ALIGN_LEFT);
         t.setSpacingBefore(10);
         row(t, "Total fee", money(d.currencySymbol(), d.netFee()));
-        row(t, "Paid so far", money(d.currencySymbol(), d.paidToDate()));
-        row(t, "Balance", money(d.currencySymbol(), d.balance()));
+        row(t, "Paid so far", money(d.currencySymbol(), d.paidToDate()) + "  (" + percentPaid(d.paidToDate(), d.netFee()) + "%)");
+        row(t, "Balance", money(d.currencySymbol(), d.balance()) + "  (" + percentLeft(d.paidToDate(), d.netFee()) + "%)");
         return t;
+    }
+
+    /** Share of the net fee that is paid, one decimal, as "62.5". A fee of nothing counts as fully paid. */
+    static String percentPaid(BigDecimal paid, BigDecimal net) {
+        if (net == null || net.signum() <= 0) {
+            return "100";
+        }
+        return paid.multiply(BigDecimal.valueOf(100)).divide(net, 1, java.math.RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString();
+    }
+
+    /** What is left, as a share of the net fee. */
+    static String percentLeft(BigDecimal paid, BigDecimal net) {
+        return new BigDecimal("100").subtract(new BigDecimal(percentPaid(paid, net))).stripTrailingZeros().toPlainString();
     }
 
     /** April to March, as fees are accounted in India: a date in Feb 2024 is 2023-2024. */
