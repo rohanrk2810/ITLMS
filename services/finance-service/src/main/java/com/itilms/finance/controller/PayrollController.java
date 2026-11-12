@@ -66,6 +66,13 @@ public class PayrollController {
                 body.fixedDeduction(), body.active()));
     }
 
+    @Operation(summary = "A person's salary history", description = "ADMIN or FINANCE. Every structure they have had, with who set it and when.")
+    @PreAuthorize(Roles.FINANCE_DESK)
+    @GetMapping("/staff/{userId}/history")
+    public List<PayrollService.HistoryEntry> history(@PathVariable Long userId) {
+        return service.history(userId);
+    }
+
     @Operation(summary = "A month's salary slips", description = "ADMIN or FINANCE, with the month's totals.")
     @PreAuthorize(Roles.FINANCE_DESK)
     @GetMapping("/months/{month}")

@@ -43,6 +43,7 @@ public class PayrollService {
     private static final Set<String> PAY_METHODS = Set.of("CASH", "UPI", "BANK_TRANSFER", "CHEQUE");
 
     private final StaffPayRepository structures;
+    private final com.itilms.finance.repository.StaffPayHistoryRepository history;
     private final PayslipRepository slips;
     private final StaffDirectoryClient directory;
     private final ExpenseService expenses;
@@ -54,6 +55,10 @@ public class PayrollService {
 
     public record StaffRow(Long userId, String name, String email, String role, BigDecimal basic, BigDecimal allowances,
                            BigDecimal fixedDeduction, boolean active, boolean configured) {
+    }
+
+    public record HistoryEntry(BigDecimal basic, BigDecimal allowances, BigDecimal fixedDeduction, boolean active,
+                               Long changedBy, java.time.Instant changedAt) {
     }
 
     public record StructureRequest(BigDecimal basic, BigDecimal allowances, BigDecimal fixedDeduction, Boolean active) {
@@ -139,10 +144,21 @@ public class PayrollService {
             pay.setActive(request.active());
         }
         pay = structures.save(pay);
+        history.save(com.itilms.finance.entity.StaffPayHistory.builder().userId(userId).basic(pay.getBasic())
+                .allowances(pay.getAllowances()).fixedDeduction(pay.getFixedDeduction()).active(pay.isActive()).build());
         events.audit(SERVICE_NAME, "STAFF_PAY_SET", "StaffPay", userId, null,
                 Map.of("basic", basic.toPlainString(), "allowances", allowances.toPlainString(),
                         "fixedDeduction", fixed.toPlainString()));
         return row(pay, email);
+    }
+
+    /** Every structure this person has had, newest first, with who set it and when. */
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> history(Long userId) {
+        return history.findByUserIdOrderByIdDesc(userId).stream()
+                .map(h -> new HistoryEntry(h.getBasic(), h.getAllowances(), h.getFixedDeduction(), h.isActive(),
+                        h.getCreatedBy(), h.getCreatedAt()))
+                .toList();
     }
 
     // ------------------------------------------------------------------ the month
