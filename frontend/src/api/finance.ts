@@ -350,3 +350,53 @@ export async function closeCashDay(input: { date: string; countedCash: number; n
   const { data } = await apiClient.post<CashClosing>('/api/fees/cash-closings', input)
   return data
 }
+
+export interface ExpenseView {
+  id: number
+  date: string
+  category: string
+  amount: number
+  description: string
+  paidTo: string | null
+  referenceNo: string | null
+  voided: boolean
+  voidReason: string | null
+}
+
+export interface ExpenseSummary {
+  from: string
+  to: string
+  collected: number
+  spent: number
+  profit: number
+  byCategory: Record<string, number>
+}
+
+export const EXPENSE_CATEGORIES = ['SALARY', 'RENT', 'UTILITIES', 'MARKETING', 'SUPPLIES', 'MAINTENANCE', 'OTHER']
+
+export async function listExpenses(from: string, to: string): Promise<ExpenseView[]> {
+  const { data } = await apiClient.get<ExpenseView[]>('/api/fees/expenses', { params: { from, to } })
+  return data
+}
+
+export async function expenseSummary(from: string, to: string): Promise<ExpenseSummary> {
+  const { data } = await apiClient.get<ExpenseSummary>('/api/fees/expenses/summary', { params: { from, to } })
+  return data
+}
+
+export async function addExpense(input: {
+  date?: string
+  category: string
+  amount: number
+  description: string
+  paidTo?: string
+  referenceNo?: string
+}): Promise<ExpenseView> {
+  const { data } = await apiClient.post<ExpenseView>('/api/fees/expenses', input)
+  return data
+}
+
+export async function voidExpense(id: number, reason: string): Promise<ExpenseView> {
+  const { data } = await apiClient.post<ExpenseView>(`/api/fees/expenses/${id}/void`, { reason })
+  return data
+}

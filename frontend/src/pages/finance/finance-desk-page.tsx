@@ -9,6 +9,7 @@ import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { CollectionReportCard } from '@/components/collection-report-card'
 import { ExportMenu } from '@/components/export-menu'
 import { RefundsCard } from '@/components/refunds-card'
+import { ExpensesCard } from '@/components/expenses-card'
 import { FeeTemplateCard } from '@/components/fee-template-card'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { feePlansReport, feePositionReport, overdueReport } from '@/lib/export-rows'
 import { formatDate, formatMoney } from '@/lib/format'
+import { hasRole, useAuthStore } from '@/stores/auth-store'
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   ACTIVE: 'default',
@@ -24,6 +26,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 }
 
 export function FinanceDeskPage() {
+  const canSeeExpenses = hasRole(useAuthStore((state) => state.roles), ['ADMIN', 'FINANCE'])
   const [status, setStatus] = useState('')
 
   const dashboardQuery = useQuery({ queryKey: ['finance', 'dashboard'], queryFn: getFinanceDashboard })
@@ -96,6 +99,8 @@ export function FinanceDeskPage() {
       <RefundsCard />
 
       <CollectionReportCard />
+
+      {canSeeExpenses && <ExpensesCard />}
 
       <FeeTemplateCard />
 
