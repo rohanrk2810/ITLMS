@@ -39,7 +39,7 @@ describe('signing out', () => {
     )
 
     await userEvent.click(screen.getByRole('button', { name: /AP/ }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: /Sign out/ }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Log Out/ }))
 
     expect(await screen.findByText('Front page')).toBeTruthy()
     await waitFor(() => expect(screen.queryByText('Sign-in page')).toBeNull())
