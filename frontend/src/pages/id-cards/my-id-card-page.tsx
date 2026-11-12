@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Download, IdCard as IdCardIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import { IdCard as IdCardIcon } from 'lucide-react'
 
-import { apiErrorMessage } from '@/api/client'
-import { idCardPdfObjectUrl, idCardPhotoObjectUrl, myIdCards, openPdf, type IdCardResponse } from '@/api/id-cards'
+import { idCardPhotoObjectUrl, myIdCards, type IdCardResponse } from '@/api/id-cards'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
 
-/** The signed-in person's own ID card: see it, download it. */
+/** The signed-in person's own ID card, to see. Printing it is done by the institute office. */
 export function MyIdCardPage() {
   const query = useQuery({ queryKey: ['id-cards', 'mine'], queryFn: myIdCards })
 
@@ -19,7 +16,7 @@ export function MyIdCardPage() {
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">My ID card</h1>
-        <p className="text-muted-foreground">Your institute identity card. The institute office issues it.</p>
+        <p className="text-muted-foreground">Your institute identity card. The institute office issues and prints it.</p>
       </div>
       {query.isLoading && <Skeleton className="h-40" />}
       {query.isSuccess && query.data.length === 0 && (
@@ -61,19 +58,11 @@ function CardRow({ card }: { card: IdCardResponse }) {
     }
   }, [card.id, card.hasPhoto])
 
-  async function download() {
-    try {
-      openPdf(await idCardPdfObjectUrl(card.id))
-    } catch (error) {
-      toast.error(apiErrorMessage(error, 'Could not open the card.'))
-    }
-  }
-
   const usable = card.status === 'ISSUED'
   return (
     <Card>
       <CardContent className="flex flex-wrap items-center gap-4 py-4">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
           {photo ? <img src={photo} alt="" className="size-full object-cover" /> : <IdCardIcon className="size-8 text-muted-foreground" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -90,11 +79,6 @@ function CardRow({ card }: { card: IdCardResponse }) {
           </p>
           {card.revokedReason && <p className="text-sm text-destructive">{card.revokedReason}</p>}
         </div>
-        {usable && (
-          <Button onClick={() => void download()}>
-            <Download className="size-4" /> Download
-          </Button>
-        )}
       </CardContent>
     </Card>
   )

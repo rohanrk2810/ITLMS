@@ -98,8 +98,8 @@ public class IdCardController {
                 .body(photo.bytes());
     }
 
-    @Operation(summary = "The card as a PDF", description = "Staff, or the person the card belongs to.")
-    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "The card as a PDF", description = "ADMIN or COORDINATOR only; a student or trainer cannot download their own card.")
+    @PreAuthorize(Roles.STAFF)
     @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
         return pdfResponse(service.pdf(id), "id-card-" + id + ".pdf");
