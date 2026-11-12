@@ -40,7 +40,7 @@ export function StudentPhoto({
   }, [studentId, hasPhoto, version])
 
   return (
-    <div className={cn('flex size-28 items-center justify-center overflow-hidden rounded-lg border bg-muted', className)}>
+    <div className={cn('flex size-24 items-center justify-center overflow-hidden rounded-lg border bg-muted', className)}>
       {hasPhoto && url ? (
         <img src={url} alt="" className="size-full object-cover" />
       ) : (

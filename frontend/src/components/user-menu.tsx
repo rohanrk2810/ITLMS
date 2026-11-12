@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { KeyRound, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { logout } from '@/api/auth'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { getMyProfile, studentPhotoObjectUrl } from '@/api/students'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/auth-store'
@@ -13,9 +16,38 @@ function initials(fullName: string): string {
   return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase()
 }
 
+/** A student's own photo for the avatar; anyone else (or a student without one) gets their initials. */
+function useOwnPhoto(isStudent: boolean): string | null {
+  const profile = useQuery({ queryKey: ['my-profile'], queryFn: getMyProfile, enabled: isStudent, staleTime: 300_000 })
+  const studentId = profile.data?.id
+  const hasPhoto = profile.data?.hasPhoto ?? false
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (studentId == null || !hasPhoto) return
+    let live = true
+    let made: string | null = null
+    studentPhotoObjectUrl(studentId)
+      .then((u) => {
+        if (!live) {
+          URL.revokeObjectURL(u)
+          return
+        }
+        made = u
+        setUrl(u)
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+      if (made) URL.revokeObjectURL(made)
+    }
+  }, [studentId, hasPhoto])
+  return hasPhoto ? url : null
+}
+
 export function UserMenu() {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const photo = useOwnPhoto(!!user && hasRole(user.role, user.extraRoles, 'STUDENT'))
 
   if (!user) return null
 
@@ -40,14 +72,16 @@ export function UserMenu() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-10 gap-1 px-1" aria-label={`${user.fullName} menu`}>
             <Avatar className="size-9">
+              {photo && <AvatarImage src={photo} alt="" />}
               <AvatarFallback>{initials(user.fullName)}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-72 overflow-hidden p-0">
           <div className="flex items-center gap-3 bg-neutral-700 p-4 text-white">
-            <Avatar className="size-14">
-              <AvatarFallback className="text-lg text-foreground">{initials(user.fullName)}</AvatarFallback>
+            <Avatar className="size-12">
+              {photo && <AvatarImage src={photo} alt="" />}
+              <AvatarFallback className="text-base text-foreground">{initials(user.fullName)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <p className="break-words font-semibold leading-tight">{user.fullName}</p>
