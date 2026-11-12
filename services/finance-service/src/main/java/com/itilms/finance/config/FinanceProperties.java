@@ -23,6 +23,9 @@ public class FinanceProperties {
 
     private String receiptPrefix = "RCPT";
 
+    /** The bank line printed on a receipt, such as "CANARA BANK, JALGAON - 1647201001212". Empty prints nothing. */
+    private String bank = "";
+
     /**
      * The timezone "today" is judged in.
      *
