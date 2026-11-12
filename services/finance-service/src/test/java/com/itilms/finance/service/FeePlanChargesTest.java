@@ -166,7 +166,7 @@ class FeePlanChargesTest {
         when(plans.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(payments.findByFeePlanIdOrderByPaymentDateAscIdAsc(11L)).thenReturn(List.of());
 
-        var response = service.addCharge(11L, new ChargeRequest("  Development fee ", new BigDecimal("500"), today().plusDays(10)));
+        var response = service.addCharge(11L, new ChargeRequest("  Development fee ", new BigDecimal("500"), today().plusDays(10), null));
 
         assertThat(plan.getTotalFee()).isEqualByComparingTo("30500");
         assertThat(plan.getNetFee()).isEqualByComparingTo("30500");
@@ -185,13 +185,13 @@ class FeePlanChargesTest {
         when(plans.findWithInstallmentsById(11L)).thenReturn(Optional.of(settled));
         when(plans.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(payments.findByFeePlanIdOrderByPaymentDateAscIdAsc(11L)).thenReturn(List.of());
-        service.addCharge(11L, new ChargeRequest("Book", new BigDecimal("300"), today()));
+        service.addCharge(11L, new ChargeRequest("Book", new BigDecimal("300"), today(), null));
         assertThat(settled.getStatus()).isEqualTo(FeePlanStatus.ACTIVE);
 
         FeePlan cancelled = plan(12L, 31L, 3L);
         cancelled.setStatus(FeePlanStatus.CANCELLED);
         when(plans.findWithInstallmentsById(12L)).thenReturn(Optional.of(cancelled));
-        assertThatThrownBy(() -> service.addCharge(12L, new ChargeRequest("Book", new BigDecimal("300"), today())))
+        assertThatThrownBy(() -> service.addCharge(12L, new ChargeRequest("Book", new BigDecimal("300"), today(), null)))
                 .isInstanceOf(BusinessRuleException.class);
     }
 
@@ -199,7 +199,7 @@ class FeePlanChargesTest {
     void aChargeCannotBeDatedInThePast() {
         when(plans.findWithInstallmentsById(11L)).thenReturn(Optional.of(plan(11L, 30L, 3L)));
 
-        assertThatThrownBy(() -> service.addCharge(11L, new ChargeRequest("Book", new BigDecimal("300"), today().minusDays(1))))
+        assertThatThrownBy(() -> service.addCharge(11L, new ChargeRequest("Book", new BigDecimal("300"), today().minusDays(1), null)))
                 .isInstanceOf(BusinessRuleException.class).hasMessageContaining("past");
     }
 
@@ -209,7 +209,7 @@ class FeePlanChargesTest {
         FeePlan two = plan(12L, 31L, 3L);
         when(plans.findByBatchIdAndStatusNot(3L, FeePlanStatus.CANCELLED)).thenReturn(List.of(one, two));
 
-        var result = service.addChargeToBatch(new BatchChargeRequest(3L, "Exam fee", new BigDecimal("750"), today().plusDays(5)));
+        var result = service.addChargeToBatch(new BatchChargeRequest(3L, "Exam fee", new BigDecimal("750"), today().plusDays(5), null));
 
         assertThat(result.students()).isEqualTo(2);
         assertThat(one.getNetFee()).isEqualByComparingTo("30750");

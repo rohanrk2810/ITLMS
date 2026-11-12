@@ -22,7 +22,8 @@ public final class ChargeDtos {
             @NotNull(message = "Amount is required")
             @DecimalMin(value = "1.00", message = "The smallest charge is 1 rupee")
             @Digits(integer = 10, fraction = 2, message = "Amount can have at most two decimal places") BigDecimal amount,
-            @NotNull(message = "A due date is required") LocalDate dueDate) {
+            @NotNull(message = "A due date is required") LocalDate dueDate,
+            @Schema(description = "True when this charge carries no GST") Boolean gstExempt) {
     }
 
     @Schema(description = "The same extra charge for every student in a batch")
@@ -32,7 +33,8 @@ public final class ChargeDtos {
             @NotNull(message = "Amount is required")
             @DecimalMin(value = "1.00", message = "The smallest charge is 1 rupee")
             @Digits(integer = 10, fraction = 2, message = "Amount can have at most two decimal places") BigDecimal amount,
-            @NotNull(message = "A due date is required") LocalDate dueDate) {
+            @NotNull(message = "A due date is required") LocalDate dueDate,
+            @Schema(description = "True when this charge carries no GST") Boolean gstExempt) {
     }
 
     @Schema(description = "How many students the charge reached")

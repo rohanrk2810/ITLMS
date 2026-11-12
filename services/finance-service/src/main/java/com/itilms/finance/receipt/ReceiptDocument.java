@@ -13,6 +13,8 @@ import com.itilms.finance.entity.FeePlan;
 import com.itilms.finance.entity.Payment;
 import com.itilms.finance.entity.PaymentStatus;
 import com.itilms.finance.ledger.FeeLedger;
+import com.itilms.finance.ledger.PaymentTax;
+import com.itilms.finance.ledger.StateCodes;
 import com.itilms.finance.repository.PaymentRepository;
 import com.itilms.finance.service.GstSettingsService;
 
@@ -62,17 +64,20 @@ public class ReceiptDocument {
         BrandingClient.Branding institute = institute();
         String course = courseTitle(plan.getCourseId());
         BatchLookupClient.Batch batch = lookupBatch(plan.getBatchId());
+        com.itilms.finance.client.AdmissionClient.StudentSummary student = lookupStudent(plan.getStudentId());
         GstSettingsService.Settings current = gstSettings.current();
         // The rate in force on the day of the payment, so a receipt reprinted later shows what it showed then.
         record Gst(java.math.BigDecimal percent, String gstin, String sacCode) {
         }
         Gst gst = new Gst(GstSettingsService.rateFor(current, payment.getPaymentDate()), current.gstin(), current.sacCode());
+        ReceiptPdfRenderer.TaxInfo tax = taxOf(payment, plan, current, student);
         return renderer.render(new ReceiptPdfRenderer.Data(payment.getReceiptNo(), payment.getPaymentDate(),
                 plan.getStudentName(), plan.getStudentCode(), course, props.getCurrencySymbol(),
                 payment.getAmount(), payment.getMethod().name(), payment.getReferenceNo(), plan.getNetFee(), paidToDate,
                 balance, payment.getStatus() == PaymentStatus.REVERSED, institute, logo(institute),
                 particulars(payment, plan, course), batchName(batch), props.getBank(),
-                gst.percent(), gst.gstin(), gst.sacCode(), phoneOf(plan.getStudentId()), timing(batch), props.getReceiptNote()));
+                gst.percent(), gst.gstin(), gst.sacCode(), student == null ? null : student.phone(), timing(batch),
+                props.getReceiptNote(), tax));
     }
 
     /** The batch, or null when the plan has none or batch-service cannot be reached. */
@@ -111,14 +116,46 @@ public class ReceiptDocument {
         return t.length() >= 5 ? t.substring(0, 5) : t;
     }
 
-    /** The student's phone number from admission-service, or null. */
-    private String phoneOf(Long studentId) {
+    /** The student from admission-service (phone, state), or null when it cannot be reached. */
+    private com.itilms.finance.client.AdmissionClient.StudentSummary lookupStudent(Long studentId) {
         try {
             var found = admission.lookup(List.of(studentId));
-            return found == null || found.isEmpty() ? null : found.get(0).phone();
+            return found == null || found.isEmpty() ? null : found.get(0);
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    /** The GST in this payment, with the rate in force on its date and the fee heads it went towards. */
+    ReceiptPdfRenderer.TaxInfo taxOf(Payment payment, FeePlan plan, GstSettingsService.Settings current,
+                                     com.itilms.finance.client.AdmissionClient.StudentSummary student) {
+        java.math.BigDecimal rate = GstSettingsService.rateFor(current, payment.getPaymentDate());
+        String studentState = student == null ? null : student.state();
+        boolean inter = PaymentTax.interState(studentState, current.gstin());
+        List<PaymentTax.Part> parts;
+        try {
+            parts = FeeLedger.slicesOf(plan, payments.findByFeePlanIdOrderByPaymentDateAscIdAsc(plan.getId()), payment).stream()
+                    .map(sl -> new PaymentTax.Part(sl.amount(), sl.installment().isGstExempt())).toList();
+        } catch (RuntimeException e) {
+            parts = List.of();
+        }
+        PaymentTax.Result r = PaymentTax.compute(payment.getAmount(), parts, rate, inter);
+        return new ReceiptPdfRenderer.TaxInfo(r.rate(), r.taxable(), r.exempt(), r.cgst(), r.sgst(), r.igst(),
+                placeOfSupply(studentState, current.gstin()));
+    }
+
+    /** "Maharashtra (27)": the student's state, or the institute's own when the student's is not known. */
+    static String placeOfSupply(String studentState, String gstin) {
+        String code = StateCodes.codeOf(studentState);
+        if (code != null) {
+            return StateCodes.nameOf(code) + " (" + code + ")";
+        }
+        if (gstin != null && gstin.trim().length() >= 2) {
+            String own = gstin.trim().substring(0, 2);
+            String name = StateCodes.nameOf(own);
+            return name == null ? null : name + " (" + own + ")";
+        }
+        return null;
     }
 
     /**

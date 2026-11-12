@@ -18,12 +18,14 @@ function ChargeFields({
   title,
   amount,
   dueDate,
+  gstExempt,
   onChange,
 }: {
   title: string
   amount: string
   dueDate: string
-  onChange: (next: { title?: string; amount?: string; dueDate?: string }) => void
+  gstExempt: boolean
+  onChange: (next: { title?: string; amount?: string; dueDate?: string; gstExempt?: boolean }) => void
 }) {
   return (
     <>
@@ -64,6 +66,10 @@ function ChargeFields({
           <Input id="charge-due" type="date" min={today()} required value={dueDate} onChange={(event) => onChange({ dueDate: event.target.value })} />
         </div>
       </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={gstExempt} onChange={(event) => onChange({ gstExempt: event.target.checked })} />
+        No GST on this charge (for example a refundable deposit)
+      </label>
     </>
   )
 }
@@ -71,13 +77,13 @@ function ChargeFields({
 /** "Add charge" on one student's fee plan: a development fee, a book, an exam fee. The student is told. */
 export function AddChargeButton({ feePlanId, onAdded }: { feePlanId: number; onAdded: () => void }) {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ title: '', amount: '', dueDate: today() })
+  const [form, setForm] = useState({ title: '', amount: '', dueDate: today(), gstExempt: false })
   const mutation = useMutation({
-    mutationFn: () => addCharge(feePlanId, { title: form.title.trim(), amount: Number(form.amount), dueDate: form.dueDate }),
+    mutationFn: () => addCharge(feePlanId, { title: form.title.trim(), amount: Number(form.amount), dueDate: form.dueDate, gstExempt: form.gstExempt }),
     onSuccess: () => {
       toast.success('Charge added. The student has been told.')
       setOpen(false)
-      setForm({ title: '', amount: '', dueDate: today() })
+      setForm({ title: '', amount: '', dueDate: today(), gstExempt: false })
       onAdded()
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not add the charge.')),
@@ -120,12 +126,12 @@ export function ChargeBatchButton() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [batchId, setBatchId] = useState('')
-  const [form, setForm] = useState({ title: '', amount: '', dueDate: today() })
+  const [form, setForm] = useState({ title: '', amount: '', dueDate: today(), gstExempt: false })
   const batches = useQuery({ queryKey: ['finance', 'charge-batches'], queryFn: () => searchBatches({}), enabled: open })
   const list = batches.data?.content ?? []
 
   const mutation = useMutation({
-    mutationFn: () => addBatchCharge({ batchId: Number(batchId), title: form.title.trim(), amount: Number(form.amount), dueDate: form.dueDate }),
+    mutationFn: () => addBatchCharge({ batchId: Number(batchId), title: form.title.trim(), amount: Number(form.amount), dueDate: form.dueDate, gstExempt: form.gstExempt }),
     onSuccess: (result) => {
       toast.success(
         result.students > 0
@@ -133,7 +139,7 @@ export function ChargeBatchButton() {
           : 'No student in this batch has a fee plan yet, so nothing was charged.',
       )
       setOpen(false)
-      setForm({ title: '', amount: '', dueDate: today() })
+      setForm({ title: '', amount: '', dueDate: today(), gstExempt: false })
       void queryClient.invalidateQueries({ queryKey: ['finance'] })
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not add the charge.')),

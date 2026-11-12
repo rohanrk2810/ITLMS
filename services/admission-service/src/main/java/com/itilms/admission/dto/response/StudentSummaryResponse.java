@@ -20,7 +20,8 @@ public record StudentSummaryResponse(
         String fullName,
         String email,
         String phone,
-        String status
+        String status,
+        String state
 ) {
 
     public static StudentSummaryResponse from(Student student) {
@@ -31,6 +32,7 @@ public record StudentSummaryResponse(
                 student.getFullName(),
                 student.getEmail(),
                 student.getPhone(),
-                student.getStatus().name());
+                student.getStatus().name(),
+                student.getState());
     }
 }

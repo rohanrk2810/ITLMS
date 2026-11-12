@@ -127,12 +127,18 @@ public class FeePlan extends AuditableEntity {
      * that was fully paid owes money again.
      */
     public FeeInstallment addCharge(String label, BigDecimal amount, java.time.LocalDate dueDate) {
+        return addCharge(label, amount, dueDate, false);
+    }
+
+    /** As above, marking the charge as one that carries no GST. */
+    public FeeInstallment addCharge(String label, BigDecimal amount, java.time.LocalDate dueDate, boolean gstExempt) {
         int next = installments.stream().mapToInt(FeeInstallment::getInstallmentNo).max().orElse(0) + 1;
         FeeInstallment charge = FeeInstallment.builder()
                 .installmentNo(next)
                 .dueDate(dueDate)
                 .amount(money(amount))
                 .label(label)
+                .gstExempt(gstExempt)
                 .build();
         installments.add(charge);
         setTerms(totalFee.add(money(amount)), discount);

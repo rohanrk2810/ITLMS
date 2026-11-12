@@ -154,7 +154,7 @@ class OnlineCheckoutServiceTest {
         when(orders.lockByRazorpayOrderId("order_1")).thenReturn(Optional.of(o));
         when(gateway.validPayment("order_1", "pay_1", "sig")).thenReturn(true);
         when(admission.lookup(List.of(STUDENT))).thenReturn(List.of(
-                new AdmissionClient.StudentSummary(STUDENT, 7L, "STU-30", "Asha Patil", "ACTIVE", "9800000000")));
+                new AdmissionClient.StudentSummary(STUDENT, 7L, "STU-30", "Asha Patil", "ACTIVE", "9800000000", "Maharashtra")));
         FeePlan plan = FeePlan.builder().studentId(STUDENT).courseId(5L).build();
         plan.setId(11L);
         when(plans.findFirstByStudentIdAndCourseIdAndStatusNot(any(), any(), any())).thenReturn(Optional.of(plan));
