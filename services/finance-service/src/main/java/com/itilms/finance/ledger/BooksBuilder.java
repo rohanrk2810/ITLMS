@@ -98,16 +98,24 @@ public final class BooksBuilder {
     public static List<Entry> build(List<FeePlan> plans, List<Payment> payments, List<Refund> refunds,
                                     List<Expense> expenses, Map<Long, String> salaryMethodByExpenseId,
                                     BigDecimal gstRate, ZoneId zone) {
+        return build(plans, payments, refunds, expenses, salaryMethodByExpenseId, date -> gstRate, zone);
+    }
+
+    /** The GST rate may depend on the date a fee was billed: GST applies only from its effective date. */
+    public static List<Entry> build(List<FeePlan> plans, List<Payment> payments, List<Refund> refunds,
+                                    List<Expense> expenses, Map<Long, String> salaryMethodByExpenseId,
+                                    java.util.function.Function<LocalDate, BigDecimal> gstRateOn, ZoneId zone) {
         List<Entry> out = new ArrayList<>();
 
         for (FeePlan plan : plans) {
             LocalDate raised = plan.getCreatedAt() == null ? LocalDate.now(zone) : plan.getCreatedAt().atZone(zone).toLocalDate();
             String ref = "PLAN-" + plan.getId();
             String who = (plan.getStudentName() == null ? "student " + plan.getStudentId() : plan.getStudentName());
-            out.add(billed(raised, ref, "Fee billed: " + who, plan.getTotalFee(), plan.getDiscount(), gstRate, false));
+            out.add(billed(raised, ref, "Fee billed: " + who, plan.getTotalFee(), plan.getDiscount(), gstRateOn.apply(raised), false));
             if (plan.getStatus() == FeePlanStatus.CANCELLED && plan.getCancelledAt() != null) {
+                // Undone with the rate it was billed at, so the tax comes back out exactly as it went in.
                 out.add(billed(plan.getCancelledAt().atZone(zone).toLocalDate(), ref, "Fee plan cancelled: " + who,
-                        plan.getTotalFee(), plan.getDiscount(), gstRate, true));
+                        plan.getTotalFee(), plan.getDiscount(), gstRateOn.apply(raised), true));
             }
         }
 

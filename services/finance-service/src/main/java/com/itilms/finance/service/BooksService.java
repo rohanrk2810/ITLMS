@@ -37,6 +37,7 @@ public class BooksService {
     private final ExpenseRepository expenses;
     private final PayslipRepository slips;
     private final FinanceProperties props;
+    private final GstSettingsService gstSettings;
 
     public record Balance(String code, String name, String type, BigDecimal debit, BigDecimal credit) {
     }
@@ -61,8 +62,13 @@ public class BooksService {
         Map<Long, String> salaryMethods = slips.findAll().stream().filter(p -> p.getExpenseId() != null)
                 .collect(Collectors.toMap(Payslip::getExpenseId, p -> p.getPayMethod() == null ? "" : p.getPayMethod(), (a, b) -> a));
         List<Entry> all = BooksBuilder.build(plans.findAll(), payments.findAll(), refunds.findAll(), expenses.findAll(),
-                salaryMethods, props.getGstPercent(), props.getZone());
+                salaryMethods, rateByDate(), props.getZone());
         return compose(from, to, all);
+    }
+
+    private java.util.function.Function<LocalDate, BigDecimal> rateByDate() {
+        GstSettingsService.Settings current = gstSettings.current();
+        return date -> GstSettingsService.rateFor(current, date);
     }
 
     /** Pure, so the statements can be tested from a list of entries. */

@@ -559,3 +559,23 @@ export async function unmatchBankLine(lineId: number): Promise<BankLineView> {
   const { data } = await apiClient.post<BankLineView>(`/api/fees/bank/lines/${lineId}/unmatch`)
   return data
 }
+
+export interface GstSettings {
+  percent: number
+  gstin: string
+  sacCode: string
+  effectiveFrom: string | null
+  fromPortal: boolean
+  setAt: string | null
+}
+
+export async function getGstSettings(): Promise<GstSettings> {
+  const { data } = await apiClient.get<GstSettings>('/api/fees/gst/settings')
+  return data
+}
+
+/** Sets the GST rate (administrator only). It applies from effectiveFrom; 0 switches GST off. */
+export async function saveGstSettings(input: { percent: number; gstin: string; sacCode: string; effectiveFrom?: string }): Promise<GstSettings> {
+  const { data } = await apiClient.put<GstSettings>('/api/fees/gst/settings', input)
+  return data
+}

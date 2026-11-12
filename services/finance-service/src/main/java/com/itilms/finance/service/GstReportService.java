@@ -28,6 +28,7 @@ public class GstReportService {
 
     private final PaymentRepository payments;
     private final FinanceProperties props;
+    private final GstSettingsService settings;
 
     public record Month(String month, int payments, BigDecimal received, BigDecimal taxable, BigDecimal cgst,
                         BigDecimal sgst) {
@@ -39,17 +40,24 @@ public class GstReportService {
 
     @Transactional(readOnly = true)
     public Report report(LocalDate from, LocalDate to) {
-        boolean on = props.getGstPercent() != null && props.getGstPercent().signum() > 0;
+        GstSettingsService.Settings current = settings.current();
+        boolean on = current.percent() != null && current.percent().signum() > 0;
         if (!on) {
-            return new Report(false, BigDecimal.ZERO, props.getGstin(), from, to, BigDecimal.ZERO, BigDecimal.ZERO,
+            return new Report(false, BigDecimal.ZERO, current.gstin(), from, to, BigDecimal.ZERO, BigDecimal.ZERO,
                     BigDecimal.ZERO, BigDecimal.ZERO, List.of());
         }
-        return summarise(props.getGstPercent(), props.getGstin(), from, to,
+        return summarise(date -> GstSettingsService.rateFor(current, date), current.percent(), current.gstin(), from, to,
                 payments.findByPaymentDateBetweenAndStatus(from, to, com.itilms.finance.entity.PaymentStatus.SUCCESS));
     }
 
-    /** Pure, so the figures can be tested. */
+    /** Pure, so the figures can be tested: one rate for every payment. */
     static Report summarise(BigDecimal rate, String gstin, LocalDate from, LocalDate to, List<Payment> rows) {
+        return summarise(date -> rate, rate, gstin, from, to, rows);
+    }
+
+    /** Pure: the rate may depend on the payment's date, because GST applies only from its effective date. */
+    static Report summarise(java.util.function.Function<LocalDate, BigDecimal> rateOn, BigDecimal rate, String gstin,
+                            LocalDate from, LocalDate to, List<Payment> rows) {
         Map<YearMonth, List<Payment>> byMonth = new TreeMap<>();
         rows.forEach(p -> byMonth.computeIfAbsent(YearMonth.from(p.getPaymentDate()), k -> new ArrayList<>()).add(p));
         List<Month> months = new ArrayList<>();
@@ -63,7 +71,7 @@ public class GstReportService {
             BigDecimal mCgst = BigDecimal.ZERO;
             BigDecimal mSgst = BigDecimal.ZERO;
             for (Payment p : e.getValue()) {
-                GstMath.Split split = GstMath.split(p.netAmount(), rate);
+                GstMath.Split split = GstMath.split(p.netAmount(), rateOn.apply(p.getPaymentDate()));
                 mReceived = mReceived.add(p.netAmount());
                 mTaxable = mTaxable.add(split.taxable());
                 mCgst = mCgst.add(split.cgst());
