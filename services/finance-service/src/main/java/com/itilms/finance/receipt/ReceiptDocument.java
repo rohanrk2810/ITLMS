@@ -14,6 +14,7 @@ import com.itilms.finance.entity.Payment;
 import com.itilms.finance.entity.PaymentStatus;
 import com.itilms.finance.ledger.FeeLedger;
 import com.itilms.finance.repository.PaymentRepository;
+import com.itilms.finance.service.GstSettingsService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +34,7 @@ public class ReceiptDocument {
     private final FinanceProperties props;
     private final PaymentRepository payments;
     private final BatchLookupClient batches;
+    private final GstSettingsService gstSettings;
 
     /** The institute as printed on the receipt, or null when identity-service cannot be reached. */
     public BrandingClient.Branding institute() {
@@ -58,12 +60,17 @@ public class ReceiptDocument {
     public byte[] pdf(Payment payment, FeePlan plan, BigDecimal paidToDate, BigDecimal balance) {
         BrandingClient.Branding institute = institute();
         String course = courseTitle(plan.getCourseId());
+        GstSettingsService.Settings current = gstSettings.current();
+        // The rate in force on the day of the payment, so a receipt reprinted later shows what it showed then.
+        record Gst(java.math.BigDecimal percent, String gstin, String sacCode) {
+        }
+        Gst gst = new Gst(GstSettingsService.rateFor(current, payment.getPaymentDate()), current.gstin(), current.sacCode());
         return renderer.render(new ReceiptPdfRenderer.Data(payment.getReceiptNo(), payment.getPaymentDate(),
                 plan.getStudentName(), plan.getStudentCode(), course, props.getCurrencySymbol(),
                 payment.getAmount(), payment.getMethod().name(), payment.getReferenceNo(), plan.getNetFee(), paidToDate,
                 balance, payment.getStatus() == PaymentStatus.REVERSED, institute, logo(institute),
                 particulars(payment, plan, course), batchName(plan.getBatchId()), props.getBank(),
-                props.getGstPercent(), props.getGstin(), props.getSacCode()));
+                gst.percent(), gst.gstin(), gst.sacCode()));
     }
 
     /** The batch name, or null when the plan has no batch or batch-service cannot be reached. */

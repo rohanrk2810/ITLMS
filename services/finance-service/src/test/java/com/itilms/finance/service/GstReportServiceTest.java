@@ -20,6 +20,17 @@ class GstReportServiceTest {
     }
 
     @Test
+    void gstAppliesOnlyFromItsEffectiveDate() {
+        var from = LocalDate.of(2026, 2, 1);
+        var report = GstReportService.summarise(date -> date.isBefore(from) ? BigDecimal.ZERO : new BigDecimal("18"),
+                new BigDecimal("18"), "27AAAAA0000A1Z5", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 28),
+                List.of(payment("2026-01-10", "11800", "0"), payment("2026-02-10", "11800", "0")));
+
+        assertThat(report.months().get(0).cgst()).isEqualByComparingTo("0");
+        assertThat(report.months().get(1).cgst()).isEqualByComparingTo("900.00");
+    }
+
+    @Test
     void addsUpTheTaxPerMonthNetOfRefunds() {
         var report = GstReportService.summarise(new BigDecimal("18"), "27AAAAA0000A1Z5", LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 2, 28), List.of(payment("2026-01-10", "11800", "0"), payment("2026-01-20", "5900", "0"),
