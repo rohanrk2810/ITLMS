@@ -123,6 +123,7 @@ export const DASHBOARD_BLOCKS: { id: string; label: string }[] = [
   { id: 'charts', label: 'Charts' },
   { id: 'audit-link', label: 'Audit trail link' },
   { id: 'quick-links', label: 'Quick links (trainer, student, finance, placement)' },
+  { id: 'fee-due', label: 'Fees due (student)' },
   { id: 'student-charts', label: 'Student charts' },
   { id: 'announcements', label: 'Announcements' },
 ]
