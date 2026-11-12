@@ -6,6 +6,7 @@ import { type FeePlanResponse, getReceipt, myFeePlans, type ReceiptResponse } fr
 import { DownloadReceiptButton } from '@/components/download-receipt-button'
 import { PayFeesButton, PayInstallmentButton } from '@/components/pay-fees'
 import { Badge } from '@/components/ui/badge'
+import { DownloadStatementButton } from '@/components/download-statement-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -28,9 +29,12 @@ export function FinancePage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Fees</h1>
-        <p className="text-muted-foreground">Your fee plans, what&apos;s paid, and what&apos;s still due.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Fees</h1>
+          <p className="text-muted-foreground">Your fee plans, what&apos;s paid, and what&apos;s still due.</p>
+        </div>
+        {query.data && query.data.length > 0 && <DownloadStatementButton studentId={query.data[0].studentId} />}
       </div>
 
       {query.isLoading && (

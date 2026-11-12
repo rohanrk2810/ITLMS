@@ -240,3 +240,16 @@ export async function saveFeeTemplate(
   const { data } = await apiClient.put<FeeTemplate>(`/api/fees/templates/${courseId}`, input)
   return data
 }
+
+/** Downloads a student's statement of fees: every course, every payment and the balance. */
+export async function downloadStatementPdf(studentId: number | string): Promise<void> {
+  const { data } = await apiClient.get<ArrayBuffer>(`/api/fees/students/${studentId}/statement`, { responseType: 'arraybuffer' })
+  const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `Fee-statement-${studentId}.pdf`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}

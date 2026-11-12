@@ -16,6 +16,7 @@ import {
 } from '@/api/finance'
 import { DownloadReceiptButton } from '@/components/download-receipt-button'
 import { AddChargeButton } from '@/components/add-charge-dialogs'
+import { DownloadStatementButton } from '@/components/download-statement-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -88,6 +89,7 @@ export function FeePlanDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <DownloadStatementButton studentId={plan.studentId} />
           <Badge variant={plan.status === 'CANCELLED' ? 'destructive' : 'default'}>{plan.status}</Badge>
           {plan.status === 'ACTIVE' && plan.paid === 0 && (
             <CancelPlanDialog onConfirm={(reason) => cancelMutation.mutate(reason)} pending={cancelMutation.isPending} />
