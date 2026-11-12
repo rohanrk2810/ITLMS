@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
-import { ChevronLeft, Menu } from 'lucide-react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import { ChevronLeft, House, Menu } from 'lucide-react'
 
 import { BrandMark } from '@/components/brand-mark'
 import { NotificationBell } from '@/components/notification-bell'
@@ -92,6 +92,11 @@ export function AppLayout() {
           <span className="hidden text-sm text-muted-foreground md:inline" />
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
+            <Button asChild variant="ghost" size="icon" aria-label="Home" title="Home">
+              <Link to="/app">
+                <House />
+              </Link>
+            </Button>
             <NotificationBell />
             <UserMenu />
           </div>
