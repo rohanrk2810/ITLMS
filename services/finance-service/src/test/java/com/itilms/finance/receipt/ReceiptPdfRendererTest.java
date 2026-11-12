@@ -43,6 +43,14 @@ class ReceiptPdfRendererTest {
     }
 
     @Test
+    void saysWhatShareOfTheFeeIsPaidAndLeft() {
+        assertThat(ReceiptPdfRenderer.percentPaid(new BigDecimal("12500"), new BigDecimal("50000"))).isEqualTo("25");
+        assertThat(ReceiptPdfRenderer.percentLeft(new BigDecimal("12500"), new BigDecimal("50000"))).isEqualTo("75");
+        assertThat(ReceiptPdfRenderer.percentPaid(new BigDecimal("1"), new BigDecimal("3"))).isEqualTo("33.3");
+        assertThat(ReceiptPdfRenderer.percentPaid(BigDecimal.ZERO, BigDecimal.ZERO)).isEqualTo("100");
+    }
+
+    @Test
     void stillDrawsWhenBrandingCannotBeRead() {
         byte[] pdf = new ReceiptPdfRenderer().render(data(null));
 

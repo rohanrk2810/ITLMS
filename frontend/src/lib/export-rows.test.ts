@@ -20,6 +20,7 @@ import {
   leadsReport,
   lessonWatchReport,
   overdueReport,
+  percentOf,
   progressReport,
   resultsReport,
   studentsReport,
@@ -237,6 +238,23 @@ describe('feePlansReport', () => {
     expect(report.info).toContainEqual(['Fee plans', '2'])
     expect(report.info).toContainEqual(['Outstanding', '35000'])
     expect(feePlansReport([]).info).toContainEqual(['Status', 'All'])
+  })
+})
+
+describe('fee percentages', () => {
+  it('shows how much of the fee is paid and how much is left, on every row and in the summary', () => {
+    const p = plan(10, 1, { netFee: 50000, paid: 12500, outstanding: 37500, installments: [{ remaining: 0 }, { remaining: 37500 }] as never })
+    const report = feePlansReport([p])
+    expectRectangular(report)
+    expect(report.rows[0][report.header.indexOf('Paid %')]).toBe(25)
+    expect(report.rows[0][report.header.indexOf('Balance %')]).toBe(75)
+    expect(report.rows[0][report.header.indexOf('Installments paid')]).toBe('1 of 2')
+    expect(report.info).toContainEqual(['Collected %', '25%'])
+    expect(report.info).toContainEqual(['Balance %', '75%'])
+  })
+
+  it('a fee of nothing counts as fully paid', () => {
+    expect(percentOf(0, 0)).toBe(100)
   })
 })
 

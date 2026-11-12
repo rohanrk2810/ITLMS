@@ -149,8 +149,9 @@ public class StatementPdfRenderer {
         head.setBorderWidth(0.8f);
         t.addCell(head);
         PdfPCell fee = cell("Net fee " + ReceiptPdfRenderer.money(symbol, c.netFee()) + "   Paid "
-                + ReceiptPdfRenderer.money(symbol, c.paid()) + "   Balance " + ReceiptPdfRenderer.money(symbol, c.outstanding()),
-                Font.NORMAL);
+                + ReceiptPdfRenderer.money(symbol, c.paid()) + " (" + ReceiptPdfRenderer.percentPaid(c.paid(), c.netFee())
+                + "%)   Balance " + ReceiptPdfRenderer.money(symbol, c.outstanding()) + " ("
+                + ReceiptPdfRenderer.percentLeft(c.paid(), c.netFee()) + "%)", Font.NORMAL);
         fee.setColspan(5);
         t.addCell(fee);
         for (String h : new String[]{"Date", "Receipt No", "Mode", "Reference", "Amount"}) {
