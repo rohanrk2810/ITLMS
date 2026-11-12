@@ -18,6 +18,7 @@ import { DownloadReceiptButton } from '@/components/download-receipt-button'
 import { AddChargeButton } from '@/components/add-charge-dialogs'
 import { DownloadStatementButton } from '@/components/download-statement-button'
 import { hasRole, useAuthStore } from '@/stores/auth-store'
+import { WaiveLateFeeButton } from '@/components/waive-late-fee-button'
 import { ConcessionButton } from '@/components/concession-dialog'
 import { RefundDialog } from '@/components/refund-dialog'
 import { Badge } from '@/components/ui/badge'
@@ -44,6 +45,7 @@ export function FeePlanDetailPage() {
   const { feePlanId } = useParams<{ feePlanId: string }>()
   const queryClient = useQueryClient()
   const canRefund = hasRole(useAuthStore((state) => state.roles), ['ADMIN', 'FINANCE'])
+  const isAdmin = hasRole(useAuthStore((state) => state.roles), ['ADMIN'])
   const [receiptPaymentId, setReceiptPaymentId] = useState<number | null>(null)
 
   const query = useQuery({
@@ -141,6 +143,9 @@ export function FeePlanDetailPage() {
                 <TableCell>{formatMoney(installment.paid, plan.currency)}</TableCell>
                 <TableCell>
                   <Badge variant={STATE_VARIANT[installment.state] ?? 'outline'}>{installment.state}</Badge>
+                  {isAdmin && installment.label === 'Late fee' && installment.paid === 0 && (
+                    <WaiveLateFeeButton feePlanId={plan.id} installmentId={installment.id} onDone={invalidate} />
+                  )}
                 </TableCell>
               </TableRow>
             ))}

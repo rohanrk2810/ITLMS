@@ -28,6 +28,9 @@ itilms:
     # "Today" for due dates is the institute's today, not the server's.
     zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}
     receipt-prefix: RCPT
+    # A flat late fee added once to an installment still unpaid this many days after its due date. 0 = no late fees.
+    late-fee: ${LATE_FEE:0}
+    late-fee-after-days: ${LATE_FEE_AFTER_DAYS:7}
     # A discount above this percent of the fee is given by the administrator only; any discount needs a reason.
     discount-approval-percent: 10
     # Printed on every receipt as "Bank". Leave empty to print no bank line.

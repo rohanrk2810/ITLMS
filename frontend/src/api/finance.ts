@@ -313,3 +313,9 @@ export async function updateFeePlan(id: number | string, input: FeePlanInput): P
   const { data } = await apiClient.put<FeePlanResponse>(`/api/fee-plans/${id}`, input)
   return data
 }
+
+/** Removes a late fee (administrator only; nothing may have been paid on it). */
+export async function waiveLateFee(feePlanId: number | string, installmentId: number, reason: string): Promise<FeePlanResponse> {
+  const { data } = await apiClient.post<FeePlanResponse>(`/api/fee-plans/${feePlanId}/installments/${installmentId}/waive`, { reason })
+  return data
+}

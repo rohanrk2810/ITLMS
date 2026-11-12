@@ -51,6 +51,9 @@ public interface FeePlanService {
     /** Withdraws a plan with no payments on it - a student who never joined. */
     FeePlanResponse cancel(Long id, String reason);
 
+    /** Takes a late fee off a plan. Only a late fee nothing has been paid on can be waived. */
+    FeePlanResponse waiveLateFee(Long planId, Long installmentId, String reason);
+
     FeePlanResponse get(Long id);
 
     List<FeePlanResponse> forStudent(Long studentId);
