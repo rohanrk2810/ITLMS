@@ -12,6 +12,7 @@ import com.itilms.common.security.Roles;
 import com.itilms.finance.dto.response.FeePlanResponse;
 import com.itilms.finance.dto.response.FinanceDashboardResponse;
 import com.itilms.finance.dto.response.OverdueItemResponse;
+import com.itilms.finance.receipt.StatementDocument;
 import com.itilms.finance.service.FeePlanService;
 import com.itilms.finance.service.FinanceReportService;
 
@@ -28,6 +29,7 @@ public class FeeController {
 
     private final FeePlanService feePlanService;
     private final FinanceReportService reportService;
+    private final StatementDocument statements;
 
     @Operation(summary = "My fees",
             description = "Each fee plan with its schedule, what is paid, what is outstanding (net fee "
@@ -43,6 +45,20 @@ public class FeeController {
     @GetMapping("/students/{studentId}")
     public List<FeePlanResponse> forStudent(@PathVariable Long studentId) {
         return feePlanService.forStudent(studentId);
+    }
+
+    @Operation(summary = "A student's statement of fees as a PDF",
+            description = "Every course's fee, each payment received and the balance. Finance and coordinators; a student only their own.")
+    @PreAuthorize("hasAnyRole('ADMIN','FINANCE','COORDINATOR','STUDENT')")
+    @GetMapping(value = "/students/{studentId}/statement", produces = org.springframework.http.MediaType.APPLICATION_PDF_VALUE)
+    public org.springframework.http.ResponseEntity<byte[]> statement(@PathVariable Long studentId) {
+        byte[] pdf = statements.pdf(feePlanService.forStudent(studentId));
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"fee-statement-" + studentId + ".pdf\"")
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     @Operation(summary = "Finance dashboard",

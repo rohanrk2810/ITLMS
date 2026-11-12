@@ -111,7 +111,7 @@ public class ReceiptDocument {
         }
     }
 
-    private byte[] logo(BrandingClient.Branding institute) {
+    byte[] logo(BrandingClient.Branding institute) {
         if (institute == null || institute.logoUrl() == null) {
             return null;
         }
