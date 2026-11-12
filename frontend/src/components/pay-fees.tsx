@@ -5,6 +5,8 @@ import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import type { FeePlanResponse } from '@/api/finance'
+import { UpiPaySection } from '@/components/upi-pay-section'
+import { getUpiConfig } from '@/api/finance'
 import { createFeeOrder, getCheckoutConfig, payWithRazorpay, verifyOnlinePayment } from '@/api/online-payments'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -49,11 +51,14 @@ function useFeePayment(plan: FeePlanResponse) {
 /** "Pay online" for a fee plan: the next installment, the whole balance, or an amount the student types. */
 export function PayFeesButton({ plan }: { plan: FeePlanResponse }) {
   const ready = useOnlinePaymentReady()
+  const signedIn = useAuthStore((state) => state.status) === 'authenticated'
+  const upi = useQuery({ queryKey: ['finance', 'upi-config'], queryFn: getUpiConfig, enabled: signedIn, staleTime: 5 * 60_000 })
+  const upiReady = upi.data?.enabled === true
   const { pay, paying } = useFeePayment(plan)
   const [open, setOpen] = useState(false)
   const [custom, setCustom] = useState('')
 
-  if (!ready || plan.status !== 'ACTIVE' || plan.outstanding <= 0) return null
+  if ((!ready && !upiReady) || plan.status !== 'ACTIVE' || plan.outstanding <= 0) return null
 
   const next = plan.nextDueAmount != null && plan.nextDueAmount > 0 ? Math.min(plan.nextDueAmount, plan.outstanding) : null
   const nextIsPart = next != null && next < plan.outstanding
@@ -78,14 +83,17 @@ export function PayFeesButton({ plan }: { plan: FeePlanResponse }) {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            {nextIsPart && (
+            {ready && nextIsPart && (
               <Button type="button" disabled={paying} onClick={() => void go(next)}>
                 <CreditCardIcon /> Pay next installment {formatMoney(next, plan.currency)}
               </Button>
             )}
-            <Button type="button" variant={nextIsPart ? 'outline' : 'default'} disabled={paying} onClick={() => void go()}>
-              <CreditCardIcon /> Pay full balance {formatMoney(plan.outstanding, plan.currency)}
-            </Button>
+            {ready && (
+              <Button type="button" variant={nextIsPart ? 'outline' : 'default'} disabled={paying} onClick={() => void go()}>
+                <CreditCardIcon /> Pay full balance {formatMoney(plan.outstanding, plan.currency)}
+              </Button>
+            )}
+            {ready && (
             <div className="flex flex-col gap-2 rounded-lg border p-3">
               <Label htmlFor={`pay-amount-${plan.id}`}>Or another amount</Label>
               <div className="flex gap-2">
@@ -105,6 +113,8 @@ export function PayFeesButton({ plan }: { plan: FeePlanResponse }) {
                 </Button>
               </div>
             </div>
+            )}
+            {upiReady && upi.data && <UpiPaySection plan={plan} config={upi.data} onDone={() => setOpen(false)} />}
             {paying && <p className="text-center text-xs text-muted-foreground">Opening the payment window...</p>}
           </div>
         </DialogContent>

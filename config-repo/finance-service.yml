@@ -28,6 +28,9 @@ itilms:
     # "Today" for due dates is the institute's today, not the server's.
     zone: ${INSTITUTE_TIMEZONE:Asia/Kolkata}
     receipt-prefix: RCPT
+    # The UPI id students pay to (the QR code is made from it). Empty = no UPI payment screen.
+    upi-id: ${INSTITUTE_UPI_ID:}
+    upi-name: ${INSTITUTE_UPI_NAME:}
     # A flat late fee added once to an installment still unpaid this many days after its due date. 0 = no late fees.
     late-fee: ${LATE_FEE:0}
     late-fee-after-days: ${LATE_FEE_AFTER_DAYS:7}

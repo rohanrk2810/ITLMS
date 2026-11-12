@@ -400,3 +400,49 @@ export async function voidExpense(id: number, reason: string): Promise<ExpenseVi
   const { data } = await apiClient.post<ExpenseView>(`/api/fees/expenses/${id}/void`, { reason })
   return data
 }
+
+export interface UpiConfig {
+  enabled: boolean
+  upiId: string | null
+  payeeName: string
+}
+
+export interface UpiClaim {
+  id: number
+  feePlanId: number
+  studentId: number
+  studentName: string | null
+  amount: number
+  utr: string
+  /** PENDING, CONFIRMED or REJECTED. */
+  status: string
+  claimedAt: string
+  decidedAt: string | null
+  decisionNote: string | null
+  paymentId: number | null
+}
+
+export async function getUpiConfig(): Promise<UpiConfig> {
+  const { data } = await apiClient.get<UpiConfig>('/api/fees/upi/config')
+  return data
+}
+
+export async function claimUpiPayment(input: { feePlanId: number; amount: number; utr: string }): Promise<UpiClaim> {
+  const { data } = await apiClient.post<UpiClaim>('/api/fees/upi/claims', input)
+  return data
+}
+
+export async function listUpiClaims(): Promise<UpiClaim[]> {
+  const { data } = await apiClient.get<UpiClaim[]>('/api/fees/upi/claims')
+  return data
+}
+
+export async function confirmUpiClaim(id: number): Promise<UpiClaim> {
+  const { data } = await apiClient.post<UpiClaim>(`/api/fees/upi/claims/${id}/confirm`)
+  return data
+}
+
+export async function rejectUpiClaim(id: number, reason: string): Promise<UpiClaim> {
+  const { data } = await apiClient.post<UpiClaim>(`/api/fees/upi/claims/${id}/reject`, { reason })
+  return data
+}
