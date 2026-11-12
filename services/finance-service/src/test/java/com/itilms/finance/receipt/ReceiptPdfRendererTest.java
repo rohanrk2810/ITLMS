@@ -28,7 +28,7 @@ class ReceiptPdfRendererTest {
         assertThat(new String(pdf, 0, 5, StandardCharsets.ISO_8859_1)).isEqualTo("%PDF-");
         assertThat(pdf.length).isGreaterThan(1500);
         String text = text(pdf);
-        assertThat(text).contains("Sprint IT Academy", "FEE RECEIPT", "RCPT-2026-0007", "Asha Patil", "STU-30",
+        assertThat(text).contains("Sprint IT Academy", "STUDENT FEES RECEIPT", "Student Copy", "10/11/2026", "2026-2027", "Particulars".toUpperCase(), "RCPT-2026-0007", "Asha Patil", "STU-30",
                 "Java Full Stack", "Rs. 15,000.00", "Rupees Fifteen Thousand Only", "Online (Razorpay)", "pay_Abc123",
                 "Balance", "Rs. 0.00", "Pune", "Phone: +91 98000 00000", "Email: info@x.in");
         // A sample to look at: target/sample-receipt.pdf

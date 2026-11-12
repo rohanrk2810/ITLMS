@@ -26,8 +26,9 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 
 /**
- * Draws a fee receipt as a one-page A4 PDF: a header in the institute colour with its logo, who paid and for what, the
- * amount large with its words, how it was paid, and where the fees stand. Text uses the standard PDF fonts, which
+ * Draws a fee receipt as a one-page A4 PDF: the usual college layout: logo and name, "Student Fees Receipt", a boxed block of
+ * receipt, student and course details, a particulars table with the total in words, how it was paid, and where the
+ * fees stand. Text uses the standard PDF fonts, which
  * cover Latin script only, so money is shown as "Rs." and not with the rupee sign.
  */
 @Component
@@ -37,7 +38,7 @@ public class ReceiptPdfRenderer {
     private static final Color INK = new Color(0x22, 0x22, 0x22);
     private static final Color MUTED = new Color(0x6B, 0x6B, 0x6B);
     private static final Color LINE = new Color(0xDD, 0xDD, 0xDD);
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE_SLASH = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH);
 
     /** Everything on the receipt. The institute and the logo may be null. */
     public record Data(String receiptNo, LocalDate date, String studentName, String studentCode,
@@ -48,7 +49,7 @@ public class ReceiptPdfRenderer {
 
     public byte[] render(Data d) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document doc = new Document(PageSize.A4, 0, 0, 0, 36);
+        Document doc = new Document(PageSize.A4, 36, 36, 30, 36);
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
             writer.setPageEvent(new Watermark(d));
@@ -56,42 +57,30 @@ public class ReceiptPdfRenderer {
             Color brand = brand(d.institute());
             doc.add(header(d, brand));
 
-            PdfPTable body = new PdfPTable(1);
-            body.setWidthPercentage(100);
-            PdfPCell wrap = new PdfPCell();
-            wrap.setBorder(Rectangle.NO_BORDER);
-            wrap.setPaddingLeft(40);
-            wrap.setPaddingRight(40);
-            wrap.setPaddingTop(24);
+            Paragraph title = new Paragraph(d.reversed() ? "STUDENT FEES RECEIPT - CANCELLED" : "STUDENT FEES RECEIPT",
+                    font(Font.BOLD, 12, d.reversed() ? new Color(0xB3, 0x26, 0x1E) : Color.BLACK));
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingBefore(14);
+            doc.add(title);
+            Paragraph copy = new Paragraph("Student Copy", font(Font.BOLD, 10, Color.BLACK));
+            copy.setAlignment(Element.ALIGN_CENTER);
+            copy.setSpacingBefore(6);
+            copy.setSpacingAfter(8);
+            doc.add(copy);
 
-            wrap.addElement(new Paragraph(d.reversed() ? "FEE RECEIPT - CANCELLED" : "FEE RECEIPT",
-                    font(Font.BOLD, 20, d.reversed() ? new Color(0xB3, 0x26, 0x1E) : INK)));
-            Paragraph sub = new Paragraph("Receipt no. " + d.receiptNo() + "    Date " + d.date().format(DATE),
-                    font(Font.NORMAL, 10, MUTED));
-            sub.setSpacingAfter(16);
-            wrap.addElement(sub);
+            doc.add(infoBox(d));
+            doc.add(particularsBox(d));
 
-            PdfPTable who = new PdfPTable(2);
-            who.setWidthPercentage(100);
-            who.setSpacingAfter(14);
-            who.addCell(block("RECEIVED FROM", d.studentName(), d.studentCode() == null ? "" : "Student ID " + d.studentCode()));
-            who.addCell(block("TOWARDS", d.courseTitle() == null ? "Course fee" : d.courseTitle(), "Course fee"));
-            wrap.addElement(who);
+            Paragraph computer = new Paragraph("This is Computer Generated Receipt", font(Font.BOLD, 9, Color.BLACK));
+            computer.setSpacingBefore(6);
+            doc.add(computer);
+            doc.add(feeSummary(d));
+            doc.add(footer(d.institute(), brand));
 
-            wrap.addElement(amountBox(d, brand));
-            wrap.addElement(detailTable(d));
-            wrap.addElement(summaryTable(d));
-
-            Paragraph thanks = new Paragraph("Thank you for your payment.", font(Font.BOLD, 11, INK));
-            thanks.setSpacingBefore(22);
-            wrap.addElement(thanks);
-            Paragraph note = new Paragraph("This is a computer-generated receipt and needs no signature. "
-                    + "Please keep it for your records.", font(Font.NORMAL, 8.5f, MUTED));
-            note.setSpacingBefore(4);
-            wrap.addElement(note);
-            wrap.addElement(footer(d.institute(), brand));
-            body.addCell(wrap);
-            doc.add(body);
+            Paragraph note = new Paragraph("Note : Produce this receipt for future clarification in respect of fees paid.",
+                    font(Font.BOLD, 9, Color.BLACK));
+            note.setSpacingBefore(14);
+            doc.add(note);
         } catch (DocumentException e) {
             throw new IllegalStateException("Could not draw the receipt", e);
         } finally {
@@ -102,22 +91,19 @@ public class ReceiptPdfRenderer {
 
     // ------------------------------------------------------------------------------------------------
 
+    /** The institute logo on the left, its name and address beside it. */
     private PdfPTable header(Data d, Color brand) throws DocumentException {
-        PdfPTable band = new PdfPTable(new float[]{1.2f, 6f});
+        PdfPTable band = new PdfPTable(new float[]{1.3f, 6f});
         band.setWidthPercentage(100);
         String name = d.institute() != null && d.institute().name() != null ? d.institute().name() : "Fee receipt";
 
         PdfPCell logoCell = new PdfPCell();
-        logoCell.setBackgroundColor(brand);
         logoCell.setBorder(Rectangle.NO_BORDER);
-        logoCell.setPaddingLeft(40);
-        logoCell.setPaddingTop(22);
-        logoCell.setPaddingBottom(22);
         logoCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         if (d.logo() != null) {
             try {
                 Image logo = Image.getInstance(d.logo());
-                logo.scaleToFit(52, 52);
+                logo.scaleToFit(70, 70);
                 logoCell.addElement(new Phrase(new Chunk(logo, 0, 0, true)));
             } catch (Exception ignored) {
                 // a receipt without a logo rather than no receipt
@@ -126,18 +112,131 @@ public class ReceiptPdfRenderer {
         band.addCell(logoCell);
 
         PdfPCell textCell = new PdfPCell();
-        textCell.setBackgroundColor(brand);
         textCell.setBorder(Rectangle.NO_BORDER);
-        textCell.setPaddingTop(22);
-        textCell.setPaddingBottom(22);
-        textCell.setPaddingRight(40);
         textCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        textCell.addElement(new Paragraph(name, font(Font.BOLD, 18, Color.WHITE)));
+        textCell.addElement(new Paragraph(name, font(Font.BOLD, 20, brand)));
         if (d.institute() != null && d.institute().address() != null && !d.institute().address().isBlank()) {
-            textCell.addElement(new Paragraph(d.institute().address().trim(), font(Font.NORMAL, 9, Color.WHITE)));
+            textCell.addElement(new Paragraph(d.institute().address().trim(), font(Font.NORMAL, 9, MUTED)));
         }
         band.addCell(textCell);
         return band;
+    }
+
+    /** Receipt no, date, student, registration no, course and financial year in a bordered box. */
+    private PdfPTable infoBox(Data d) {
+        PdfPTable t = new PdfPTable(new float[]{1.3f, 3f, 1.5f, 2.4f});
+        t.setWidthPercentage(100);
+        info(t, "Receipt No :", d.receiptNo(), "Receipt Date :", d.date().format(DATE_SLASH));
+        info(t, "Student :", d.studentName(), "Financial Yr :", financialYear(d.date()));
+        info(t, "Reg. No :", d.studentCode(), "Course :", d.courseTitle());
+        return boxed(t, 4);
+    }
+
+    private void info(PdfPTable t, String l1, String v1, String l2, String v2) {
+        t.addCell(plain(l1, Font.BOLD, 10));
+        t.addCell(plain(v1, Font.NORMAL, 10));
+        t.addCell(plain(l2, Font.BOLD, 10));
+        t.addCell(plain(v2, Font.NORMAL, 10));
+    }
+
+    private PdfPCell plain(String text, int style, float size) {
+        PdfPCell c = new PdfPCell(new Phrase(text == null ? "" : text, font(style, size, Color.BLACK)));
+        c.setBorder(Rectangle.NO_BORDER);
+        c.setPaddingTop(4);
+        c.setPaddingBottom(4);
+        return c;
+    }
+
+    /** Wraps a table in a one-cell table with a thin outline. */
+    private static PdfPTable boxed(PdfPTable inner, float padding) {
+        PdfPTable box = new PdfPTable(1);
+        box.setWidthPercentage(100);
+        box.setSpacingAfter(8);
+        PdfPCell wrap = new PdfPCell(inner);
+        wrap.setBorderColor(MUTED);
+        wrap.setBorderWidth(0.8f);
+        wrap.setPadding(padding);
+        box.addCell(wrap);
+        return box;
+    }
+
+    /** S.NO / PARTICULARS / AMOUNT, then total, amount in words, payment mode, reference and remarks. */
+    private PdfPTable particularsBox(Data d) {
+        PdfPTable t = new PdfPTable(new float[]{1f, 6f, 2f});
+        t.setWidthPercentage(100);
+        String[] heads = {"S.NO", "PARTICULARS", "AMOUNT"};
+        for (int i = 0; i < 3; i++) {
+            PdfPCell h = plain(heads[i], Font.BOLD, 10);
+            h.setBorder(Rectangle.BOTTOM);
+            h.setBorderWidth(0.8f);
+            h.setHorizontalAlignment(i == 2 ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
+            t.addCell(h);
+        }
+        t.addCell(plain("1", Font.NORMAL, 10));
+        t.addCell(plain(d.courseTitle() == null ? "Course fee" : d.courseTitle() + " - course fee", Font.NORMAL, 10));
+        PdfPCell amt = plain(money("", d.amount()).trim(), Font.NORMAL, 10);
+        amt.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        t.addCell(amt);
+        PdfPCell blank = new PdfPCell(new Phrase(" "));
+        blank.setBorder(Rectangle.NO_BORDER);
+        blank.setColspan(3);
+        blank.setFixedHeight(150);
+        t.addCell(blank);
+
+        PdfPTable rows = new PdfPTable(new float[]{2f, 7f});
+        rows.setWidthPercentage(100);
+        PdfPCell tl = plain("Total", Font.BOLD, 10);
+        tl.setHorizontalAlignment(Element.ALIGN_CENTER);
+        rows.addCell(tl);
+        PdfPCell tv = plain(money(d.currencySymbol(), d.amount()), Font.BOLD, 10);
+        tv.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        rows.addCell(tv);
+        labelled(rows, "In words :", IndianWords.rupees(d.amount()));
+        labelled(rows, "Pay't Mode :", pretty(d.method())
+                + (d.referenceNo() == null || d.referenceNo().isBlank() ? "" : ", REF. NO : " + d.referenceNo()));
+        labelled(rows, "Remarks :", d.reversed() ? "This payment was cancelled" : "Fees received");
+
+        PdfPTable both = new PdfPTable(1);
+        both.setWidthPercentage(100);
+        PdfPCell a = new PdfPCell(t);
+        a.setBorder(Rectangle.NO_BORDER);
+        both.addCell(a);
+        PdfPCell b = new PdfPCell(rows);
+        b.setBorder(Rectangle.TOP);
+        b.setBorderColor(MUTED);
+        b.setBorderWidth(0.8f);
+        both.addCell(b);
+        return boxed(both, 0);
+    }
+
+    private void labelled(PdfPTable t, String label, String value) {
+        PdfPCell l = plain(label, Font.BOLD, 10);
+        l.setHorizontalAlignment(Element.ALIGN_CENTER);
+        l.setBorder(Rectangle.TOP);
+        l.setBorderColor(MUTED);
+        PdfPCell v = plain(value, Font.BOLD, 10);
+        v.setBorder(Rectangle.TOP);
+        v.setBorderColor(MUTED);
+        t.addCell(l);
+        t.addCell(v);
+    }
+
+    /** Total fee, paid so far and balance, so the student sees where the fees stand. */
+    private PdfPTable feeSummary(Data d) {
+        PdfPTable t = new PdfPTable(new float[]{2f, 5f});
+        t.setWidthPercentage(60);
+        t.setHorizontalAlignment(Element.ALIGN_LEFT);
+        t.setSpacingBefore(10);
+        row(t, "Total fee", money(d.currencySymbol(), d.netFee()));
+        row(t, "Paid so far", money(d.currencySymbol(), d.paidToDate()));
+        row(t, "Balance", money(d.currencySymbol(), d.balance()));
+        return t;
+    }
+
+    /** April to March, as fees are accounted in India: a date in Feb 2024 is 2023-2024. */
+    static String financialYear(LocalDate date) {
+        int start = date.getMonthValue() >= 4 ? date.getYear() : date.getYear() - 1;
+        return start + "-" + (start + 1);
     }
 
     /** The institute address, phone and email at the foot of the receipt. */
@@ -219,61 +318,6 @@ public class ReceiptPdfRenderer {
                 cb.restoreState();
             }
         }
-    }
-
-    private PdfPCell block(String label, String main, String sub) {
-        PdfPCell c = new PdfPCell();
-        c.setBorder(Rectangle.NO_BORDER);
-        c.setPaddingBottom(6);
-        c.addElement(new Paragraph(label, font(Font.BOLD, 8, MUTED)));
-        c.addElement(new Paragraph(main == null ? "" : main, font(Font.BOLD, 12, INK)));
-        if (sub != null && !sub.isBlank()) {
-            c.addElement(new Paragraph(sub, font(Font.NORMAL, 9, MUTED)));
-        }
-        return c;
-    }
-
-    private PdfPTable amountBox(Data d, Color brand) {
-        PdfPTable box = new PdfPTable(1);
-        box.setWidthPercentage(100);
-        box.setSpacingAfter(16);
-        PdfPCell c = new PdfPCell();
-        c.setBorderColor(brand);
-        c.setBorderWidth(1.2f);
-        c.setPadding(14);
-        c.addElement(new Paragraph("AMOUNT RECEIVED", font(Font.BOLD, 8, MUTED)));
-        Paragraph amount = new Paragraph(money(d.currencySymbol(), d.amount()), font(Font.BOLD, 26, brand));
-        amount.setSpacingBefore(2);
-        c.addElement(amount);
-        c.addElement(new Paragraph(IndianWords.rupees(d.amount()), font(Font.ITALIC, 9.5f, MUTED)));
-        box.addCell(c);
-        return box;
-    }
-
-    private PdfPTable detailTable(Data d) {
-        PdfPTable t = new PdfPTable(new float[]{2f, 5f});
-        t.setWidthPercentage(100);
-        t.setSpacingAfter(14);
-        row(t, "Payment method", pretty(d.method()));
-        if (d.referenceNo() != null && !d.referenceNo().isBlank()) {
-            row(t, "Reference", d.referenceNo());
-        }
-        row(t, "Payment date", d.date().format(DATE));
-        return t;
-    }
-
-    private PdfPTable summaryTable(Data d) {
-        PdfPTable t = new PdfPTable(new float[]{2f, 5f});
-        t.setWidthPercentage(100);
-        PdfPCell title = new PdfPCell(new Phrase("FEE SUMMARY", font(Font.BOLD, 8, MUTED)));
-        title.setColspan(2);
-        title.setBorder(Rectangle.NO_BORDER);
-        title.setPaddingBottom(4);
-        t.addCell(title);
-        row(t, "Total fee", money(d.currencySymbol(), d.netFee()));
-        row(t, "Paid so far", money(d.currencySymbol(), d.paidToDate()));
-        row(t, "Balance", money(d.currencySymbol(), d.balance()));
-        return t;
     }
 
     private void row(PdfPTable t, String label, String value) {
