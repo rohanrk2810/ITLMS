@@ -253,3 +253,16 @@ export async function downloadStatementPdf(studentId: number | string): Promise<
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
+
+/** Every payment received between two dates (inclusive), read page by page. */
+export async function paymentsBetween(from: string, to: string): Promise<PaymentResponse[]> {
+  const all: PaymentResponse[] = []
+  for (let page = 0, last = false; !last; page += 1) {
+    const { data } = await apiClient.get<PageResponse<PaymentResponse>>('/api/payments', {
+      params: { from, to, page, size: 200 },
+    })
+    all.push(...data.content)
+    last = data.last || data.content.length === 0
+  }
+  return all
+}
