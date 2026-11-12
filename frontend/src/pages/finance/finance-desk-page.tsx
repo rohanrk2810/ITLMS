@@ -69,6 +69,11 @@ export function FinanceDeskPage() {
               <Link to="/app/finance/payroll">Payroll</Link>
             </Button>
           )}
+          {canSeeExpenses && (
+            <Button asChild variant="outline">
+              <Link to="/app/finance/books">Books</Link>
+            </Button>
+          )}
           <ChargeBatchButton />
           <ExportMenu label="Download every student's fees" report="FEE_POSITION" build={feePositionSheet} />
         </div>

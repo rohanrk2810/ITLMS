@@ -90,6 +90,7 @@ const FinanceIndexPage = lazy(() =>
   import('@/pages/finance/finance-index-page').then((m) => ({ default: m.FinanceIndexPage })),
 )
 const PayrollPage = lazy(() => import('@/pages/finance/payroll-page').then((m) => ({ default: m.PayrollPage })))
+const BooksPage = lazy(() => import('@/pages/finance/books-page').then((m) => ({ default: m.BooksPage })))
 const MySalaryPage = lazy(() => import('@/pages/payroll/my-salary-page').then((m) => ({ default: m.MySalaryPage })))
 const FeePlanDetailPage = lazy(() =>
   import('@/pages/finance/fee-plan-detail-page').then((m) => ({ default: m.FeePlanDetailPage })),
@@ -312,6 +313,7 @@ export default function App() {
                   </Route>
                   <Route element={<ProtectedRoute roles={['ADMIN', 'FINANCE']} />}>
                     <Route path="/app/finance/payroll" element={<PayrollPage />} />
+                    <Route path="/app/finance/books" element={<BooksPage />} />
                   </Route>
                   <Route element={<ProtectedRoute roles={STAFF_PAY_ROLES} />}>
                     <Route path="/app/my-salary" element={<MySalaryPage />} />
