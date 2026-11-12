@@ -5,6 +5,7 @@ import { getDashboardSummary } from '@/api/reporting'
 import { AnimatedNumber } from '@/components/animated-number'
 import { AnnouncementsPanel } from '@/components/announcements-panel'
 import { InstituteCharts, StudentCharts } from '@/components/dashboard-charts'
+import { FeeDueCard } from '@/components/fee-due-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ExportMenu } from '@/components/export-menu'
@@ -40,6 +41,7 @@ export function DashboardPage() {
 
       {unplaced && <WelcomeNewStudent />}
       {!unplaced && (showInstituteSummary ? <InstituteSummary /> : shows('quick-links') && <RoleQuickLinks role={user?.role} />)}
+      {user?.role === 'STUDENT' && !unplaced && shows('fee-due') && <FeeDueCard />}
       {user?.role === 'STUDENT' && !unplaced && shows('student-charts') && <StudentCharts />}
       {!showInstituteSummary && shows('announcements') && <AnnouncementsPanel />}
     </div>
