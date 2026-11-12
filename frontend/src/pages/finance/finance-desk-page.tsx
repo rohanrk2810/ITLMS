@@ -8,6 +8,8 @@ import { CashClosingCard } from '@/components/cash-closing-card'
 import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { CollectionReportCard } from '@/components/collection-report-card'
 import { ExportMenu } from '@/components/export-menu'
+import { FinanceOverviewCard } from '@/components/finance-overview-card'
+import { percentOf } from '@/lib/export-rows'
 import { RefundsCard } from '@/components/refunds-card'
 import { UpiClaimsCard } from '@/components/upi-claims-card'
 import { ExpensesCard } from '@/components/expenses-card'
@@ -73,8 +75,16 @@ export function FinanceDeskPage() {
       {dashboardQuery.data && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard label="Billed" value={formatMoney(dashboardQuery.data.totalBilled, dashboardQuery.data.currency)} />
-          <StatCard label="Collected" value={formatMoney(dashboardQuery.data.collected, dashboardQuery.data.currency)} />
-          <StatCard label="Pending" value={formatMoney(dashboardQuery.data.pending, dashboardQuery.data.currency)} />
+          <StatCard
+            label="Collected"
+            value={formatMoney(dashboardQuery.data.collected, dashboardQuery.data.currency)}
+            hint={`${percentOf(dashboardQuery.data.collected, dashboardQuery.data.totalBilled)}% of billed`}
+          />
+          <StatCard
+            label="Pending"
+            value={formatMoney(dashboardQuery.data.pending, dashboardQuery.data.currency)}
+            hint={`${Math.round((100 - percentOf(dashboardQuery.data.collected, dashboardQuery.data.totalBilled)) * 10) / 10}% still to come`}
+          />
           <StatCard
             label="Overdue"
             value={formatMoney(dashboardQuery.data.overdueAmount, dashboardQuery.data.currency)}
@@ -83,6 +93,8 @@ export function FinanceDeskPage() {
           />
         </div>
       )}
+
+      {canSeeExpenses && dashboardQuery.data && <FinanceOverviewCard dashboard={dashboardQuery.data} />}
 
       {dashboardQuery.data && dashboardQuery.data.methodSplitThisMonth.length > 0 && (
         <Card>
