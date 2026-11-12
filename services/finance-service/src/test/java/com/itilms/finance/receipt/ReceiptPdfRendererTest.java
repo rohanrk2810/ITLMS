@@ -15,7 +15,9 @@ class ReceiptPdfRendererTest {
     private static ReceiptPdfRenderer.Data data(BrandingClient.Branding institute) {
         return new ReceiptPdfRenderer.Data("RCPT-2026-0007", LocalDate.of(2026, 11, 10), "Asha Patil", "STU-30",
                 "Java Full Stack", "Rs.", new BigDecimal("15000.00"), "ONLINE", "pay_Abc123",
-                new BigDecimal("15000.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, false, institute, null);
+                new BigDecimal("15000.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, false, institute, null, java.util.List.of(
+                new ReceiptPdfRenderer.Particular("Java Full Stack - course fee", new BigDecimal("10000.00")),
+                new ReceiptPdfRenderer.Particular("Development fee", new BigDecimal("5000.00"))));
     }
 
     @Test
@@ -30,7 +32,7 @@ class ReceiptPdfRendererTest {
         String text = text(pdf);
         assertThat(text).contains("Sprint IT Academy", "STUDENT FEES RECEIPT", "Student Copy", "10/11/2026", "2026-2027", "Particulars".toUpperCase(), "RCPT-2026-0007", "Asha Patil", "STU-30",
                 "Java Full Stack", "Rs. 15,000.00", "Rupees Fifteen Thousand Only", "Online (Razorpay)", "pay_Abc123",
-                "Balance", "Rs. 0.00", "Pune", "Phone: +91 98000 00000", "Email: info@x.in");
+                "Balance", "Development fee", "10,000.00", "Rs. 0.00", "Pune", "Phone: +91 98000 00000", "Email: info@x.in");
         // A sample to look at: target/sample-receipt.pdf
         try {
             java.nio.file.Files.write(java.nio.file.Path.of("target", "sample-receipt.pdf"), pdf);
