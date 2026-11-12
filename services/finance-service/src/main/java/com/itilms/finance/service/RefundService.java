@@ -48,6 +48,7 @@ public class RefundService {
     private final FeePlanRepository plans;
     private final FinanceProperties props;
     private final EventPublisher events;
+    private final BooksLockService booksLock;
 
     @Transactional
     public RefundResponse request(RefundRequest request) {
@@ -136,6 +137,7 @@ public class RefundService {
         if (day.isAfter(today)) {
             throw new BusinessRuleException("A refund cannot be dated in the future.");
         }
+        booksLock.requireOpen(day, "a refund");
         refund.setStatus(Refund.Status.PAID);
         refund.setPaidOn(day);
         refund.setPayMethod(how);

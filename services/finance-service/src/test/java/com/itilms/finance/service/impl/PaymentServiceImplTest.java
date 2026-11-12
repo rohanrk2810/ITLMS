@@ -58,7 +58,8 @@ class PaymentServiceImplTest {
     void setUp() {
         service = new PaymentServiceImpl(paymentRepository, planRepository, new FinanceProperties(), events,
                 mock(com.itilms.finance.receipt.ReceiptEmailer.class),
-                mock(com.itilms.finance.receipt.ReceiptDocument.class));
+                mock(com.itilms.finance.receipt.ReceiptDocument.class),
+                mock(com.itilms.finance.service.BooksLockService.class));
 
         AppPrincipal cashier = new AppPrincipal(7L, "cash@x", "Cashier", "FINANCE", null);
         SecurityContextHolder.getContext().setAuthentication(

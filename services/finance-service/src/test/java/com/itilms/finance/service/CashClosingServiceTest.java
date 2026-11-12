@@ -26,7 +26,8 @@ class CashClosingServiceTest {
     private final PaymentRepository payments = mock(PaymentRepository.class);
     private final com.itilms.finance.repository.RefundRepository refunds = mock(com.itilms.finance.repository.RefundRepository.class);
     private final CashClosingService service =
-            new CashClosingService(closings, payments, new FinanceProperties(), mock(EventPublisher.class), refunds);
+            new CashClosingService(closings, payments, new FinanceProperties(), mock(EventPublisher.class), refunds,
+                    mock(BooksLockService.class));
     private final LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
 
     private void cashRecorded(String amount) {

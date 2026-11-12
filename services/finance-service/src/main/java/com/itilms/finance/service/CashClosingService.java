@@ -28,6 +28,7 @@ public class CashClosingService {
     private final FinanceProperties props;
     private final EventPublisher events;
     private final com.itilms.finance.repository.RefundRepository refunds;
+    private final BooksLockService booksLock;
 
     public record Preview(LocalDate date, BigDecimal expectedCash, long cashPayments, Closing closing) {
     }
@@ -63,6 +64,7 @@ public class CashClosingService {
         if (date.isAfter(today)) {
             throw new BusinessRuleException("A day that has not happened yet cannot be closed.");
         }
+        booksLock.requireOpen(date, "a cash count");
         if (closings.findByClosingDate(date).isPresent()) {
             throw new BusinessRuleException("This day has already been closed.");
         }
