@@ -25,18 +25,20 @@ export function ExpensesCard() {
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [paidTo, setPaidTo] = useState('')
+  const [gstIn, setGstIn] = useState('')
 
   const rows = useQuery({ queryKey: ['finance', 'expenses', from, to], queryFn: () => listExpenses(from, to), enabled: from <= to })
   const summary = useQuery({ queryKey: ['finance', 'expense-summary', from, to], queryFn: () => expenseSummary(from, to), enabled: from <= to })
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['finance'] })
   const add = useMutation({
-    mutationFn: () => addExpense({ category, amount: Number(amount), description: description.trim(), paidTo: paidTo.trim() || undefined }),
+    mutationFn: () => addExpense({ category, amount: Number(amount), description: description.trim(), paidTo: paidTo.trim() || undefined, gstAmount: Number(gstIn) > 0 ? Number(gstIn) : undefined }),
     onSuccess: () => {
       toast.success('Expense recorded')
       setAmount('')
       setDescription('')
       setPaidTo('')
+      setGstIn('')
       refresh()
     },
     onError: (error) => toast.error(apiErrorMessage(error, 'Could not record the expense.')),
@@ -103,6 +105,7 @@ export function ExpensesCard() {
           </select>
           <Input aria-label="Amount" type="number" min={1} placeholder="Amount" className="w-28" value={amount} onChange={(e) => setAmount(e.target.value)} />
           <Input aria-label="Description" placeholder="What for" maxLength={255} className="w-56" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Input aria-label="GST in this amount" type="number" min={0} placeholder="GST in it (optional)" className="w-40" value={gstIn} onChange={(e) => setGstIn(e.target.value)} />
           <Input aria-label="Paid to" placeholder="Paid to (optional)" maxLength={120} className="w-44" value={paidTo} onChange={(e) => setPaidTo(e.target.value)} />
           <Button disabled={!(Number(amount) > 0) || !description.trim() || add.isPending} onClick={() => add.mutate()}>
             Add expense

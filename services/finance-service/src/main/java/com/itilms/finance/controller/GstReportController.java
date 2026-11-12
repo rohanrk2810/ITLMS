@@ -46,7 +46,23 @@ public class GstReportController {
                 body.sacCode(), body.effectiveFrom()));
     }
 
-    @Operation(summary = "GST collected on fees", description = "ADMIN or FINANCE. Month by month; empty while GST is off.")
+    public record PaidBody(LocalDate paidOn, @jakarta.validation.constraints.Size(max = 7) String forMonth,
+                           @jakarta.validation.constraints.NotNull java.math.BigDecimal amount,
+                           @jakarta.validation.constraints.NotBlank String method,
+                           @jakarta.validation.constraints.Size(max = 80) String reference,
+                           @jakarta.validation.constraints.Size(max = 255) String note) {
+    }
+
+    @Operation(summary = "Record GST paid to the government", description = "ADMIN or FINANCE. A challan against what is owed.")
+    @PreAuthorize(Roles.FINANCE_DESK)
+    @org.springframework.web.bind.annotation.PostMapping("/payments")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public com.itilms.finance.entity.GstPayment pay(@jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody PaidBody body) {
+        return service.recordPayment(new GstReportService.PaymentRequest(body.paidOn(), body.forMonth(), body.amount(),
+                body.method(), body.reference(), body.note()));
+    }
+
+    @Operation(summary = "The GST return", description = "ADMIN or FINANCE. Invoices, and month by month the tax charged, the credit on expenses, what was paid and what is payable.")
     @PreAuthorize(Roles.FINANCE_DESK)
     @GetMapping("/summary")
     public GstReportService.Report summary(

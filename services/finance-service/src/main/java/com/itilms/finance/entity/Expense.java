@@ -49,6 +49,11 @@ public class Expense extends AuditableEntity {
     @Column(nullable = false, length = 255)
     private String description;
 
+    /** The GST inside the amount, which the institute can claim back against the GST it owes. Zero when none. */
+    @Column(name = "gst_amount", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal gstAmount = BigDecimal.ZERO;
+
     @Column(name = "paid_to", length = 120)
     private String paidTo;
 

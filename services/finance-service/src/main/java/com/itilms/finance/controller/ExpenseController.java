@@ -43,7 +43,8 @@ public class ExpenseController {
                               @NotNull @DecimalMin("0.01") BigDecimal amount,
                               @NotBlank @Size(max = 255) String description,
                               @Size(max = 120) String paidTo,
-                              @Size(max = 80) String referenceNo) {
+                              @Size(max = 80) String referenceNo,
+                              @jakarta.validation.constraints.DecimalMin("0.00") BigDecimal gstAmount) {
     }
 
     @Operation(summary = "Record an expense", description = "ADMIN or FINANCE.")
@@ -52,7 +53,7 @@ public class ExpenseController {
     @ResponseStatus(HttpStatus.CREATED)
     public ExpenseService.ExpenseView add(@Valid @RequestBody ExpenseBody body) {
         return service.add(new ExpenseService.ExpenseRequest(body.date(), body.category(), body.amount(),
-                body.description(), body.paidTo(), body.referenceNo()));
+                body.description(), body.paidTo(), body.referenceNo(), body.gstAmount()));
     }
 
     @Operation(summary = "Expenses in a date range", description = "ADMIN or FINANCE.")

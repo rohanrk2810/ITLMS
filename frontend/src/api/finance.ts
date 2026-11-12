@@ -364,6 +364,7 @@ export interface ExpenseView {
   description: string
   paidTo: string | null
   referenceNo: string | null
+  gstAmount: number
   voided: boolean
   voidReason: string | null
 }
@@ -396,6 +397,8 @@ export async function addExpense(input: {
   description: string
   paidTo?: string
   referenceNo?: string
+  /** The GST inside the amount, claimed back against the GST owed. */
+  gstAmount?: number
 }): Promise<ExpenseView> {
   const { data } = await apiClient.post<ExpenseView>('/api/fees/expenses', input)
   return data
@@ -478,22 +481,49 @@ export async function setBooksLock(lockedThrough: string | null, note?: string):
 
 export interface GstMonth {
   month: string
-  payments: number
-  received: number
+  invoices: number
   taxable: number
+  exempt: number
   cgst: number
   sgst: number
+  igst: number
+  outputTax: number
+  inputCredit: number
+  netPayable: number
+  paid: number
+}
+
+export interface GstInvoice {
+  receiptNo: string
+  date: string
+  student: string
+  state: string
+  rate: number
+  taxable: number
+  exempt: number
+  cgst: number
+  sgst: number
+  igst: number
+  total: number
+}
+
+export interface GstPaymentRow {
+  id: number
+  paidOn: string
+  forMonth: string | null
+  amount: number
+  method: string
+  reference: string | null
+  note: string | null
 }
 
 export interface GstReport {
   enabled: boolean
   ratePercent: number
   gstin: string | null
-  received: number
-  taxable: number
-  cgst: number
-  sgst: number
-  months: GstMonth[]
+  summary: { months: GstMonth[]; outputTax: number; inputCredit: number; paid: number; stillPayable: number }
+  invoices: GstInvoice[]
+  payments: GstPaymentRow[]
 }
 
 export async function gstSummary(from: string, to: string): Promise<GstReport> {
@@ -579,5 +609,11 @@ export async function getGstSettings(): Promise<GstSettings> {
 /** Sets the GST rate (administrator only). It applies from effectiveFrom; 0 switches GST off. */
 export async function saveGstSettings(input: { percent: number; gstin: string; sacCode: string; effectiveFrom?: string }): Promise<GstSettings> {
   const { data } = await apiClient.put<GstSettings>('/api/fees/gst/settings', input)
+  return data
+}
+
+/** Records GST paid to the government (a challan). */
+export async function recordGstPayment(input: { paidOn?: string; forMonth?: string; amount: number; method: string; reference?: string; note?: string }): Promise<GstPaymentRow> {
+  const { data } = await apiClient.post<GstPaymentRow>('/api/fees/gst/payments', input)
   return data
 }
