@@ -44,7 +44,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     /** Successful money received in a period, by method (Doc S15: "payment method split"). */
     @Query("""
-            SELECT p.method, COUNT(p), SUM(p.amount)
+            SELECT p.method, COUNT(p), SUM(p.amount - p.refundedAmount)
             FROM Payment p
             WHERE p.status = com.itilms.finance.entity.PaymentStatus.SUCCESS
               AND p.paymentDate BETWEEN :from AND :to
@@ -53,7 +53,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Object[]> methodSplit(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
     @Query("""
-            SELECT COALESCE(SUM(p.amount), 0)
+            SELECT COALESCE(SUM(p.amount - p.refundedAmount), 0)
             FROM Payment p
             WHERE p.status = com.itilms.finance.entity.PaymentStatus.SUCCESS
             """)

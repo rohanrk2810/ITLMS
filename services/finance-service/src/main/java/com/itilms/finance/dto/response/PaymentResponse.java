@@ -23,12 +23,15 @@ public record PaymentResponse(
         Instant reversedAt,
         String reversalReason,
         String notes,
-        Instant recordedAt
+        Instant recordedAt,
+        @Schema(description = "How much of the payment has been given back")
+        BigDecimal refundedAmount
 ) {
 
     public static PaymentResponse from(Payment p) {
         return new PaymentResponse(p.getId(), p.getFeePlanId(), p.getStudentId(), p.getAmount(),
                 p.getPaymentDate(), p.getMethod().name(), p.getReferenceNo(), p.getReceiptNo(),
-                p.getStatus().name(), p.getReversedAt(), p.getReversalReason(), p.getNotes(), p.getCreatedAt());
+                p.getStatus().name(), p.getReversedAt(), p.getReversalReason(), p.getNotes(), p.getCreatedAt(),
+                p.getRefundedAmount());
     }
 }

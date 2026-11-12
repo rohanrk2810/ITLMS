@@ -61,6 +61,11 @@ public class Payment extends AuditableEntity {
     @Builder.Default
     private PaymentStatus status = PaymentStatus.SUCCESS;
 
+    /** How much of this payment has been given back (approved refunds). */
+    @Column(name = "refunded_amount", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
     @Column(name = "reversed_at")
     private Instant reversedAt;
 
@@ -72,6 +77,11 @@ public class Payment extends AuditableEntity {
 
     @Column(length = 500)
     private String notes;
+
+    /** What the student has paid on this payment: the amount minus what was refunded. */
+    public BigDecimal netAmount() {
+        return amount.subtract(refundedAmount == null ? BigDecimal.ZERO : refundedAmount);
+    }
 
     public boolean counts() {
         return status == PaymentStatus.SUCCESS;

@@ -112,7 +112,7 @@ public final class FeeLedger {
     public static FeeLedger of(FeePlan plan, List<Payment> payments, LocalDate today) {
         BigDecimal paid = payments.stream()
                 .filter(Payment::counts)
-                .map(Payment::getAmount)
+                .map(Payment::netAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<FeeInstallment> ordered = plan.getInstallments().stream()
