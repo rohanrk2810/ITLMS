@@ -18,7 +18,8 @@ class ReceiptPdfRendererTest {
                 new BigDecimal("15000.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, false, institute, null, java.util.List.of(
                 new ReceiptPdfRenderer.Particular("Java Full Stack - course fee", new BigDecimal("10000.00")),
                 new ReceiptPdfRenderer.Particular("Development fee", new BigDecimal("5000.00"))),
-                "Morning Java 2026", "CANARA BANK, JALGAON - 1647201001212", BigDecimal.ZERO, "", "");
+                "Morning Java 2026", "CANARA BANK, JALGAON - 1647201001212", BigDecimal.ZERO, "", "", "9800000001",
+                "Mon, Wed, Fri 09:00-11:00", "(Fee once paid will not be refunded)");
     }
 
     @Test
@@ -33,7 +34,7 @@ class ReceiptPdfRendererTest {
         String text = text(pdf);
         assertThat(text).contains("Sprint IT Academy", "STUDENT FEES RECEIPT", "Student Copy", "10/11/2026", "2026-2027", "Particulars".toUpperCase(), "RCPT-2026-0007", "Asha Patil", "STU-30",
                 "Java Full Stack", "Rs. 15,000.00", "Rupees Fifteen Thousand Only", "Online (Razorpay)", "pay_Abc123",
-                "Balance", "Development fee", "10,000.00", "Batch :", "Morning Java 2026", "Bank :", "CANARA BANK", "Rs. 0.00", "Pune", "Phone: +91 98000 00000", "Email: info@x.in");
+                "Balance", "Student Phone", "9800000001", "Due Amount", "Batch & Time", "09:00-11:00", "(Fee once paid will not be refunded)", "Prepared By", "Audited By", "Development fee", "10,000.00", "Morning Java 2026", "Bank :", "CANARA BANK", "Rs. 0.00", "Pune", "Phone: +91 98000 00000", "Email: info@x.in");
         // A sample to look at: target/sample-receipt.pdf
         try {
             java.nio.file.Files.write(java.nio.file.Path.of("target", "sample-receipt.pdf"), pdf);
@@ -56,11 +57,11 @@ class ReceiptPdfRendererTest {
         var withGst = new ReceiptPdfRenderer.Data(d.receiptNo(), d.date(), d.studentName(), d.studentCode(), d.courseTitle(),
                 d.currencySymbol(), new BigDecimal("11800.00"), d.method(), d.referenceNo(), d.netFee(), d.paidToDate(),
                 d.balance(), false, null, null, d.particulars(), d.batchName(), d.bank(), new BigDecimal("18"),
-                "27ABCDE1234F1Z5", "999293");
+                "27ABCDE1234F1Z5", "999293", "9800000001", null, null);
 
         String text = text(new ReceiptPdfRenderer().render(withGst));
 
-        assertThat(text).contains("Taxable value", "10,000.00", "CGST @ 9%", "SGST @ 9%", "900.00", "27ABCDE1234F1Z5", "999293");
+        assertThat(text).contains("Taxable value", "10,000.00", "CGST @ 9%", "SGST @ 9%", "900.00", "27ABCDE1234F1Z5", "999293", "GST No: 27ABCDE1234F1Z5");
     }
 
     @Test

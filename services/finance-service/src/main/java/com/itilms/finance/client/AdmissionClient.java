@@ -17,7 +17,7 @@ public interface AdmissionClient {
     @PostMapping("/api/students/internal/lookup")
     List<StudentSummary> lookup(@RequestBody List<Long> studentIds);
 
-    record StudentSummary(Long id, Long userId, String studentCode, String fullName, String status) {
+    record StudentSummary(Long id, Long userId, String studentCode, String fullName, String status, String phone) {
     }
 
     /**

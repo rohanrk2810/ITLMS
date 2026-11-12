@@ -53,7 +53,7 @@ public class ReceiptPdfRenderer {
                        BigDecimal netFee, BigDecimal paidToDate, BigDecimal balance, boolean reversed,
                        BrandingClient.Branding institute, byte[] logo, java.util.List<Particular> particulars,
                        String batchName, String bank, java.math.BigDecimal gstPercent, String gstin,
-                       String sacCode) {
+                       String sacCode, String studentPhone, String batchTiming, String footerNote) {
     }
 
     public byte[] render(Data d) {
@@ -80,6 +80,12 @@ public class ReceiptPdfRenderer {
             doc.add(infoBox(d));
             doc.add(particularsBox(d));
 
+            if (d.footerNote() != null && !d.footerNote().isBlank()) {
+                Paragraph policy = new Paragraph(d.footerNote().trim(), font(Font.BOLD, 10, Color.BLACK));
+                policy.setSpacingBefore(8);
+                doc.add(policy);
+            }
+            doc.add(signatures());
             Paragraph computer = new Paragraph("This is Computer Generated Receipt", font(Font.BOLD, 9, Color.BLACK));
             computer.setSpacingBefore(6);
             doc.add(computer);
@@ -127,8 +133,42 @@ public class ReceiptPdfRenderer {
         if (d.institute() != null && d.institute().address() != null && !d.institute().address().isBlank()) {
             textCell.addElement(new Paragraph(d.institute().address().trim(), font(Font.NORMAL, 9, MUTED)));
         }
+        StringBuilder contact = new StringBuilder();
+        if (d.institute() != null && d.institute().contactPhone() != null && !d.institute().contactPhone().isBlank()) {
+            contact.append("Ph. No: ").append(d.institute().contactPhone().trim());
+        }
+        if (d.gstPercent() != null && d.gstPercent().signum() > 0 && d.gstin() != null && !d.gstin().isBlank()) {
+            contact.append(contact.length() > 0 ? "     " : "").append("GST No: ").append(d.gstin().trim());
+        }
+        if (contact.length() > 0) {
+            textCell.addElement(new Paragraph(contact.toString(), font(Font.BOLD, 9, Color.BLACK)));
+        }
         band.addCell(textCell);
         return band;
+    }
+
+    /** Prepared by, passed by, approved by, audited by: blank lines for the people who sign a paper copy. */
+    private PdfPTable signatures() {
+        PdfPTable t = new PdfPTable(4);
+        t.setWidthPercentage(100);
+        t.setSpacingBefore(26);
+        for (String who : new String[]{"Prepared By", "Passed By", "Approved By", "Audited By"}) {
+            PdfPCell c = new PdfPCell(new Phrase(who, font(Font.NORMAL, 9, MUTED)));
+            c.setBorder(Rectangle.TOP);
+            c.setBorderColor(MUTED);
+            c.setBorderWidth(0.6f);
+            c.setPaddingTop(3);
+            c.setHorizontalAlignment(Element.ALIGN_CENTER);
+            // a gap between the four lines
+            PdfPTable one = new PdfPTable(1);
+            one.addCell(c);
+            PdfPCell wrap = new PdfPCell(one);
+            wrap.setBorder(Rectangle.NO_BORDER);
+            wrap.setPaddingLeft(6);
+            wrap.setPaddingRight(6);
+            t.addCell(wrap);
+        }
+        return t;
     }
 
     /** Receipt no, date, student, registration no, course and financial year in a bordered box. */
@@ -137,9 +177,11 @@ public class ReceiptPdfRenderer {
         t.setWidthPercentage(100);
         info(t, "Receipt No :", d.receiptNo(), "Receipt Date :", d.date().format(DATE_SLASH));
         info(t, "Student :", d.studentName(), "Financial Yr :", financialYear(d.date()));
-        info(t, "Reg. No :", d.studentCode(), "Course :", d.courseTitle());
-        if (d.batchName() != null && !d.batchName().isBlank()) {
-            info(t, "Batch :", d.batchName(), "", "");
+        info(t, "Reg. No :", d.studentCode(), "Student Phone :", d.studentPhone());
+        info(t, "Course :", d.courseTitle(), "Due Amount :", money(d.currencySymbol(), d.balance()) + (d.balance().signum() > 0 ? " Dr" : ""));
+        if ((d.batchName() != null && !d.batchName().isBlank()) || (d.batchTiming() != null && !d.batchTiming().isBlank())) {
+            info(t, "Batch & Time :", java.util.stream.Stream.of(d.batchName(), d.batchTiming())
+                    .filter(v -> v != null && !v.isBlank()).collect(java.util.stream.Collectors.joining(", ")), "", "");
         }
         return boxed(t, 4);
     }
