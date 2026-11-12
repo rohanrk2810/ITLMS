@@ -23,6 +23,12 @@ public class FinanceProperties {
 
     private String receiptPrefix = "RCPT";
 
+    /** The institute's UPI id students can pay to, such as "institute@okbank". Empty switches UPI payment off. */
+    private String upiId = "";
+
+    /** The name shown in the student's UPI app when they scan the code. */
+    private String upiName = "";
+
     /** The late fee added to an installment that stays unpaid after its grace period. Zero switches late fees off. */
     private java.math.BigDecimal lateFee = java.math.BigDecimal.ZERO;
 

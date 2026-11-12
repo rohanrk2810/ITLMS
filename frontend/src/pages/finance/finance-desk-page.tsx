@@ -9,6 +9,7 @@ import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { CollectionReportCard } from '@/components/collection-report-card'
 import { ExportMenu } from '@/components/export-menu'
 import { RefundsCard } from '@/components/refunds-card'
+import { UpiClaimsCard } from '@/components/upi-claims-card'
 import { ExpensesCard } from '@/components/expenses-card'
 import { FeeTemplateCard } from '@/components/fee-template-card'
 import { Badge } from '@/components/ui/badge'
@@ -93,6 +94,8 @@ export function FinanceDeskPage() {
           </CardContent>
         </Card>
       )}
+
+      <UpiClaimsCard />
 
       <CashClosingCard />
 
