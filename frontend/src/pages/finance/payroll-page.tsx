@@ -13,6 +13,7 @@ import {
   payMonth,
   paySlip,
   saveStaffPay,
+  staffPayHistory,
   type SlipView,
   type StaffRow,
   updateSlip,
@@ -342,8 +343,56 @@ function StaffLine({ row }: { row: StaffRow }) {
       <TableCell><Input aria-label={`Allowances for ${row.name}`} type="number" min={0} className="h-8 w-28" value={allowances} onChange={(e) => setAllowances(e.target.value)} /></TableCell>
       <TableCell><Input aria-label={`Deduction for ${row.name}`} type="number" min={0} className="h-8 w-28" value={deduction} onChange={(e) => setDeduction(e.target.value)} /></TableCell>
       <TableCell><input type="checkbox" aria-label={`${row.name} on payroll`} checked={active} onChange={(e) => setActive(e.target.checked)} /></TableCell>
-      <TableCell><Button size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate()}>Save</Button></TableCell>
+      <TableCell>
+        <div className="flex gap-1">
+          <Button size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate()}>Save</Button>
+          <PayHistory row={row} />
+        </div>
+      </TableCell>
     </TableRow>
+  )
+}
+
+function PayHistory({ row }: { row: StaffRow }) {
+  const [open, setOpen] = useState(false)
+  const history = useQuery({ queryKey: ['payroll', 'history', row.userId], queryFn: () => staffPayHistory(row.userId), enabled: open })
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost">History</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{row.name}'s pay history</DialogTitle>
+          <DialogDescription>Every time their pay was set, newest first.</DialogDescription>
+        </DialogHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>When</TableHead>
+              <TableHead>Basic</TableHead>
+              <TableHead>Allowances</TableHead>
+              <TableHead>Deduction</TableHead>
+              <TableHead>Payroll</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.data?.map((h, i) => (
+              <TableRow key={i}>
+                <TableCell>{formatDate(h.changedAt)}</TableCell>
+                <TableCell>{formatMoney(h.basic)}</TableCell>
+                <TableCell>{formatMoney(h.allowances)}</TableCell>
+                <TableCell>{formatMoney(h.fixedDeduction)}</TableCell>
+                <TableCell>{h.active ? 'Yes' : 'No'}</TableCell>
+              </TableRow>
+            ))}
+            {history.isSuccess && history.data.length === 0 && (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Not set yet.</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -134,3 +134,17 @@ export async function downloadSlipPdf(id: number, slipNo: string): Promise<void>
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
+
+export interface PayHistoryEntry {
+  basic: number
+  allowances: number
+  fixedDeduction: number
+  active: boolean
+  changedBy: number | null
+  changedAt: string
+}
+
+export async function staffPayHistory(userId: number): Promise<PayHistoryEntry[]> {
+  const { data } = await apiClient.get<PayHistoryEntry[]>(`/api/fees/payroll/staff/${userId}/history`)
+  return data
+}
