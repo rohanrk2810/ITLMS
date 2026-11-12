@@ -498,3 +498,64 @@ export async function gstSummary(from: string, to: string): Promise<GstReport> {
   const { data } = await apiClient.get<GstReport>('/api/fees/gst/summary', { params: { from, to } })
   return data
 }
+
+export interface BankLineView {
+  id: number
+  date: string
+  description: string
+  reference: string | null
+  debit: number
+  credit: number
+  matchedKind: string | null
+  matchedId: number | null
+}
+
+export interface BankEntry {
+  kind: string
+  id: number
+  date: string
+  label: string
+  reference: string | null
+  amount: number
+}
+
+export interface BankSummary {
+  lines: number
+  matched: number
+  unmatched: number
+  unmatchedIn: number
+  unmatchedOut: number
+  notOnStatement: BankEntry[]
+}
+
+export async function importBankLines(
+  lines: { date: string; description: string; reference: string; debit: number; credit: number }[],
+): Promise<{ imported: number; duplicates: number; matched: number }> {
+  const { data } = await apiClient.post<{ imported: number; duplicates: number; matched: number }>('/api/fees/bank/import', { lines })
+  return data
+}
+
+export async function bankSummary(): Promise<BankSummary> {
+  const { data } = await apiClient.get<BankSummary>('/api/fees/bank/summary')
+  return data
+}
+
+export async function bankLines(unmatched: boolean): Promise<BankLineView[]> {
+  const { data } = await apiClient.get<BankLineView[]>('/api/fees/bank/lines', { params: { unmatched } })
+  return data
+}
+
+export async function bankCandidates(lineId: number): Promise<BankEntry[]> {
+  const { data } = await apiClient.get<BankEntry[]>(`/api/fees/bank/lines/${lineId}/candidates`)
+  return data
+}
+
+export async function matchBankLine(lineId: number, kind: string, id: number): Promise<BankLineView> {
+  const { data } = await apiClient.post<BankLineView>(`/api/fees/bank/lines/${lineId}/match`, { kind, id })
+  return data
+}
+
+export async function unmatchBankLine(lineId: number): Promise<BankLineView> {
+  const { data } = await apiClient.post<BankLineView>(`/api/fees/bank/lines/${lineId}/unmatch`)
+  return data
+}
