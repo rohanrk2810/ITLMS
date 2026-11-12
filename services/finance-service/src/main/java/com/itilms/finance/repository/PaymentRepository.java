@@ -52,6 +52,25 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             """)
     List<Object[]> methodSplit(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    /** Cash received on a day: the figure the day-end count is compared with. */
+    @Query("""
+            SELECT COALESCE(SUM(p.amount), 0)
+            FROM Payment p
+            WHERE p.status = com.itilms.finance.entity.PaymentStatus.SUCCESS
+              AND p.method = com.itilms.finance.entity.PaymentMethod.CASH
+              AND p.paymentDate = :day
+            """)
+    BigDecimal cashReceivedOn(@Param("day") LocalDate day);
+
+    @Query("""
+            SELECT COUNT(p)
+            FROM Payment p
+            WHERE p.status = com.itilms.finance.entity.PaymentStatus.SUCCESS
+              AND p.method = com.itilms.finance.entity.PaymentMethod.CASH
+              AND p.paymentDate = :day
+            """)
+    long cashPaymentsOn(@Param("day") LocalDate day);
+
     @Query("""
             SELECT COALESCE(SUM(p.amount - p.refundedAmount), 0)
             FROM Payment p

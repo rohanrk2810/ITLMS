@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { allFeePlans, type FeePlanResponse, getFinanceDashboard, getOverdueInstallments, searchFeePlans } from '@/api/finance'
 import { searchStudents, type StudentSummaryResponse } from '@/api/students'
+import { CashClosingCard } from '@/components/cash-closing-card'
 import { ChargeBatchButton } from '@/components/add-charge-dialogs'
 import { CollectionReportCard } from '@/components/collection-report-card'
 import { ExportMenu } from '@/components/export-menu'
@@ -89,6 +90,8 @@ export function FinanceDeskPage() {
           </CardContent>
         </Card>
       )}
+
+      <CashClosingCard />
 
       <RefundsCard />
 
