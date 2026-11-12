@@ -28,7 +28,8 @@ class PayrollStructureTest {
     private final StaffPayRepository structures = mock(StaffPayRepository.class);
     private final StaffPayHistoryRepository history = mock(StaffPayHistoryRepository.class);
     private final StaffDirectoryClient directory = mock(StaffDirectoryClient.class);
-    private final PayrollService service = new PayrollService(structures, history, mock(PayslipRepository.class), directory,
+    private final PayrollService service = new PayrollService(structures, mock(com.itilms.finance.repository.StaffPayHeadRepository.class),
+            mock(com.itilms.finance.repository.PayslipItemRepository.class), history, mock(PayslipRepository.class), directory,
             mock(ExpenseService.class), new FinanceProperties(), mock(EventPublisher.class), mock(BooksLockService.class));
 
     private static BigDecimal n(String v) {

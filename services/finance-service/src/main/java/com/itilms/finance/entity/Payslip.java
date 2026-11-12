@@ -112,6 +112,36 @@ public class Payslip extends AuditableEntity {
     @Column(name = "expense_id")
     private Long expenseId;
 
+    @Column(name = "employee_code", length = 40)
+    private String employeeCode;
+
+    @Column(length = 10)
+    private String pan;
+
+    @Column(name = "bank_name", length = 80)
+    private String bankName;
+
+    @Column(name = "bank_account", length = 30)
+    private String bankAccount;
+
+    @Column(name = "pf_number", length = 40)
+    private String pfNumber;
+
+    @Column(length = 20)
+    private String uan;
+
+    @Column(name = "esi_number", length = 30)
+    private String esiNumber;
+
+    @Column(name = "hired_on")
+    private java.time.LocalDate hiredOn;
+
+    @Column(length = 80)
+    private String department;
+
+    @Column(length = 120)
+    private String location;
+
     /** The total deducted: the fixed deduction, leave without pay, and anything else. */
     public BigDecimal totalDeductions() {
         return fixedDeduction.add(lwpDeduction).add(otherDeduction);

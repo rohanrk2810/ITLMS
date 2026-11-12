@@ -38,9 +38,27 @@ public class PayrollController {
     private final PayrollService service;
     private final PayslipDocument documents;
 
-    public record StructureBody(@NotNull @DecimalMin("0.00") BigDecimal basic,
-                                @NotNull @DecimalMin("0.00") BigDecimal allowances,
-                                @NotNull @DecimalMin("0.00") BigDecimal fixedDeduction, Boolean active) {
+    public record HeadBody(@jakarta.validation.constraints.NotBlank String kind,
+                           @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 120) String name,
+                           BigDecimal amount, BigDecimal percentOfBasic, boolean basic) {
+    }
+
+    public record ProfileBody(@jakarta.validation.constraints.Size(max = 40) String employeeCode,
+                              @jakarta.validation.constraints.Size(max = 10) String pan,
+                              @jakarta.validation.constraints.Size(max = 80) String bankName,
+                              @jakarta.validation.constraints.Size(max = 30) String bankAccount,
+                              @jakarta.validation.constraints.Size(max = 40) String pfNumber,
+                              @jakarta.validation.constraints.Size(max = 20) String uan,
+                              @jakarta.validation.constraints.Size(max = 30) String esiNumber,
+                              LocalDate hiredOn,
+                              @jakarta.validation.constraints.Size(max = 80) String department,
+                              @jakarta.validation.constraints.Size(max = 120) String location) {
+    }
+
+    public record StructureBody(@DecimalMin("0.00") BigDecimal basic, @DecimalMin("0.00") BigDecimal allowances,
+                                @DecimalMin("0.00") BigDecimal fixedDeduction, Boolean active,
+                                @jakarta.validation.Valid @jakarta.validation.constraints.Size(max = 40) List<HeadBody> heads,
+                                @jakarta.validation.Valid ProfileBody profile) {
     }
 
     public record SlipBody(BigDecimal lwpDays, BigDecimal otherDeduction, BigDecimal bonus,
@@ -63,7 +81,12 @@ public class PayrollController {
     @PutMapping("/staff/{userId}")
     public PayrollService.StaffRow saveStructure(@PathVariable Long userId, @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid StructureBody body) {
         return service.saveStructure(userId, new PayrollService.StructureRequest(body.basic(), body.allowances(),
-                body.fixedDeduction(), body.active()));
+                body.fixedDeduction(), body.active(),
+                body.heads() == null ? null : body.heads().stream().map(h -> new PayrollService.HeadInput(h.kind(), h.name(),
+                        h.amount(), h.percentOfBasic(), h.basic())).toList(),
+                body.profile() == null ? null : new PayrollService.Profile(body.profile().employeeCode(), body.profile().pan(),
+                        body.profile().bankName(), body.profile().bankAccount(), body.profile().pfNumber(), body.profile().uan(),
+                        body.profile().esiNumber(), body.profile().hiredOn(), body.profile().department(), body.profile().location())));
     }
 
     @Operation(summary = "A person's salary history", description = "ADMIN or FINANCE. Every structure they have had, with who set it and when.")
