@@ -61,7 +61,7 @@ export function UserMenu() {
             <MenuLink to="/app/change-password" icon={<KeyRound className="size-6" />} title="Change Password" hint="Update your password" />
             <DropdownMenuItem
               onSelect={handleLogout}
-              className="mt-2 w-fit cursor-pointer rounded-md bg-green-600 px-4 py-2 font-semibold text-white focus:bg-green-700 focus:text-white"
+              className="mt-2 w-fit cursor-pointer rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground"
             >
               Log Out
             </DropdownMenuItem>
