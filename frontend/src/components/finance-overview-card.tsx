@@ -26,7 +26,7 @@ export function FinanceOverviewCard({ dashboard }: { dashboard: FinanceDashboard
   const incomeMonth = expenses.data?.collected ?? dashboard.collectedThisMonth
   const profit = incomeMonth - spent
 
-  function build(): Report {
+  async function build(): Promise<Report> {
     const rows: [string, string | number, string][] = [
       ['Fees billed (all time)', dashboard.totalBilled, ''],
       ['Fees collected (all time)', dashboard.collected, `${collectedPct}%`],
