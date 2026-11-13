@@ -49,6 +49,8 @@ public record UpdateCourseRequest(
         @DecimalMin("0.0")
         BigDecimal fee,
 
-        String thumbnailRef
+        String thumbnailRef,
+        @Size(max = 600)
+        String certificateText
 ) {
 }

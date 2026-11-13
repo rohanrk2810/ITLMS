@@ -96,11 +96,11 @@ class CourseServiceImplTest {
     }
 
     private static CreateCourseRequest create(String code, String level) {
-        return new CreateCourseRequest(" Java ", code, null, null, null, null, null, null, level, null, null);
+        return new CreateCourseRequest(" Java ", code, null, null, null, null, null, null, level, null, null, null);
     }
 
     private static UpdateCourseRequest update(String code) {
-        return new UpdateCourseRequest("Java", code, null, null, null, null, null, 100, "BEGINNER", null, null);
+        return new UpdateCourseRequest("Java", code, null, null, null, null, null, 100, "BEGINNER", null, null, null);
     }
 
     // ------------------------------------------------------------------------------------

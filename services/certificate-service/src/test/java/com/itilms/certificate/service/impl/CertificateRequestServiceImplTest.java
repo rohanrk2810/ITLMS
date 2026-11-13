@@ -92,7 +92,7 @@ class CertificateRequestServiceImplTest {
         when(admissionClient.lookup(List.of(STUDENT)))
                 .thenReturn(List.of(new AdmissionClient.Student(STUDENT, 7L, "STU-1", "Asha Patil", null, "ACTIVE")));
         when(courseClient.course(COURSE)).thenReturn(
-                new CourseClient.CourseDetail(new CourseClient.CourseSummary(COURSE, "Java", "JV")));
+                new CourseClient.CourseDetail(new CourseClient.CourseSummary(COURSE, "Java", "JV", null)));
         when(batchClient.batch(9L)).thenReturn(new BatchClient.BatchInfo(9L, "B-9", "Morning Batch"));
     }
 

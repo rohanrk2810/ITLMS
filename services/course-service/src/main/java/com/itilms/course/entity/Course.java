@@ -53,6 +53,10 @@ public class Course extends AuditableEntity {
     @Column(columnDefinition = "text")
     private String description;
 
+    /** Printed on the certificate under the course title; written by the administrator. */
+    @Column(name = "certificate_text", length = 600)
+    private String certificateText;
+
     @Column(name = "learning_outcomes", columnDefinition = "text")
     private String learningOutcomes;
 
