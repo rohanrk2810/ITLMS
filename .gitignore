@@ -36,3 +36,9 @@ frontend/blob-report/
 
 # Flutter mobile app lives in its own git repo
 mobile/
+
+# Generated report and exported documents
+docs/report/
+docs/**/*.docx
+docs/**/*.doc
+docs/**/*.pdf
