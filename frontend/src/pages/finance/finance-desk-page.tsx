@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { allFeePlans, type FeePlanResponse, getFinanceDashboard, getOverdueInstallments, searchFeePlans } from '@/api/finance'
 import { searchStudents, type StudentSummaryResponse } from '@/api/students'
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { feePlansReport, feePositionReport, overdueReport } from '@/lib/export-rows'
 import { formatDate, formatMoney } from '@/lib/format'
@@ -36,6 +37,10 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 export function FinanceDeskPage() {
   const canSeeExpenses = hasRole(useAuthStore((state) => state.roles), ['ADMIN', 'FINANCE'])
   const [status, setStatus] = useState('')
+  const [params, setParams] = useSearchParams()
+  const wanted = params.get('tab') ?? 'collections'
+  const tab = !canSeeExpenses && (wanted === 'accounts' || wanted === 'gst') ? 'collections' : wanted
+  const changeTab = (next: string) => setParams(next === 'collections' ? {} : { tab: next }, { replace: true })
 
   const dashboardQuery = useQuery({ queryKey: ['finance', 'dashboard'], queryFn: getFinanceDashboard })
   const overdueQuery = useQuery({ queryKey: ['finance', 'overdue'], queryFn: getOverdueInstallments })
@@ -62,7 +67,7 @@ export function FinanceDeskPage() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold">Finance</h1>
-          <p className="text-muted-foreground">Fee position across the institute (Doc S15).</p>
+          <p className="text-muted-foreground">Fees, collections, accounts and tax across the institute.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canSeeExpenses && (
@@ -122,128 +127,146 @@ export function FinanceDeskPage() {
         </Card>
       )}
 
-      {canSeeExpenses && <BankReconciliationCard />}
-
-      {canSeeExpenses && <BooksLockCard />}
-
-      <UpiClaimsCard />
-
-      <CashClosingCard />
-
-      <RefundsCard />
-
-      <CollectionReportCard />
-
-      {canSeeExpenses && <ExpensesCard />}
-
-      {canSeeExpenses && <GstSettingsCard />}
-
-      {canSeeExpenses && <GstCard />}
-
-      <FeeTemplateCard />
-
-      <div>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">Overdue installments</h2>
-          <ExportMenu
-            label="Download overdue"
-            report="OVERDUE_FEES"
-            build={async () => overdueReport(overdueQuery.data ?? (await getOverdueInstallments()))}
-          />
+      <Tabs value={tab} onValueChange={changeTab} className="gap-6">
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="collections">Collections</TabsTrigger>
+            <TabsTrigger value="fees">Fees</TabsTrigger>
+            {canSeeExpenses && <TabsTrigger value="accounts">Accounts</TabsTrigger>}
+            {canSeeExpenses && <TabsTrigger value="gst">GST</TabsTrigger>}
+          </TabsList>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Installment</TableHead>
-              <TableHead>Due</TableHead>
-              <TableHead>Days overdue</TableHead>
-              <TableHead>Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {overdueQuery.data?.map((item) => (
-              <TableRow key={item.installmentId}>
-                <TableCell>
-                  <Link to={`/app/finance/${item.feePlanId}`} className="hover:underline">
-                    {item.studentName}
-                  </Link>
-                </TableCell>
-                <TableCell>#{item.installmentNo}</TableCell>
-                <TableCell>{formatDate(item.dueDate)}</TableCell>
-                <TableCell className="text-destructive">{item.daysOverdue}</TableCell>
-                <TableCell>{formatMoney(item.amountOverdue)}</TableCell>
-              </TableRow>
-            ))}
-            {overdueQuery.isSuccess && overdueQuery.data.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Nothing overdue.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
 
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">Fee plans</h2>
-          <ExportMenu
-            label="Download fee plans"
-            report="FEE_PLANS"
-            detail={status || 'all statuses'}
-            build={async () => feePlansReport(await allFeePlans(status), status)}
-          />
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="h-9 rounded-md border bg-transparent px-3 text-sm"
-          >
-            <option value="">All statuses</option>
-            {['ACTIVE', 'SETTLED', 'CANCELLED'].map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Net fee</TableHead>
-              <TableHead>Paid</TableHead>
-              <TableHead>Outstanding</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {plansQuery.data?.content.map((plan) => (
-              <TableRow key={plan.id}>
-                <TableCell>
-                  <Link to={`/app/finance/${plan.id}`} className="font-medium hover:underline">
-                    {plan.studentName}
-                  </Link>
-                </TableCell>
-                <TableCell>{formatMoney(plan.netFee, plan.currency)}</TableCell>
-                <TableCell>{formatMoney(plan.paid, plan.currency)}</TableCell>
-                <TableCell>{formatMoney(plan.outstanding, plan.currency)}</TableCell>
-                <TableCell>
-                  <Badge variant={STATUS_VARIANT[plan.status] ?? 'outline'}>{plan.status}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-            {plansQuery.isSuccess && plansQuery.data.content.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No fee plans match.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+        <TabsContent value="collections" className="flex flex-col gap-6">
+          <UpiClaimsCard />
+          <CashClosingCard />
+          <RefundsCard />
+          <CollectionReportCard />
+        </TabsContent>
+
+        <TabsContent value="fees" className="flex flex-col gap-6">
+          <div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Overdue installments</h2>
+              <ExportMenu
+                label="Download overdue"
+                report="OVERDUE_FEES"
+                build={async () => overdueReport(overdueQuery.data ?? (await getOverdueInstallments()))}
+              />
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Installment</TableHead>
+                  <TableHead>Due</TableHead>
+                  <TableHead>Days overdue</TableHead>
+                  <TableHead>Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {overdueQuery.data?.map((item) => (
+                  <TableRow key={item.installmentId}>
+                    <TableCell>
+                      <Link to={`/app/finance/${item.feePlanId}`} className="hover:underline">
+                        {item.studentName}
+                      </Link>
+                    </TableCell>
+                    <TableCell>#{item.installmentNo}</TableCell>
+                    <TableCell>{formatDate(item.dueDate)}</TableCell>
+                    <TableCell className="text-destructive">{item.daysOverdue}</TableCell>
+                    <TableCell>{formatMoney(item.amountOverdue)}</TableCell>
+                  </TableRow>
+                ))}
+                {overdueQuery.isSuccess && overdueQuery.data.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      Nothing overdue.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-medium text-muted-foreground">Fee plans</h2>
+              <ExportMenu
+                label="Download fee plans"
+                report="FEE_PLANS"
+                detail={status || 'all statuses'}
+                build={async () => feePlansReport(await allFeePlans(status), status)}
+              />
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              >
+                <option value="">All statuses</option>
+                {['ACTIVE', 'SETTLED', 'CANCELLED'].map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Net fee</TableHead>
+                  <TableHead>Paid</TableHead>
+                  <TableHead>Outstanding</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {plansQuery.data?.content.map((plan) => (
+                  <TableRow key={plan.id}>
+                    <TableCell>
+                      <Link to={`/app/finance/${plan.id}`} className="font-medium hover:underline">
+                        {plan.studentName}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{formatMoney(plan.netFee, plan.currency)}</TableCell>
+                    <TableCell>{formatMoney(plan.paid, plan.currency)}</TableCell>
+                    <TableCell>{formatMoney(plan.outstanding, plan.currency)}</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[plan.status] ?? 'outline'}>{plan.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {plansQuery.isSuccess && plansQuery.data.content.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No fee plans match.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <FeeTemplateCard />
+        </TabsContent>
+
+        {canSeeExpenses && (
+          <TabsContent value="accounts" className="flex flex-col gap-6">
+            <BankReconciliationCard />
+            <BooksLockCard />
+            <ExpensesCard />
+          </TabsContent>
+        )}
+
+        {canSeeExpenses && (
+          <TabsContent value="gst" className="flex flex-col gap-6">
+            <GstSettingsCard />
+            <GstCard />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   )
 }
