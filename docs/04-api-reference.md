@@ -212,6 +212,7 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | POST | /api/batches/{id}/courses | STAFF | Add a course `{courseId, trainerId?}`; everyone placed in the whole batch is enrolled in it at no extra fee ([38](38-batch-courses.md)) |
 | PUT | /api/batches/{id}/courses/{courseId} | STAFF | Change who teaches an added course `{trainerId?}` |
 | DELETE | /api/batches/{id}/courses/{courseId} | STAFF | Take an added course out; the students' lessons for it close, their progress is kept |
+| GET | /api/public/batches | public | The batches the website sells: planned or ongoing, with a batch fee and a free seat. Courses, dates, days, seats left and fee; no student names ([38](38-batch-courses.md)) |
 | GET | /api/batches/internal/{batchId}/students/{studentId}/courses | signed-in (service to service) | The courses a student holds in a batch, for the batch certificate |
 | GET | /api/batches/{id}/students | ACADEMIC | Roster |
 | POST | /api/batches/{id}/extend | ADMIN, COORDINATOR | A later end date with a reason; a finished batch runs again, students and trainer are told |

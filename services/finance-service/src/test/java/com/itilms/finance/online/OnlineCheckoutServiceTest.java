@@ -58,6 +58,8 @@ class OnlineCheckoutServiceTest {
     private final PaymentService payments = mock(PaymentService.class);
     private final CourseClient courses = mock(CourseClient.class);
     private final BatchClient batches = mock(BatchClient.class);
+    private final com.itilms.finance.client.BatchLookupClient batchLookup =
+            mock(com.itilms.finance.client.BatchLookupClient.class);
     private final AdmissionClient admission = mock(AdmissionClient.class);
     private final EventPublisher events = mock(EventPublisher.class);
     private OnlineCheckoutService service;
@@ -69,7 +71,7 @@ class OnlineCheckoutServiceTest {
         PlatformTransactionManager txm = mock(PlatformTransactionManager.class);
         when(txm.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         service = new OnlineCheckoutService(razorpay, gateway, orders, plans, paymentRepository, feePlans, payments, courses, batches,
-                admission, new FinanceProperties(), events, new ObjectMapper(), txm);
+                batchLookup, admission, new FinanceProperties(), events, new ObjectMapper(), txm);
         AppPrincipal me = new AppPrincipal(7L, "a@x", "Asha", "STUDENT", STUDENT);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(me, null, me.authorities()));
@@ -88,6 +90,40 @@ class OnlineCheckoutServiceTest {
     private static OnlineOrder order(OnlineOrder.Status status) {
         return OnlineOrder.builder().razorpayOrderId("order_1").studentId(STUDENT).courseId(5L)
                 .courseTitle("Java Full Stack").amount(new BigDecimal("15000.00")).currency("INR").status(status).build();
+    }
+
+    private static com.itilms.finance.client.BatchLookupClient.Batch batch(String status, String fee, long seats) {
+        return new com.itilms.finance.client.BatchLookupClient.Batch(9L, "JAP-1", "Java Placement", java.util.List.of("MON"),
+                "10:00", "12:00", 5L, fee == null ? null : new BigDecimal(fee), status, seats);
+    }
+
+    @Test
+    void aWholeBatchIsChargedItsOwnFeeAndRemembersTheBatch() {
+        when(batchLookup.get(9L)).thenReturn(batch("PLANNED", "60000", 4));
+        when(plans.existsByStudentIdAndCourseIdAndStatusNot(any(), any(), any())).thenReturn(false);
+        when(gateway.createOrder(any(), anyString(), anyString())).thenReturn("order_9");
+
+        var created = service.createOrder(new CreateOrderRequest(5L, 9L, true));
+
+        assertThat(created.amountPaise()).isEqualTo(6_000_000L);
+        assertThat(created.courseTitle()).isEqualTo("Java Placement");
+        org.mockito.ArgumentCaptor<OnlineOrder> saved = org.mockito.ArgumentCaptor.forClass(OnlineOrder.class);
+        verify(orders).save(saved.capture());
+        assertThat(saved.getValue().isWholeBatch()).isTrue();
+        assertThat(saved.getValue().getBatchId()).isEqualTo(9L);
+        assertThat(saved.getValue().getCourseId()).isEqualTo(5L);
+    }
+
+    @Test
+    void aBatchThatIsFullClosedOrWithoutAFeeIsNotSold() {
+        when(plans.existsByStudentIdAndCourseIdAndStatusNot(any(), any(), any())).thenReturn(false);
+        for (var unsellable : java.util.List.of(
+                batch("PLANNED", "60000", 0), batch("COMPLETED", "60000", 4), batch("PLANNED", null, 4))) {
+            when(batchLookup.get(9L)).thenReturn(unsellable);
+            assertThatThrownBy(() -> service.createOrder(new CreateOrderRequest(5L, 9L, true)))
+                    .isInstanceOf(BusinessRuleException.class);
+        }
+        verify(orders, never()).save(any());
     }
 
     @Test

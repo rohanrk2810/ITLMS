@@ -274,6 +274,10 @@ public class CourseRequestService {
             throw new BusinessRuleException("This payment could not be confirmed for this course.");
         }
 
+        if (order.wholeBatch()) {
+            return paidJoinWholeBatch(me, studentId, order, request);
+        }
+
         var active = enrollments.findActiveForStudent(studentId).stream()
                 .filter(e -> request.courseId().equals(e.getCourseId())).findFirst();
         if (active.isPresent()) {
@@ -296,6 +300,34 @@ public class CourseRequestService {
         events.audit(SERVICE_NAME, "COURSE_JOINED_AFTER_PAYMENT", "Batch", open.batchId(), null,
                 Map.of("studentId", studentId, "orderId", request.orderId()));
         return new PaidJoinResponse(open.batchId(), open.batchCode(), false);
+    }
+
+    /**
+     * The student bought a whole batch: place them in exactly that batch, with every course in it, at the batch fee
+     * they paid. If the seat went in the meantime nothing is lost: the order stays paid and the institute is told.
+     */
+    private PaidJoinResponse paidJoinWholeBatch(AppPrincipal me, Long studentId, FinanceClient.OnlineOrder order,
+                                                PaidJoinRequest request) {
+        Long batchId = order.batchId();
+        Batch batch = batchId == null ? null : batches.findById(batchId).orElse(null);
+        if (batch == null || !batch.getCourseId().equals(request.courseId())) {
+            throw new BusinessRuleException("This payment could not be confirmed for this batch.");
+        }
+        if (enrollments.existsByStudentIdAndBatchIdAndStatus(studentId, batchId, EnrollmentStatus.ACTIVE)) {
+            return new PaidJoinResponse(batchId, batch.getBatchCode(), true);
+        }
+        EnrollmentResultResponse result = batchService.enroll(batchId, new EnrollStudentRequest(List.of(studentId)));
+        if (result.enrolled() == 0) {
+            String who = me.email() + " paid for batch " + batch.getBatchCode() + " but could not be placed in it";
+            events.notifyRole(Roles.ADMIN, "COURSE_REQUEST", "Paid student needs a place", who, "/batches");
+            events.notifyRole(Roles.COORDINATOR, "COURSE_REQUEST", "Paid student needs a place", who, "/batches");
+            throw new BusinessRuleException(result.outcomes().stream().findFirst()
+                    .map(EnrollmentResultResponse.Outcome::message).orElse("You could not be placed in the batch.")
+                    + " Your payment is safe; the institute has been told and will place you.");
+        }
+        events.audit(SERVICE_NAME, "BATCH_JOINED_AFTER_PAYMENT", "Batch", batchId, null,
+                Map.of("studentId", studentId, "orderId", request.orderId()));
+        return new PaidJoinResponse(batchId, batch.getBatchCode(), false);
     }
 
     // -----------------------------------------------------------------

@@ -23,6 +23,7 @@ import com.itilms.common.security.Roles;
 import com.itilms.common.security.SecurityUtils;
 import com.itilms.finance.client.AdmissionClient;
 import com.itilms.finance.client.BatchClient;
+import com.itilms.finance.client.BatchLookupClient;
 import com.itilms.finance.client.CourseClient;
 import com.itilms.finance.config.FinanceProperties;
 import com.itilms.finance.config.RazorpayProperties;
@@ -69,6 +70,7 @@ public class OnlineCheckoutService {
     private final PaymentService payments;
     private final CourseClient courses;
     private final BatchClient batches;
+    private final BatchLookupClient batchLookup;
     private final AdmissionClient admission;
     private final FinanceProperties props;
     private final EventPublisher events;
@@ -78,7 +80,8 @@ public class OnlineCheckoutService {
     public OnlineCheckoutService(RazorpayProperties razorpay, RazorpayGateway gateway, OnlineOrderRepository orders,
                                  FeePlanRepository plans, PaymentRepository paymentRepository,
                                  FeePlanService feePlans, PaymentService payments,
-                                 CourseClient courses, BatchClient batches, AdmissionClient admission,
+                                 CourseClient courses, BatchClient batches, BatchLookupClient batchLookup,
+                                 AdmissionClient admission,
                                  FinanceProperties props, EventPublisher events, ObjectMapper json,
                                  PlatformTransactionManager txm) {
         this.razorpay = razorpay;
@@ -90,6 +93,7 @@ public class OnlineCheckoutService {
         this.payments = payments;
         this.courses = courses;
         this.batches = batches;
+        this.batchLookup = batchLookup;
         this.admission = admission;
         this.props = props;
         this.events = events;
@@ -111,6 +115,9 @@ public class OnlineCheckoutService {
         }
         AppPrincipal me = student();
         Long studentId = me.profileId();
+        if (request.wholeBatch()) {
+            return createBatchOrder(me, request);
+        }
 
         CourseClient.CourseDetail detail = courses.get(request.courseId());
         CourseClient.Course course = detail == null ? null : detail.course();
@@ -147,6 +154,52 @@ public class OnlineCheckoutService {
                 .build());
         return new OrderCreated(razorpayOrderId, razorpay.getKeyId(), fee.movePointRight(2).longValueExact(),
                 props.getCurrency(), course.title());
+    }
+
+    /**
+     * Buying a whole batch: every course in it, at the batch fee. The fee, the course and the seat are all read from
+     * batch-service here, never taken from the browser.
+     */
+    private OrderCreated createBatchOrder(AppPrincipal me, CreateOrderRequest request) {
+        Long studentId = me.profileId();
+        if (request.batchId() == null) {
+            throw new BusinessRuleException("Choose the batch to buy.");
+        }
+        BatchLookupClient.Batch batch = batchLookup.get(request.batchId());
+        if (batch == null || batch.courseId() == null) {
+            throw new BusinessRuleException("That batch could not be read right now. Please try again shortly.");
+        }
+        if (!java.util.List.of("PLANNED", "ONGOING").contains(batch.status())) {
+            throw new BusinessRuleException("This batch is not open for enrolment.");
+        }
+        BigDecimal fee = batch.fee() == null ? BigDecimal.ZERO : batch.fee().setScale(2, RoundingMode.HALF_UP);
+        if (fee.signum() <= 0) {
+            throw new BusinessRuleException("This batch is not sold online. Please send an inquiry.");
+        }
+        if (batch.seatsAvailable() <= 0) {
+            throw new BusinessRuleException("This batch is full. Please send an inquiry and we will call you.");
+        }
+        if (plans.existsByStudentIdAndCourseIdAndStatusNot(studentId, batch.courseId(), FeePlanStatus.CANCELLED)) {
+            throw new BusinessRuleException(
+                    "You already have a fee plan for this course. Pay your installments from the Fees page.");
+        }
+
+        String title = batch.name() != null && !batch.name().isBlank() ? batch.name() : batch.batchCode();
+        String receipt = "bat%d-st%d-%d".formatted(batch.id(), studentId, Instant.now().getEpochSecond());
+        String razorpayOrderId = gateway.createOrder(fee, props.getCurrency(), receipt);
+        orders.save(OnlineOrder.builder()
+                .razorpayOrderId(razorpayOrderId)
+                .studentId(studentId)
+                .studentUserId(me.userId())
+                .courseId(batch.courseId())
+                .courseTitle(title)
+                .batchId(batch.id())
+                .wholeBatch(true)
+                .amount(fee)
+                .currency(props.getCurrency())
+                .build());
+        return new OrderCreated(razorpayOrderId, razorpay.getKeyId(), fee.movePointRight(2).longValueExact(),
+                props.getCurrency(), title);
     }
 
     /**
@@ -373,7 +426,7 @@ public class OnlineCheckoutService {
         String state = o.getKind() == OnlineOrder.Kind.FEES && o.getStatus() != OnlineOrder.Status.CREATED
                 ? "FEES_PAID" : o.getStatus().name();
         return new OrderStatus(o.getRazorpayOrderId(), state, o.getStudentId(), o.getCourseId(),
-                o.getBatchId(), batchCode, message);
+                o.getBatchId(), batchCode, message, o.isWholeBatch());
     }
 
     private String courseTitle(Long courseId) {

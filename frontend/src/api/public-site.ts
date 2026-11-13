@@ -18,6 +18,29 @@ export async function getAllPublicCourses(): Promise<PageResponse<CourseSummaryR
   return data
 }
 
+/** A batch the website sells: what it covers, when it meets, its fee and the seats left. */
+export interface PublicBatch {
+  id: number
+  batchCode: string
+  name: string | null
+  courseId: number
+  courseTitles: string[]
+  startDate: string
+  endDate: string | null
+  startTime: string
+  endTime: string
+  classDays: string[]
+  mode: string
+  seatsLeft: number
+  fee: number
+}
+
+/** Anonymous: the batches that have a fee of their own and a free seat. */
+export async function getPublicBatches(): Promise<PublicBatch[]> {
+  const { data } = await apiClient.get<PublicBatch[]>('/api/public/batches')
+  return data
+}
+
 export interface EnquiryInput {
   name: string
   phone: string
