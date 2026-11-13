@@ -59,6 +59,11 @@ public class OnlineOrder extends AuditableEntity {
     @Column(name = "batch_id")
     private Long batchId;
 
+    /** The order buys the whole batch (every course in it, at the batch fee), not one course. */
+    @Column(name = "whole_batch", nullable = false)
+    @Builder.Default
+    private boolean wholeBatch = false;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 

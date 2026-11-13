@@ -20,7 +20,14 @@ public final class OnlineCheckoutDtos {
     }
 
     public record CreateOrderRequest(@NotNull Long courseId,
-                                     @Schema(description = "A batch the student prefers (optional)") Long batchId) {
+                                     @Schema(description = "A batch the student prefers (optional)") Long batchId,
+                                     @Schema(description = "Buy the whole of that batch, every course in it, at the "
+                                             + "batch fee. Needs the batch id; courseId is then the batch's own course.")
+                                     boolean wholeBatch) {
+        /** One course, optionally in a preferred batch. */
+        public CreateOrderRequest(Long courseId, Long batchId) {
+            this(courseId, batchId, false);
+        }
     }
 
     @Schema(description = "Pay part or all of what is owed on a fee plan. Without an amount, the whole balance.")
@@ -41,6 +48,6 @@ public final class OnlineCheckoutDtos {
 
     @Schema(description = "CREATED, PAID (money received, not yet in a batch) or ENROLLED")
     public record OrderStatus(String orderId, String status, Long studentId, Long courseId, Long batchId,
-                              String batchCode, String message) {
+                              String batchCode, String message, boolean wholeBatch) {
     }
 }

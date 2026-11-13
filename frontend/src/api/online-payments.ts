@@ -38,6 +38,16 @@ export async function createOnlineOrder(courseId: number): Promise<OrderCreated>
   return data
 }
 
+/** Buys a whole batch: every course in it, at the batch fee. The amount is read from the batch on the server. */
+export async function createBatchOrder(batch: { id: number; courseId: number }): Promise<OrderCreated> {
+  const { data } = await apiClient.post<OrderCreated>('/api/payments/online/orders', {
+    courseId: batch.courseId,
+    batchId: batch.id,
+    wholeBatch: true,
+  })
+  return data
+}
+
 /** The server checks Razorpay's signature, records the fee and places the student in a batch. */
 /** Pay an installment or the balance of a fee plan the student already has. Without an amount, the whole balance. */
 export async function createFeeOrder(feePlanId: number, amount?: number): Promise<OrderCreated> {

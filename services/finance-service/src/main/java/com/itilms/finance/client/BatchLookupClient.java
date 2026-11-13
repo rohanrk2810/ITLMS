@@ -14,7 +14,12 @@ public interface BatchLookupClient {
     @GetMapping("/{id}")
     Batch get(@PathVariable("id") Long id);
 
-    record Batch(Long id, String batchCode, String name, java.util.List<String> classDays, String startTime, String endTime) {
+    record Batch(Long id, String batchCode, String name, java.util.List<String> classDays, String startTime, String endTime,
+                 Long courseId, java.math.BigDecimal fee, String status, long seatsAvailable) {
+        /** Just what a receipt prints. */
+        public Batch(Long id, String batchCode, String name, java.util.List<String> classDays, String startTime, String endTime) {
+            this(id, batchCode, name, classDays, startTime, endTime, null, null, null, 0);
+        }
     }
 
     /** No answer: the receipt is drawn without the batch. */

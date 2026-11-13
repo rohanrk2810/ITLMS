@@ -212,7 +212,7 @@ spring:
         - id: batch-service
           uri: lb://batch-service
           predicates:
-            - Path=/api/batches/**,/api/enrollments/**,/api/sessions/**,/api/timetable/**,/api/attendance/**,/api/course-requests/**
+            - Path=/api/batches/**,/api/enrollments/**,/api/sessions/**,/api/timetable/**,/api/attendance/**,/api/course-requests/**,/api/public/batches/**
           filters:
             - name: CircuitBreaker
               args:

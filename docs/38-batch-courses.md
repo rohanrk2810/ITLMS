@@ -22,12 +22,24 @@ A batch is created for one course and can then hold more: Java now, SQL and Adva
 
 A student's fee plan is still one per course. Placed in the whole batch, the plan is for the batch's own course at the batch fee; the included courses have none.
 
+## Selling a batch online
+
+The website's **Courses** page lists, above the courses, the batches that can be bought: planned or ongoing, with a batch fee set and a free seat (`GET /api/public/batches`, open to anyone, no student names). A card shows the courses in the batch, the dates, days and time, the seats left and the fee, with **Buy** and **Inquiry**.
+
+**Buy** works like buying a course ([34](34-online-payments.md)), with one difference: `POST /api/payments/online/orders {courseId, batchId, wholeBatch: true}`.
+
+1. finance-service reads the batch from batch-service and refuses unless it is open, has a fee and has a free seat. The amount is the batch fee, never anything from the browser; the order remembers the batch (`online_orders.whole_batch`).
+2. After Razorpay's signature checks out, the fee plan is raised for the batch's own course at the batch fee, and the payment and receipt are recorded.
+3. batch-service `paid-join` sees `wholeBatch` on the order and places the student in **exactly that batch**, in the whole of it: every course in it, no further fee. If the seat has gone, the order stays PAID and ADMIN and COORDINATOR are told, as for a course.
+
+A batch with no fee is not listed and cannot be bought online; the course page and the inquiry form still work for it.
+
 ## What changes for people
 
 - **Staff:** the batch page has **Courses in this batch** (add a course with its trainer, change a trainer, take a course out), **Batch fee**, and the enrol dialog asks *the whole batch* or *one course only*. Scheduling a lecture asks which course.
 - **Trainers:** see the batches where they teach any course. A lecture shows its own course.
 - **Students:** see every course of their batch under **Courses**, with their own progress in each.
-- **Course requests and online purchases** place the student in that one course, at its fee.
+- **Course requests and online course purchases** place the student in that one course, at its fee. **Buying a batch online** places them in the whole batch, at the batch fee.
 
 ## Edge cases that are decided
 

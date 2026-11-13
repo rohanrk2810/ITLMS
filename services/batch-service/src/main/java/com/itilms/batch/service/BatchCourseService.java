@@ -12,8 +12,10 @@ import com.itilms.batch.client.AdmissionClient;
 import com.itilms.batch.client.CourseClient;
 import com.itilms.batch.dto.request.BatchCourseRequests;
 import com.itilms.batch.dto.response.BatchCourseResponse;
+import com.itilms.batch.dto.response.PublicBatchResponse;
 import com.itilms.batch.entity.Batch;
 import com.itilms.batch.entity.BatchCourse;
+import com.itilms.batch.entity.BatchStatus;
 import com.itilms.batch.entity.Enrollment;
 import com.itilms.batch.entity.EnrollmentStatus;
 import com.itilms.batch.repository.BatchCourseRepository;
@@ -92,6 +94,38 @@ public class BatchCourseService {
                 .orElseThrow(() -> new BusinessRuleException("That course is not part of this batch."));
         return new Teaching(added.getCourseId(), added.getCourseTitle(), added.getTrainerId(),
                 added.getTrainerUserId(), added.getTrainerName());
+    }
+
+    /** The batches the website sells: a fee of their own, still taking students, and a free seat. */
+    @Transactional(readOnly = true)
+    public List<PublicBatchResponse> openForSale() {
+        List<Batch> open = batches.findByStatusInAndFeeGreaterThanOrderByStartDateAsc(
+                List.of(BatchStatus.PLANNED, BatchStatus.ONGOING), java.math.BigDecimal.ZERO);
+        if (open.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = open.stream().map(Batch::getId).toList();
+        java.util.Map<Long, Long> taken = new java.util.HashMap<>();
+        enrollments.countActiveGroupedByBatch(ids).forEach(row -> taken.put((Long) row[0], (Long) row[1]));
+        java.util.Map<Long, List<String>> added = new java.util.HashMap<>();
+        batchCourses.findByBatchIdIn(ids).forEach(bc ->
+                added.computeIfAbsent(bc.getBatchId(), k -> new ArrayList<>()).add(bc.getCourseTitle()));
+
+        List<PublicBatchResponse> result = new ArrayList<>();
+        for (Batch batch : open) {
+            long seatsLeft = batch.getCapacity() - taken.getOrDefault(batch.getId(), 0L);
+            if (seatsLeft <= 0) {
+                continue;
+            }
+            List<String> titles = new ArrayList<>();
+            titles.add(batch.getCourseTitle());
+            titles.addAll(added.getOrDefault(batch.getId(), List.of()));
+            result.add(new PublicBatchResponse(batch.getId(), batch.getBatchCode(), batch.getName(),
+                    batch.getCourseId(), titles, batch.getStartDate(), batch.getEndDate(),
+                    batch.getStartTime(), batch.getEndTime(), List.of(batch.getClassDays().split(",")),
+                    batch.getMode().name(), seatsLeft, batch.getFee()));
+        }
+        return result;
     }
 
     // -----------------------------------------------------------------

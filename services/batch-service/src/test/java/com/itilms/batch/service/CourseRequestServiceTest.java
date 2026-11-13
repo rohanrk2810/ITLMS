@@ -354,6 +354,21 @@ class CourseRequestServiceTest {
     }
 
     @Test
+    @DisplayName("a paid whole-batch order places the student in exactly that batch, with every course")
+    void paidJoinOfAWholeBatchUsesThatBatch() {
+        when(financeClient.order("order_1")).thenReturn(new com.itilms.batch.client.FinanceClient.OnlineOrder(
+                "order_1", "PAID", 10L, COURSE, 5L, true));
+        when(batches.findById(5L)).thenReturn(java.util.Optional.of(batch(5L, COURSE, BatchStatus.PLANNED)));
+        when(batchService.enroll(eq(5L), any())).thenReturn(new EnrollmentResultResponse(5L, 1, 0, 9, List.of()));
+
+        var result = service.paidJoin(new com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinRequest(COURSE, "order_1"));
+
+        assertThat(result.batchId()).isEqualTo(5L);
+        // The whole batch: no course given, so the placement carries the batch fee and every added course.
+        verify(batchService).enroll(5L, new EnrollStudentRequest(List.of(10L)));
+    }
+
+    @Test
     @DisplayName("an unpaid, someone else's or another course's order places nobody")
     void paidJoinNeedsAConfirmedPaymentOfThisStudentForThisCourse() {
         var request = new com.itilms.batch.dto.request.CourseRequestDtos.PaidJoinRequest(COURSE, "order_1");

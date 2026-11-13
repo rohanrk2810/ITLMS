@@ -28,6 +28,10 @@ public interface BatchRepository extends JpaRepository<Batch, Long>, JpaSpecific
 
     long countByStatus(BatchStatus status);
 
+    /** Batches that have a fee of their own and still take students, earliest start first (the ones the website sells). */
+    List<Batch> findByStatusInAndFeeGreaterThanOrderByStartDateAsc(Collection<BatchStatus> statuses,
+                                                                   java.math.BigDecimal fee);
+
     /** Batches of a course that still take students, earliest start first. */
     List<Batch> findByCourseIdAndStatusInOrderByStartDateAsc(Long courseId, Collection<BatchStatus> statuses);
 

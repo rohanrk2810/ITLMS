@@ -12,6 +12,8 @@ A signed-in student can pay a course fee online. Once the payment is confirmed t
 
 If step 5 fails (no seat any more, service down) the order stays **PAID**, ADMIN and COORDINATOR get a notification, and the student sees "the institute will add you shortly". `POST /api/payments/online/orders/{id}/finish` retries it. The money is never left unrecorded.
 
+**Buying a whole batch.** The same flow, with `wholeBatch: true` and a `batchId`: the amount is the batch fee and the student is placed in that batch with every course in it. See [38](38-batch-courses.md).
+
 ## Diagram
 
 ```mermaid

@@ -33,6 +33,7 @@ vi.mock('@/api/public-site', () => ({
       first: true,
       last: true,
     }),
+  getPublicBatches: () => Promise.resolve([]),
   sendEnquiry: () => Promise.resolve(),
 }))
 vi.mock('@/api/branding', async (orig) => ({

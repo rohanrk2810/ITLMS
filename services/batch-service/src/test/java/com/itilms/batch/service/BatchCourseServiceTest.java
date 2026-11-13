@@ -130,6 +130,30 @@ class BatchCourseServiceTest {
     }
 
     @Test
+    void onlyBatchesWithAFeeAndAFreeSeatAreOfferedForSale() {
+        Batch roomy = Batch.builder().id(1L).batchCode("A").name("Java Placement").courseId(JAVA).courseTitle("Core Java")
+                .capacity(10).fee(new java.math.BigDecimal("60000")).status(com.itilms.batch.entity.BatchStatus.PLANNED)
+                .startDate(java.time.LocalDate.now()).startTime(java.time.LocalTime.of(10, 0))
+                .endTime(java.time.LocalTime.of(12, 0)).build();
+        Batch full = Batch.builder().id(2L).batchCode("B").courseId(JAVA).courseTitle("Core Java").capacity(2)
+                .fee(new java.math.BigDecimal("50000")).status(com.itilms.batch.entity.BatchStatus.PLANNED)
+                .startDate(java.time.LocalDate.now()).startTime(java.time.LocalTime.of(10, 0))
+                .endTime(java.time.LocalTime.of(12, 0)).build();
+        when(batches.findByStatusInAndFeeGreaterThanOrderByStartDateAsc(any(), any())).thenReturn(List.of(roomy, full));
+        when(enrollments.countActiveGroupedByBatch(any()))
+                .thenReturn(List.<Object[]>of(new Object[] {1L, 3L}, new Object[] {2L, 2L}));
+        when(batchCourses.findByBatchIdIn(any())).thenReturn(List.of(
+                BatchCourse.builder().batchId(1L).courseId(SQL).courseTitle("SQL").build()));
+
+        var offered = service.openForSale();
+
+        assertThat(offered).hasSize(1);
+        assertThat(offered.get(0).id()).isEqualTo(1L);
+        assertThat(offered.get(0).seatsLeft()).isEqualTo(7);
+        assertThat(offered.get(0).courseTitles()).containsExactly("Core Java", "SQL");
+    }
+
+    @Test
     void aLectureOfAnAddedCourseIsTaughtByThatCoursesTrainer() {
         BatchCourse added = BatchCourse.builder().batchId(BATCH).courseId(SQL).courseTitle("SQL").trainerId(22L)
                 .trainerUserId(122L).trainerName("Sir B").build();

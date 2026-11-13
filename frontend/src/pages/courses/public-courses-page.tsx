@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SearchIcon } from 'lucide-react'
 
-import { getAllPublicCourses } from '@/api/public-site'
+import { getAllPublicCourses, getPublicBatches } from '@/api/public-site'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSite } from '@/lib/site-config'
+import { BatchTile } from '@/components/batch-tile'
 import { CourseTile } from '@/components/course-tile'
 import { SiteShell } from '@/components/site-shell'
 
@@ -17,6 +18,7 @@ import { SiteShell } from '@/components/site-shell'
 export function PublicCoursesPage() {
   const site = useSite()
   const query = useQuery({ queryKey: ['public-courses', 'all'], queryFn: getAllPublicCourses, staleTime: 5 * 60_000 })
+  const batches = useQuery({ queryKey: ['public-batches'], queryFn: getPublicBatches, staleTime: 5 * 60_000 })
   const [text, setText] = useState('')
   const [level, setLevel] = useState('ALL')
 
@@ -36,6 +38,22 @@ export function PublicCoursesPage() {
       title="Our courses"
       intro="Pick a course, see what it covers and what it costs, then buy it online or send us an inquiry."
     >
+          {batches.data && batches.data.length > 0 && (
+            <section className="mb-12" aria-labelledby="batches-heading">
+              <h2 id="batches-heading" className="mb-1 text-center text-2xl font-semibold">
+                Join a batch
+              </h2>
+              <p className="mb-6 text-center text-sm text-muted-foreground">
+                One fee for the whole batch, with every course in it. Seats are limited.
+              </p>
+              <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {batches.data.map((batch) => (
+                  <BatchTile key={batch.id} batch={batch} />
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
             <div className="relative w-full sm:max-w-sm">
               <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

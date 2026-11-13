@@ -16,7 +16,13 @@ public interface FinanceClient {
     @GetMapping("/api/payments/online/orders/{orderId}")
     OnlineOrder order(@PathVariable("orderId") String orderId);
 
-    record OnlineOrder(String orderId, String status, Long studentId, Long courseId, Long batchId) {
+    record OnlineOrder(String orderId, String status, Long studentId, Long courseId, Long batchId,
+                       boolean wholeBatch) {
+        /** An order for one course. */
+        public OnlineOrder(String orderId, String status, Long studentId, Long courseId, Long batchId) {
+            this(orderId, status, studentId, courseId, batchId, false);
+        }
+
         public boolean paid() {
             return "PAID".equals(status) || "ENROLLED".equals(status);
         }
