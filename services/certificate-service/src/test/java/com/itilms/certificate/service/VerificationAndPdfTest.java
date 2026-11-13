@@ -78,6 +78,19 @@ class VerificationAndPdfTest {
         assertThat(pdf.length).isGreaterThan(1_000);
     }
 
+    @Test
+    @DisplayName("The administrator's wording makes the PDF longer than the standard one")
+    void rendersTheCourseWording() {
+        CertificatePdfRenderer renderer = new CertificatePdfRenderer(new CertificateProperties(),
+                new InstituteBranding(null, new CertificateProperties()));
+        String url = "http://localhost:5173/verify/ITILMS-2026-0000007?code=K7QMX-2HWRP";
+        Certificate plain = certificate("K7QMX-2HWRP");
+        Certificate worded = certificate("K7QMX-2HWRP");
+        worded.setCertificateText("Completed six months of training in Core Java, Advanced Java, Spring, Oracle and Frontend.");
+
+        assertThat(renderer.render(worded, url).length).isGreaterThan(renderer.render(plain, url).length);
+    }
+
     private static String messageOf(Runnable call) {
         try {
             call.run();

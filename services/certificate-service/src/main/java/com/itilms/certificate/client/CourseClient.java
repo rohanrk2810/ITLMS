@@ -23,7 +23,7 @@ public interface CourseClient {
     record CourseDetail(CourseSummary course) {
     }
 
-    record CourseSummary(Long id, String title, String code) {
+    record CourseSummary(Long id, String title, String code, String certificateText) {
     }
 
     /**

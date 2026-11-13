@@ -21,6 +21,7 @@ public record CourseResponse(
         String level,
         BigDecimal fee,
         String thumbnailRef,
+        String certificateText,
         String status,
         Instant publishedAt,
         long moduleCount,
@@ -33,7 +34,7 @@ public record CourseResponse(
                 course.getId(), course.getTitle(), course.getCode(), course.getSummary(),
                 course.getDescription(), course.getLearningOutcomes(), course.getPrerequisites(),
                 course.getTechnologyStack(), course.getDurationHours(), course.getLevel().name(),
-                course.getFee(), course.getThumbnailRef(), course.getStatus().name(),
+                course.getFee(), course.getThumbnailRef(), course.getCertificateText(), course.getStatus().name(),
                 course.getPublishedAt(), moduleCount, lessonCount, course.getCreatedAt());
     }
 

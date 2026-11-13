@@ -73,6 +73,8 @@ export interface CourseResponse {
   level: string
   fee: number | null
   thumbnailRef: string | null
+  /** Printed on the course certificate under the course title. */
+  certificateText: string | null
   status: string
   publishedAt: string | null
   moduleCount: number
@@ -153,6 +155,7 @@ export interface CourseInput {
   level?: string
   fee?: number
   thumbnailRef?: string
+  certificateText?: string
 }
 
 export interface ModuleInput {

@@ -163,6 +163,7 @@ public class CertificateServiceImpl implements CertificateService {
                 .studentName(student.fullName())
                 .courseId(courseId)
                 .courseTitle(course.course().title())
+                .certificateText(course.course().certificateText())
                 .batchId(batchId)
                 .batchName(batch == null ? null : batch.name())
                 .requestId(open == null ? null : open.getId())

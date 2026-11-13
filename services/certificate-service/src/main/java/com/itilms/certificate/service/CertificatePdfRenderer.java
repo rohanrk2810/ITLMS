@@ -58,6 +58,9 @@ public class CertificatePdfRenderer {
         document.add(centred(certificate.getStudentName(), font(FontFactory.HELVETICA_BOLD, 30), 14));
         document.add(centred("has successfully completed the course", font(FontFactory.HELVETICA_OBLIQUE, 14), 14));
         document.add(centred(certificate.getCourseTitle(), font(FontFactory.HELVETICA_BOLD, 22), 14));
+        if (certificate.getCertificateText() != null && !certificate.getCertificateText().isBlank()) {
+            document.add(centred(certificate.getCertificateText().trim(), font(FontFactory.HELVETICA, 12), 14));
+        }
         if (certificate.getBatchName() != null) {
             document.add(centred("Batch: " + certificate.getBatchName(), font(FontFactory.HELVETICA, 12), 6));
         }

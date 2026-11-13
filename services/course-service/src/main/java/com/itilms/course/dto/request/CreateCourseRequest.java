@@ -56,6 +56,9 @@ public record CreateCourseRequest(
         BigDecimal fee,
 
         @Schema(description = "file-service handle for the catalog image")
-        String thumbnailRef
+        String thumbnailRef,
+        @Schema(description = "Printed on the course certificate under the course title")
+        @Size(max = 600)
+        String certificateText
 ) {
 }

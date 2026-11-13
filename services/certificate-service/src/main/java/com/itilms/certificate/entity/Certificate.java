@@ -57,6 +57,10 @@ public class Certificate extends AuditableEntity {
     @Column(name = "course_title", nullable = false, length = 200)
     private String courseTitle;
 
+    /** The course's certificate wording at the time of issue; null when the course has none. */
+    @Column(name = "certificate_text", length = 600)
+    private String certificateText;
+
     @Column(name = "batch_id")
     private Long batchId;
 

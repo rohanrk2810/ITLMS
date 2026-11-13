@@ -79,6 +79,7 @@ export function CourseEditorPage() {
         prerequisites: c.prerequisites ?? undefined,
         technologyStack: c.technologyStack ?? undefined,
         thumbnailRef: c.thumbnailRef ?? undefined,
+        certificateText: c.certificateText ?? '',
         level: c.level,
         durationHours: c.durationHours ?? undefined,
         fee: c.fee ?? undefined,
@@ -242,6 +243,23 @@ export function CourseEditorPage() {
               />
               <p className="text-xs text-muted-foreground">
                 Students see this before they ask to join. Leave it empty to say the fee will be confirmed later.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="certificateText">Certificate wording</Label>
+              <textarea
+                id="certificateText"
+                rows={3}
+                maxLength={600}
+                placeholder="e.g. Completed 6 months of full-stack training in Core Java, Advanced Java, Spring Boot, Oracle and Frontend."
+                className="rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-60"
+                value={form.certificateText ?? ''}
+                disabled={!isStaff}
+                onChange={(event) => setForm({ ...form, certificateText: event.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Printed under the course title on the certificate every student of this course receives, whichever batch
+                they studied in. Leave it empty for the standard wording only.
               </p>
             </div>
             {isStaff && (

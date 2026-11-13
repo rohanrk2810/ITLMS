@@ -226,6 +226,7 @@ public class CourseServiceImpl implements CourseService {
                 .level(parseLevel(request.level()))
                 .fee(request.fee() == null ? BigDecimal.ZERO : request.fee())
                 .thumbnailRef(trim(request.thumbnailRef()))
+                .certificateText(trim(request.certificateText()))
                 .status(CourseStatus.DRAFT)
                 .build());
 
@@ -261,6 +262,7 @@ public class CourseServiceImpl implements CourseService {
         course.setLevel(parseLevel(request.level()));
         course.setFee(request.fee() == null ? BigDecimal.ZERO : request.fee());
         course.setThumbnailRef(trim(request.thumbnailRef()));
+        course.setCertificateText(trim(request.certificateText()));
 
         courseRepository.save(course);
         events.audit(SERVICE_NAME, "COURSE_UPDATED", "Course", courseId, null, null);
