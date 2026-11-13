@@ -32,9 +32,11 @@ import com.itilms.batch.entity.BatchTrainer;
 import com.itilms.batch.entity.BatchTrainerRole;
 import com.itilms.batch.entity.Enrollment;
 import com.itilms.batch.entity.EnrollmentStatus;
+import com.itilms.batch.repository.BatchCourseRepository;
 import com.itilms.batch.repository.BatchRepository;
 import com.itilms.batch.repository.BatchTrainerRepository;
 import com.itilms.batch.repository.EnrollmentRepository;
+import com.itilms.batch.service.BatchCourseService;
 import com.itilms.batch.service.BatchService;
 import com.itilms.batch.specification.BatchSpecifications;
 import com.itilms.common.dto.PageResponse;
@@ -60,6 +62,8 @@ public class BatchServiceImpl implements BatchService {
     private final BatchRepository batchRepository;
     private final BatchTrainerRepository batchTrainerRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final BatchCourseRepository batchCourseRepository;
+    private final BatchCourseService batchCourseService;
     private final CourseClient courseClient;
     private final AdmissionClient admissionClient;
     private final EventPublisher events;
@@ -101,7 +105,7 @@ public class BatchServiceImpl implements BatchService {
                         bt.getTrainerId(), bt.getTrainerName(), bt.getRole().name()))
                 .toList();
 
-        return BatchResponse.from(batch, enrolled, coTrainers);
+        return BatchResponse.from(batch, enrolled, coTrainers, batchCourseService.courses(batch));
     }
 
     @Override
@@ -179,14 +183,19 @@ public class BatchServiceImpl implements BatchService {
                 .stream().map(Batch::getId).toList();
 
         List<Long> shared = batchTrainerRepository.findBatchIdsForTrainer(trainerId);
+        // A trainer who teaches one of the courses added to a batch is attached to that batch too.
+        List<Long> teachingAddedCourse = batchCourseRepository.findBatchIdsForTrainer(trainerId);
 
-        return java.util.stream.Stream.concat(primary.stream(), shared.stream()).distinct().toList();
+        return java.util.stream.Stream.of(primary, shared, teachingAddedCourse)
+                .flatMap(List::stream).distinct().toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<StudentEnrollmentResponse> enrollmentsOf(Long studentId) {
-        List<Enrollment> enrollments = enrollmentRepository.findByStudentId(studentId);
+        // The courses that came with a placement are not placements of their own.
+        List<Enrollment> enrollments = enrollmentRepository.findByStudentId(studentId).stream()
+                .filter(e -> !e.isIncluded()).toList();
         Map<Long, Batch> batches = new HashMap<>();
         batchRepository.findAllById(enrollments.stream().map(Enrollment::getBatchId).filter(Objects::nonNull).toList())
                 .forEach(batch -> batches.put(batch.getId(), batch));
@@ -203,6 +212,17 @@ public class BatchServiceImpl implements BatchService {
         }
         return enrollmentRepository.existsByStudentIdAndBatchIdAndStatus(
                 studentId, batchId, EnrollmentStatus.ACTIVE);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> courseIdsOfStudentInBatch(Long batchId, Long studentId) {
+        return enrollmentRepository.findByStudentId(studentId).stream()
+                .filter(e -> batchId.equals(e.getBatchId()))
+                .filter(e -> e.getStatus() == EnrollmentStatus.ACTIVE || e.getStatus() == EnrollmentStatus.COMPLETED)
+                .map(Enrollment::getCourseId)
+                .distinct()
+                .toList();
     }
 
     // -----------------------------------------------------------------
@@ -301,6 +321,7 @@ public class BatchServiceImpl implements BatchService {
             batch.setCapacity(request.capacity());
         }
         batch.setClassroom(trim(request.classroom()));
+        batch.setFee(request.fee());
         batch.setStatus(target);
         batchRepository.save(batch);
 
@@ -331,6 +352,14 @@ public class BatchServiceImpl implements BatchService {
                     "This batch is %s and is not accepting enrolments."
                             .formatted(batch.getStatus().name().toLowerCase()));
         }
+
+        // No course: the student joins the whole batch (its fee, every course). A course: that course alone, at its fee.
+        Long scope = request.courseId();
+        if (scope != null && !batchCourseService.holds(batch, scope)) {
+            throw new BusinessRuleException("That course is not part of this batch.");
+        }
+        boolean courseOnly = scope != null;
+        Long enrolledCourseId = courseOnly ? scope : batch.getCourseId();
 
         List<Long> studentIds = request.studentIds().stream().filter(Objects::nonNull).distinct().toList();
         var students = admissionClient.lookupStudents(studentIds);
@@ -370,8 +399,9 @@ public class BatchServiceImpl implements BatchService {
                     .userId(student.userId())
                     .studentCode(student.studentCode())
                     .studentName(student.fullName())
-                    .courseId(batch.getCourseId())
+                    .courseId(enrolledCourseId)
                     .batchId(batchId)
+                    .courseOnly(courseOnly)
                     .status(EnrollmentStatus.ACTIVE)
                     .build());
 
@@ -384,8 +414,14 @@ public class BatchServiceImpl implements BatchService {
             events.publishAfterCommit(KafkaTopics.ENROLLMENT_CREATED, new EnrollmentCreatedEvent(
                     DomainEvent.newId(), Instant.now(),
                     enrollment.getId(), studentId, student.userId(),
-                    batch.getCourseId(), batchId, batch.getBatchCode(),
-                    student.studentCode(), student.fullName()));
+                    enrolledCourseId, batchId, batch.getBatchCode(),
+                    student.studentCode(), student.fullName(),
+                    false, courseOnly ? null : batch.getFee()));
+
+            // The courses added to the batch come with a placement in the whole batch.
+            if (!courseOnly) {
+                batchCourseService.openAllIncluded(batch, enrollment);
+            }
 
             events.notifyUsers(List.of(student.userId()), "ENROLLMENT",
                     "You have been added to " + batch.getBatchCode(),
@@ -411,9 +447,14 @@ public class BatchServiceImpl implements BatchService {
         if (!enrollment.getStatus().isActive()) {
             throw new BusinessRuleException("This enrolment is already " + enrollment.getStatus());
         }
+        if (enrollment.isIncluded()) {
+            throw new BusinessRuleException(
+                    "This course came with the batch. Drop the student from the batch to take it away.");
+        }
 
         enrollment.drop(reason);
         enrollmentRepository.save(enrollment);
+        batchCourseService.closeAllIncluded(enrollment, reason);
 
         events.publishAfterCommit(KafkaTopics.ENROLLMENT_CLOSED, new EnrollmentCreatedEvent(
                 DomainEvent.newId(), Instant.now(),
@@ -456,9 +497,15 @@ public class BatchServiceImpl implements BatchService {
             throw new BusinessRuleException("The target batch is full");
         }
 
+        if (enrollment.isIncluded()) {
+            throw new BusinessRuleException(
+                    "This course came with the batch. Transfer the student's placement instead.");
+        }
+
         Long sourceBatchId = enrollment.getBatchId();
         enrollment.transfer(targetBatchId);
         enrollmentRepository.save(enrollment);
+        batchCourseService.closeAllIncluded(enrollment, "Transferred to batch " + targetBatchId);
 
         Enrollment moved = enrollmentRepository.save(Enrollment.builder()
                 .studentId(enrollment.getStudentId())
@@ -467,14 +514,19 @@ public class BatchServiceImpl implements BatchService {
                 .studentName(enrollment.getStudentName())
                 .courseId(enrollment.getCourseId())
                 .batchId(targetBatchId)
+                .courseOnly(enrollment.isCourseOnly())
                 .status(EnrollmentStatus.ACTIVE)
                 .build());
+        if (!moved.isCourseOnly()) {
+            batchCourseService.openAllIncluded(target, moved);
+        }
 
         events.publishAfterCommit(KafkaTopics.ENROLLMENT_CREATED, new EnrollmentCreatedEvent(
                 DomainEvent.newId(), Instant.now(),
                 moved.getId(), moved.getStudentId(), moved.getUserId(),
                 moved.getCourseId(), targetBatchId, target.getBatchCode(),
-                moved.getStudentCode(), moved.getStudentName()));
+                moved.getStudentCode(), moved.getStudentName(),
+                false, moved.isCourseOnly() ? null : target.getFee()));
 
         events.notifyUsers(List.of(moved.getUserId()), "ENROLLMENT",
                 "You have been moved to " + target.getBatchCode(),
@@ -578,6 +630,7 @@ public class BatchServiceImpl implements BatchService {
                         .mode(mode)
                         .capacity(request.capacity() == null ? 30 : request.capacity())
                         .classroom(trim(request.classroom()))
+                        .fee(request.fee())
                         .meetingUrl(mode == BatchMode.OFFLINE ? null : trim(request.meetingUrl()))
                         .status(BatchStatus.PLANNED)
                         .build());

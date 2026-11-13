@@ -50,6 +50,46 @@ class EligibilityRulesTest {
         return criteria.stream().filter(c -> c.key().equals(key)).findFirst().orElseThrow().outcome();
     }
 
+    private EligibilityRules.Facts withOtherCourses(List<CourseClient.Progress> others) {
+        return new EligibilityRules.Facts(lessonsDone(true), assessed(2, 72, 3), attended(18, 20),
+                List.of(owing(COURSE, 0, "SETTLED")), COURSE, others);
+    }
+
+    private static CourseClient.Progress otherCourse(long courseId, boolean done) {
+        return new CourseClient.Progress(3L, courseId, 9L, BigDecimal.valueOf(done ? 100 : 40), done ? 10 : 4, 10, done);
+    }
+
+    @Test
+    @DisplayName("A batch certificate needs every other course in the batch finished")
+    void everyCourseOfTheBatchCounts() {
+        var finished = EligibilityRules.evaluate(withOtherCourses(List.of(otherCourse(21, true))), rules, "Rs.");
+        assertThat(outcomeOf(finished, "OTHER_COURSES")).isEqualTo(Outcome.MET);
+        assertThat(EligibilityRules.eligible(finished)).isTrue();
+
+        var unfinished = EligibilityRules.evaluate(
+                withOtherCourses(List.of(otherCourse(21, true), otherCourse(22, false))), rules, "Rs.");
+        assertThat(outcomeOf(unfinished, "OTHER_COURSES")).isEqualTo(Outcome.NOT_MET);
+        assertThat(EligibilityRules.eligible(unfinished)).isFalse();
+    }
+
+    @Test
+    @DisplayName("A course whose progress could not be read is not treated as finished")
+    void anUnreadableOtherCourseIsNotAYes() {
+        var unknown = new java.util.ArrayList<CourseClient.Progress>();
+        unknown.add(null);
+        assertThat(outcomeOf(EligibilityRules.evaluate(withOtherCourses(unknown), rules, "Rs."), "OTHER_COURSES"))
+                .isEqualTo(Outcome.UNAVAILABLE);
+        assertThat(outcomeOf(EligibilityRules.evaluate(withOtherCourses(null), rules, "Rs."), "OTHER_COURSES"))
+                .isEqualTo(Outcome.UNAVAILABLE);
+    }
+
+    @Test
+    @DisplayName("A student with one course in the batch has nothing else to finish")
+    void aSingleCourseNeedsNothingElse() {
+        assertThat(outcomeOf(EligibilityRules.evaluate(complete(), rules, "Rs."), "OTHER_COURSES"))
+                .isEqualTo(Outcome.NOT_REQUIRED);
+    }
+
     @Test
     @DisplayName("Everything done: eligible")
     void allMet() {

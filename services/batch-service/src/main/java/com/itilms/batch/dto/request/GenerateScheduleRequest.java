@@ -27,7 +27,9 @@ public record GenerateScheduleRequest(
         List<LocalDate> excludeDates,
 
         @Schema(description = "Topic applied to every generated session; edit individually afterwards")
-        String defaultTopic
+        String defaultTopic,
+        @Schema(description = "One of the batch's courses. Leave blank for the course the batch was created for.")
+        Long courseId
 ) {
 
     public List<LocalDate> excludeDatesOrEmpty() {

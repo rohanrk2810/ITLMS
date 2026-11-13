@@ -138,6 +138,12 @@ public class FeePlanServiceImpl implements FeePlanService {
         if (event.studentId() == null || event.courseId() == null) {
             return;
         }
+        if (event.feeIncluded()) {
+            // A course that came with the batch: the batch fee already covers it.
+            log.debug("Course {} came with batch {}; no fee plan for student {}",
+                    event.courseId(), event.batchId(), event.studentId());
+            return;
+        }
         var existing = planRepository.findFirstByStudentIdAndCourseIdAndStatusNot(
                 event.studentId(), event.courseId(), FeePlanStatus.CANCELLED);
         if (existing.isPresent()) {
@@ -150,12 +156,18 @@ public class FeePlanServiceImpl implements FeePlanService {
             }
             return;
         }
-        CourseClient.CourseDetail detail = courseClient.publicDetail(event.courseId());
-        if (detail == null || detail.course() == null) {
-            // Throwing lets Kafka deliver the event again once course-service is back, instead of losing it.
-            throw new IllegalStateException("The fee of course " + event.courseId() + " could not be read yet");
+        BigDecimal fee;
+        if (event.feeOverride() != null && event.feeOverride().signum() > 0) {
+            // Placed in the whole batch: its own price replaces the course fee.
+            fee = event.feeOverride();
+        } else {
+            CourseClient.CourseDetail detail = courseClient.publicDetail(event.courseId());
+            if (detail == null || detail.course() == null) {
+                // Throwing lets Kafka deliver the event again once course-service is back, instead of losing it.
+                throw new IllegalStateException("The fee of course " + event.courseId() + " could not be read yet");
+            }
+            fee = detail.course().fee();
         }
-        BigDecimal fee = detail.course().fee();
         if (fee == null || fee.signum() <= 0) {
             log.info("Course {} has no fee; no plan raised for student {}", event.courseId(), event.studentId());
             return;

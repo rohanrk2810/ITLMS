@@ -20,7 +20,9 @@ public record EnrollmentResponse(
         String status,
         LocalDate completionDate,
         String droppedReason,
-        LocalDate accessUntil
+        LocalDate accessUntil,
+        @Schema(description = "Placed in this one course alone (and pays its own fee), not in the whole batch")
+        boolean courseOnly
 ) {
 
     public static EnrollmentResponse from(Enrollment enrollment) {
@@ -29,6 +31,7 @@ public record EnrollmentResponse(
                 enrollment.getStudentCode(), enrollment.getStudentName(),
                 enrollment.getCourseId(), enrollment.getBatchId(),
                 enrollment.getEnrolledAt(), enrollment.getStatus().name(),
-                enrollment.getCompletionDate(), enrollment.getDroppedReason(), enrollment.getAccessUntil());
+                enrollment.getCompletionDate(), enrollment.getDroppedReason(), enrollment.getAccessUntil(),
+                enrollment.isCourseOnly());
     }
 }

@@ -19,7 +19,8 @@ class BatchPlacedTest {
 
     private final EnrollmentRepository enrollments = mock(EnrollmentRepository.class);
     private final BatchServiceImpl service = new BatchServiceImpl(mock(BatchRepository.class),
-            mock(BatchTrainerRepository.class), enrollments, mock(CourseClient.class), mock(AdmissionClient.class),
+            mock(BatchTrainerRepository.class), enrollments, mock(com.itilms.batch.repository.BatchCourseRepository.class),
+            mock(com.itilms.batch.service.BatchCourseService.class), mock(CourseClient.class), mock(AdmissionClient.class),
             mock(EventPublisher.class));
 
     @Test

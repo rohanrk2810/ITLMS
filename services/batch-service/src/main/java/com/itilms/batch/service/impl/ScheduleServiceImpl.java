@@ -23,6 +23,7 @@ import com.itilms.batch.repository.BatchRepository;
 import com.itilms.batch.repository.ClassSessionRepository;
 import com.itilms.batch.repository.EnrollmentRepository;
 import com.itilms.batch.service.BatchService;
+import com.itilms.batch.service.BatchCourseService;
 import com.itilms.batch.service.ScheduleService;
 import com.itilms.common.event.DomainEvent;
 import com.itilms.common.event.EventPublisher;
@@ -51,6 +52,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final BatchRepository batchRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final BatchService batchService;
+    private final BatchCourseService batchCourseService;
     private final EventPublisher events;
 
     // -----------------------------------------------------------------
@@ -79,10 +81,13 @@ public class ScheduleServiceImpl implements ScheduleService {
                 ? batch.getMode()
                 : parseMode(request.mode());
 
+        var teaching = batchCourseService.teaching(batch, request.courseId());
+
         ClassSession session = sessionRepository.save(ClassSession.builder()
                 .batchId(batch.getId())
-                .trainerId(request.trainerId() != null ? request.trainerId() : batch.getTrainerId())
-                .trainerUserId(batch.getTrainerUserId())
+                .courseId(teaching.courseId())
+                .trainerId(request.trainerId() != null ? request.trainerId() : teaching.trainerId())
+                .trainerUserId(teaching.trainerUserId())
                 .sessionDate(request.sessionDate())
                 .startTime(start)
                 .endTime(end)
@@ -223,6 +228,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                     "This batch has no class days set, so a schedule cannot be generated.");
         }
 
+        var teaching = batchCourseService.teaching(batch, request.courseId());
+
         Set<LocalDate> excluded = new HashSet<>(request.excludeDatesOrEmpty());
         List<ClassSession> created = new ArrayList<>();
         int skipped = 0;
@@ -245,8 +252,9 @@ public class ScheduleServiceImpl implements ScheduleService {
 
             created.add(ClassSession.builder()
                     .batchId(batchId)
-                    .trainerId(batch.getTrainerId())
-                    .trainerUserId(batch.getTrainerUserId())
+                    .courseId(teaching.courseId())
+                    .trainerId(teaching.trainerId())
+                    .trainerUserId(teaching.trainerUserId())
                     .sessionDate(date)
                     .startTime(batch.getStartTime())
                     .endTime(batch.getEndTime())
@@ -411,6 +419,15 @@ public class ScheduleServiceImpl implements ScheduleService {
     private SessionResponse toResponse(ClassSession session, Batch batch) {
         if (batch == null) {
             return SessionResponse.from(session);
+        }
+        if (session.getCourseId() != null && !session.getCourseId().equals(batch.getCourseId())) {
+            try {
+                var teaching = batchCourseService.teaching(batch, session.getCourseId());
+                return SessionResponse.from(session, batch.getBatchCode(),
+                        teaching.courseTitle(), teaching.trainerName());
+            } catch (BusinessRuleException removed) {
+                // The course was taken out of the batch after this lecture was scheduled; show it as the batch's.
+            }
         }
         return SessionResponse.from(session, batch.getBatchCode(),
                 batch.getCourseTitle(), batch.getTrainerName());

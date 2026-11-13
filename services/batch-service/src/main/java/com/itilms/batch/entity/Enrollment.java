@@ -58,6 +58,22 @@ public class Enrollment extends AuditableEntity {
     @Column(name = "batch_id")
     private Long batchId;
 
+    /**
+     * The student has this course because the batch holds it (not because they bought it): it has no fee of its own
+     * and does not take a seat. The placement itself is the row with this false.
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean included = false;
+
+    /**
+     * The student was placed in this one course alone and pays its own fee, instead of in the whole batch. The courses
+     * added to the batch later do not reach them.
+     */
+    @Column(name = "course_only", nullable = false)
+    @Builder.Default
+    private boolean courseOnly = false;
+
     @Column(name = "enrolled_at", nullable = false)
     @Builder.Default
     private Instant enrolledAt = Instant.now();

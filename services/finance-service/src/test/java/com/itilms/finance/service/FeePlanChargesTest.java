@@ -115,6 +115,31 @@ class FeePlanChargesTest {
     }
 
     @Test
+    void aCourseThatCameWithTheBatchRaisesNoPlan() {
+        courseFee(new BigDecimal("25000"));
+
+        service.createFromEnrollment(new EnrollmentCreatedEvent("ev", Instant.now(), 6L, 30L, 7L, 9L, 3L, "B-1",
+                "STU-30", "Asha Patil", true, null));
+
+        verify(plans, never()).save(any());
+        verify(courses, never()).publicDetail(any());
+    }
+
+    @Test
+    void aPlacementInTheWholeBatchIsChargedTheBatchFeeNotTheCourseFee() {
+        courseFee(new BigDecimal("25000"));
+        when(plans.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.createFromEnrollment(new EnrollmentCreatedEvent("ev", Instant.now(), 5L, 30L, 7L, 9L, 3L, "B-1",
+                "STU-30", "Asha Patil", false, new BigDecimal("60000")));
+
+        ArgumentCaptor<FeePlan> saved = ArgumentCaptor.forClass(FeePlan.class);
+        verify(plans).save(saved.capture());
+        assertThat(saved.getValue().getNetFee()).isEqualByComparingTo("60000");
+        verify(courses, never()).publicDetail(any());
+    }
+
+    @Test
     void aCourseWithoutAFeeRaisesNoPlan_andAnUnreadableFeeIsRetried() {
         courseFee(BigDecimal.ZERO);
         service.createFromEnrollment(placed(3L));

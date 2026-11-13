@@ -208,7 +208,11 @@ Endpoints not shown as public or role-restricted below still require a valid tok
 | GET | /api/batches/{id} | any signed-in user | Get a batch |
 | POST | /api/batches | STAFF | Create — checks the course exists via Feign |
 | PUT | /api/batches/{id} | STAFF | Update |
-| POST | /api/batches/{id}/students | STAFF | Enrol students — partial unique index blocks a double-active-enrolment |
+| POST | /api/batches/{id}/students | STAFF | Enrol students — partial unique index blocks a double-active-enrolment. Body `{studentIds, courseId?}`: no `courseId` places them in the whole batch (batch fee, every course); a `courseId` places them in that one course at its own fee |
+| POST | /api/batches/{id}/courses | STAFF | Add a course `{courseId, trainerId?}`; everyone placed in the whole batch is enrolled in it at no extra fee ([38](38-batch-courses.md)) |
+| PUT | /api/batches/{id}/courses/{courseId} | STAFF | Change who teaches an added course `{trainerId?}` |
+| DELETE | /api/batches/{id}/courses/{courseId} | STAFF | Take an added course out; the students' lessons for it close, their progress is kept |
+| GET | /api/batches/internal/{batchId}/students/{studentId}/courses | signed-in (service to service) | The courses a student holds in a batch, for the batch certificate |
 | GET | /api/batches/{id}/students | ACADEMIC | Roster |
 | POST | /api/batches/{id}/extend | ADMIN, COORDINATOR | A later end date with a reason; a finished batch runs again, students and trainer are told |
 | POST | /api/batches/enrollments/{enrollmentId}/access | ADMIN, COORDINATOR | Set or extend one student's access until a date; an expired student is on the course again |

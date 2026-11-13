@@ -85,7 +85,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         // The register is the batch's active roster. Marking someone who is not
         // enrolled would create attendance for a student with no place in the
         // class, which then corrupts their percentage.
-        Set<Long> roster = new HashSet<>(enrollmentRepository.findActiveStudentIds(session.getBatchId()));
+        Set<Long> roster = new HashSet<>(enrollmentRepository.findRegisterStudentIds(session.getBatchId(), session.getCourseId()));
 
         Map<Long, Attendance> existing = new HashMap<>();
         attendanceRepository.findBySessionId(sessionId)
@@ -172,7 +172,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             return;
         }
 
-        Set<Long> roster = new HashSet<>(enrollmentRepository.findActiveStudentIds(session.getBatchId()));
+        Set<Long> roster = new HashSet<>(enrollmentRepository.findRegisterStudentIds(session.getBatchId(), session.getCourseId()));
 
         Map<Long, Attendance> existing = new HashMap<>();
         attendanceRepository.findBySessionId(session.getId())

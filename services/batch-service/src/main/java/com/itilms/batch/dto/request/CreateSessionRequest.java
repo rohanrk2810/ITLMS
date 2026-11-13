@@ -38,6 +38,8 @@ public record CreateSessionRequest(
         String room,
 
         @Schema(description = "Overrides the batch's primary trainer for this session")
-        Long trainerId
+        Long trainerId,
+        @Schema(description = "One of the batch's courses. Leave blank for the course the batch was created for.")
+        Long courseId
 ) {
 }

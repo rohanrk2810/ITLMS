@@ -87,7 +87,7 @@ class AttendanceServiceImplTest {
 
         session = ClassSession.builder().id(SESSION).batchId(BATCH).sessionDate(LocalDate.of(2026, 9, 1)).topic("Streams").build();
         lenient().when(sessionRepository.findById(SESSION)).thenReturn(Optional.of(session));
-        lenient().when(enrollmentRepository.findActiveStudentIds(BATCH)).thenReturn(List.of(10L, 11L, 12L));
+        lenient().when(enrollmentRepository.findRegisterStudentIds(eq(BATCH), any())).thenReturn(List.of(10L, 11L, 12L));
         lenient().when(enrollmentRepository.findActiveRoster(BATCH)).thenReturn(List.of(enrolled(10, "Asha"), enrolled(11, "Ravi"), enrolled(12, "Meera")));
         lenient().when(batchService.batchIdsForTrainer(20L)).thenReturn(List.of(BATCH));
         lenient().when(batchService.activeBatchIdsForStudent(10L)).thenReturn(List.of(BATCH));

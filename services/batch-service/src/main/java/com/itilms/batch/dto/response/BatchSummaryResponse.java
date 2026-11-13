@@ -25,7 +25,9 @@ public record BatchSummaryResponse(
         String mode,
         Integer capacity,
         long enrolledCount,
-        String status
+        String status,
+        @Schema(description = "What the whole batch costs; empty when the course fee applies")
+        java.math.BigDecimal fee
 ) {
 
     public static BatchSummaryResponse from(Batch batch, long enrolledCount) {
@@ -36,6 +38,6 @@ public record BatchSummaryResponse(
                 batch.getStartDate(), batch.getEndDate(),
                 batch.getStartTime(), batch.getEndTime(), batch.getClassDays(),
                 batch.getMode().name(), batch.getCapacity(), enrolledCount,
-                batch.getStatus().name());
+                batch.getStatus().name(), batch.getFee());
     }
 }
