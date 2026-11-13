@@ -275,6 +275,24 @@ function NewBatchDialog() {
               />
             </div>
           </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="fee">Batch fee (INR)</Label>
+            <Input
+              id="fee"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              placeholder="e.g. 60000"
+              value={form.fee ?? ''}
+              onChange={(event) =>
+                setForm({ ...form, fee: event.target.value === '' ? undefined : Math.max(0, Number(event.target.value)) })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              What a student pays for the whole batch, with every course in it. Leave it empty to charge the course fee.
+            </p>
+          </div>
           {form.mode !== 'ONLINE' && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="classroom">Classroom</Label>

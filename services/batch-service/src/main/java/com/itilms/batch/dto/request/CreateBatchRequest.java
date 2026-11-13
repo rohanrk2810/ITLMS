@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -62,6 +63,10 @@ public record CreateBatchRequest(
         String meetingUrl,
 
         @Schema(description = "Additional trainers sharing this batch")
-        List<Long> coTrainerIds
+        List<Long> coTrainerIds,
+        @Schema(description = "What the whole batch costs. A student placed in it pays this, and nothing more for "
+                + "the courses it holds. Leave blank to charge the course fee, as before.")
+        @DecimalMin(value = "0.0", message = "Fee cannot be negative")
+        java.math.BigDecimal fee
 ) {
 }

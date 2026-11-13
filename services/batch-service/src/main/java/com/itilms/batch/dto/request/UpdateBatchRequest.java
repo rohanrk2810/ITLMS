@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -56,6 +57,8 @@ public record UpdateBatchRequest(
         @NotBlank(message = "Status is required")
         String status,
 
-        List<Long> coTrainerIds
+        List<Long> coTrainerIds,
+        @DecimalMin(value = "0.0", message = "Fee cannot be negative")
+        java.math.BigDecimal fee
 ) {
 }

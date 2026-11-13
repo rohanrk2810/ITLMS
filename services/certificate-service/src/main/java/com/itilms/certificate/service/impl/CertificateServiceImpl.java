@@ -109,7 +109,49 @@ public class CertificateServiceImpl implements CertificateService {
                 : batchClient.attendance(studentId, batchId);
         List<FinanceClient.FeePlan> plans = financeClient.plans(studentId);
 
-        return new EligibilityRules.Facts(progress, completion, attendance, plans, courseId);
+        // The other courses the student holds in this batch. One certificate covers the batch, so they all count.
+        List<CourseClient.Progress> others = List.of();
+        if (batchId != null) {
+            List<Long> held = batchClient.coursesOfStudent(batchId, studentId);
+            if (held == null) {
+                others = null;
+            } else {
+                others = new java.util.ArrayList<>();
+                for (Long other : held) {
+                    if (!other.equals(courseId)) {
+                        others.add(courseClient.progress(studentId, other));
+                    }
+                }
+            }
+        }
+
+        return new EligibilityRules.Facts(progress, completion, attendance, plans, courseId, others);
+    }
+
+    /**
+     * What the certificate is for. A student with one course gets its title; one who finished several in a batch gets
+     * the batch's name, or the titles together when it has none.
+     */
+    private static String titleFor(String courseTitle, BatchClient.BatchInfo batch, EligibilityRules.Facts facts) {
+        if (batch == null || facts.otherCourses() == null || facts.otherCourses().isEmpty()) {
+            return courseTitle;
+        }
+        if (batch.name() != null && !batch.name().isBlank()) {
+            return truncate(batch.name().trim());
+        }
+        java.util.Map<Long, String> titles = new java.util.HashMap<>();
+        if (batch.courses() != null) {
+            batch.courses().forEach(c -> titles.put(c.courseId(), c.courseTitle()));
+        }
+        java.util.List<String> all = new java.util.ArrayList<>();
+        all.add(courseTitle);
+        facts.otherCourses().stream().filter(java.util.Objects::nonNull)
+                .map(p -> titles.get(p.courseId())).filter(java.util.Objects::nonNull).forEach(all::add);
+        return truncate(String.join(", ", all));
+    }
+
+    private static String truncate(String title) {
+        return title.length() <= 200 ? title : title.substring(0, 197) + "...";
     }
 
     // -----------------------------------------------------------------
@@ -162,7 +204,7 @@ public class CertificateServiceImpl implements CertificateService {
                 .studentCode(student.studentCode())
                 .studentName(student.fullName())
                 .courseId(courseId)
-                .courseTitle(course.course().title())
+                .courseTitle(titleFor(course.course().title(), batch, facts))
                 .certificateText(course.course().certificateText())
                 .batchId(batchId)
                 .batchName(batch == null ? null : batch.name())

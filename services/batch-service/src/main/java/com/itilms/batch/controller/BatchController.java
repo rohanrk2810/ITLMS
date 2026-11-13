@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.itilms.batch.dto.request.BatchCourseRequests;
 import com.itilms.batch.dto.request.CreateBatchRequest;
 import com.itilms.batch.dto.request.EnrollStudentRequest;
 import com.itilms.batch.dto.request.UpdateBatchRequest;
@@ -26,11 +28,13 @@ import com.itilms.batch.dto.request.ValidityDtos.ExtendAccessRequest;
 import com.itilms.batch.dto.request.ValidityDtos.ExtendBatchRequest;
 import com.itilms.batch.dto.request.ValidityDtos.ExtendBatchResult;
 import com.itilms.batch.service.BatchValidityService;
+import com.itilms.batch.dto.response.BatchCourseResponse;
 import com.itilms.batch.dto.response.BatchResponse;
 import com.itilms.batch.dto.response.BatchSummaryResponse;
 import com.itilms.batch.dto.response.EnrollmentResponse;
 import com.itilms.batch.dto.response.EnrollmentResultResponse;
 import com.itilms.batch.dto.response.StudentEnrollmentResponse;
+import com.itilms.batch.service.BatchCourseService;
 import com.itilms.batch.service.BatchService;
 import com.itilms.common.dto.PageResponse;
 import com.itilms.common.exception.ForbiddenOperationException;
@@ -53,6 +57,7 @@ public class BatchController {
 
     private final BatchService batchService;
     private final BatchValidityService validity;
+    private final BatchCourseService batchCourses;
 
     @Operation(summary = "List batches")
     @PreAuthorize("isAuthenticated()")
@@ -116,6 +121,33 @@ public class BatchController {
     @PutMapping("/{id}")
     public BatchResponse update(@PathVariable Long id, @Valid @RequestBody UpdateBatchRequest request) {
         return batchService.update(id, request);
+    }
+
+    @Operation(summary = "Add a course to a batch",
+            description = "Every student placed in the whole batch is enrolled in it at once, at no extra fee. "
+                    + "Students placed in one course alone are not.")
+    @PreAuthorize(Roles.STAFF)
+    @PostMapping("/{id}/courses")
+    public ResponseEntity<List<BatchCourseResponse>> addCourse(@PathVariable Long id,
+                                                               @Valid @RequestBody BatchCourseRequests.Add request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(batchCourses.add(id, request));
+    }
+
+    @Operation(summary = "Change who teaches a course in a batch",
+            description = "For an added course. The trainer of the batch's own course is changed by editing the batch.")
+    @PreAuthorize(Roles.STAFF)
+    @PutMapping("/{id}/courses/{courseId}")
+    public List<BatchCourseResponse> changeCourseTrainer(@PathVariable Long id, @PathVariable Long courseId,
+                                                         @Valid @RequestBody BatchCourseRequests.ChangeTrainer request) {
+        return batchCourses.changeTrainer(id, courseId, request);
+    }
+
+    @Operation(summary = "Take an added course out of a batch",
+            description = "The students' lessons for it are closed; their progress is kept.")
+    @PreAuthorize(Roles.STAFF)
+    @DeleteMapping("/{id}/courses/{courseId}")
+    public List<BatchCourseResponse> removeCourse(@PathVariable Long id, @PathVariable Long courseId) {
+        return batchCourses.remove(id, courseId);
     }
 
     @Operation(summary = "Extend a batch",
@@ -209,6 +241,14 @@ public class BatchController {
     @GetMapping("/internal/{batchId}/enrolled/{studentId}")
     public EnrollmentCheck isEnrolled(@PathVariable Long batchId, @PathVariable Long studentId) {
         return new EnrollmentCheck(batchService.isActivelyEnrolled(batchId, studentId));
+    }
+
+    @Operation(summary = "Which courses does this student hold in this batch?",
+            description = "Internal, for certificate-service: a batch certificate needs every one of them finished.")
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/internal/{batchId}/students/{studentId}/courses")
+    public List<Long> coursesOfStudentInBatch(@PathVariable Long batchId, @PathVariable Long studentId) {
+        return batchService.courseIdsOfStudentInBatch(batchId, studentId);
     }
 
     /** The answer to "may this student be here?", and nothing else. */

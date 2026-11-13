@@ -38,13 +38,20 @@ public final class EligibilityRules {
             AssessmentClient.Completion completion,
             BatchClient.AttendanceSummary attendance,
             List<FinanceClient.FeePlan> feePlans,
-            Long courseId
+            Long courseId,
+            List<CourseClient.Progress> otherCourses
     ) {
+        /** A student with a single course in the batch: nothing else has to be finished. */
+        public Facts(CourseClient.Progress progress, AssessmentClient.Completion completion,
+                     BatchClient.AttendanceSummary attendance, List<FinanceClient.FeePlan> feePlans, Long courseId) {
+            this(progress, completion, attendance, feePlans, courseId, List.of());
+        }
     }
 
     public static List<Criterion> evaluate(Facts facts, CertificateProperties.Criteria rules, String currencySymbol) {
         List<Criterion> result = new ArrayList<>();
         result.add(lessons(facts, rules));
+        result.add(otherCourses(facts, rules));
         result.add(tests(facts, rules));
         result.add(averageScore(facts, rules));
         result.add(assignments(facts, rules));
@@ -71,6 +78,25 @@ public final class EligibilityRules {
         return f.progress().allLessonsComplete()
                 ? Criterion.met("LESSONS", name, detail)
                 : Criterion.notMet("LESSONS", name, detail);
+    }
+
+    /**
+     * A batch gives one certificate for everything in it, so every other course the student holds in the batch has to
+     * be finished too. Null means the batch could not be asked, which is "not confirmed", never "assume yes".
+     */
+    private static Criterion otherCourses(Facts f, CertificateProperties.Criteria rules) {
+        String name = "Every other course in the batch complete";
+        if (!rules.isRequireAllMandatoryLessons() || (f.otherCourses() != null && f.otherCourses().isEmpty())) {
+            return Criterion.notRequired("OTHER_COURSES", name);
+        }
+        if (f.otherCourses() == null || f.otherCourses().stream().anyMatch(java.util.Objects::isNull)) {
+            return Criterion.unavailable("OTHER_COURSES", name, "The other courses could not be checked");
+        }
+        long done = f.otherCourses().stream().filter(CourseClient.Progress::allLessonsComplete).count();
+        String detail = "%d of %d other courses".formatted(done, f.otherCourses().size());
+        return done == f.otherCourses().size()
+                ? Criterion.met("OTHER_COURSES", name, detail)
+                : Criterion.notMet("OTHER_COURSES", name, detail);
     }
 
     private static Criterion tests(Facts f, CertificateProperties.Criteria rules) {

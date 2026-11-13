@@ -28,7 +28,9 @@ public record SessionResponse(
         boolean attendanceAuto,
         String cancelledReason,
         @Schema(description = "True when this session is an online or hybrid class with a live room")
-        boolean live
+        boolean live,
+        @Schema(description = "The course this lecture is for; empty means the course the batch was created for")
+        Long courseId
 ) {
 
     public static SessionResponse from(ClassSession session, String batchCode,
@@ -41,7 +43,7 @@ public record SessionResponse(
                 session.getRoom(), session.getStatus().name(),
                 session.isAttendanceMarked(), session.isAttendanceAuto(),
                 session.getCancelledReason(),
-                session.getMode().needsLiveRoom());
+                session.getMode().needsLiveRoom(), session.getCourseId());
     }
 
     public static SessionResponse from(ClassSession session) {

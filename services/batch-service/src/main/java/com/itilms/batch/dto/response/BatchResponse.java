@@ -32,10 +32,15 @@ public record BatchResponse(
         String classroom,
         String meetingUrl,
         String status,
-        List<CoTrainerResponse> coTrainers
+        List<CoTrainerResponse> coTrainers,
+        @Schema(description = "What the whole batch costs; empty when the course fee applies")
+        java.math.BigDecimal fee,
+        @Schema(description = "Every course the batch holds, the one it was created for first, each with its trainer")
+        List<BatchCourseResponse> courses
 ) {
 
-    public static BatchResponse from(Batch batch, long enrolledCount, List<CoTrainerResponse> coTrainers) {
+    public static BatchResponse from(Batch batch, long enrolledCount, List<CoTrainerResponse> coTrainers,
+                                     List<BatchCourseResponse> courses) {
         return new BatchResponse(
                 batch.getId(), batch.getBatchCode(), batch.getName(),
                 batch.getCourseId(), batch.getCourseCode(), batch.getCourseTitle(),
@@ -46,7 +51,12 @@ public record BatchResponse(
                 batch.getMode().name(), batch.getCapacity(), enrolledCount,
                 Math.max(0, batch.getCapacity() - enrolledCount),
                 batch.getClassroom(), batch.getMeetingUrl(), batch.getStatus().name(),
-                coTrainers == null ? List.of() : coTrainers);
+                coTrainers == null ? List.of() : coTrainers, batch.getFee(),
+                courses == null ? List.of() : courses);
+    }
+
+    public static BatchResponse from(Batch batch, long enrolledCount, List<CoTrainerResponse> coTrainers) {
+        return from(batch, enrolledCount, coTrainers, List.of());
     }
 
     @Schema(description = "An additional trainer on this batch")

@@ -18,6 +18,19 @@ export interface BatchSummaryResponse {
   capacity: number
   enrolledCount: number
   status: string
+  /** What the whole batch costs; empty when the course fee applies. */
+  fee: number | null
+}
+
+/** A course a batch holds, with the trainer who teaches it there. */
+export interface BatchCourse {
+  courseId: number
+  courseCode: string | null
+  courseTitle: string | null
+  trainerId: number | null
+  trainerName: string | null
+  /** The course the batch was created for; it cannot be taken out. */
+  main: boolean
 }
 
 export interface BatchResponse {
@@ -42,6 +55,10 @@ export interface BatchResponse {
   meetingUrl: string | null
   status: string
   coTrainers: { trainerId: number; trainerName: string; role: string }[]
+  /** What the whole batch costs. A student placed in all of it pays this and nothing more for its courses. */
+  fee: number | null
+  /** Every course the batch holds, the one it was created for first. */
+  courses: BatchCourse[]
 }
 
 export interface EnrollmentResponse {
@@ -58,6 +75,8 @@ export interface EnrollmentResponse {
   droppedReason: string | null
   /** The last day the student may use the course; empty means no limit. */
   accessUntil: string | null
+  /** Placed in this one course alone, at its own fee, instead of in the whole batch. */
+  courseOnly: boolean
 }
 
 export interface SessionResponse {
@@ -79,6 +98,8 @@ export interface SessionResponse {
   attendanceAuto: boolean
   cancelledReason: string | null
   live: boolean
+  /** The course this lecture is for; empty means the course the batch was created for. */
+  courseId: number | null
 }
 
 export interface AttendanceResponse {
@@ -111,6 +132,8 @@ export interface CreateBatchInput {
   capacity?: number
   classroom?: string
   meetingUrl?: string
+  /** What the whole batch costs. Leave empty to charge the course fee. */
+  fee?: number
 }
 
 export interface CreateSessionInput {
@@ -122,6 +145,8 @@ export interface CreateSessionInput {
   mode?: string
   meetingUrl?: string
   room?: string
+  /** One of the batch's courses; leave empty for the course the batch was created for. */
+  courseId?: number
 }
 
 export async function searchBatches(params: {
@@ -200,8 +225,51 @@ export interface EnrollmentResultResponse {
 export async function enrollStudents(
   batchId: number | string,
   studentIds: number[],
+  /** Leave empty for the whole batch (its fee, every course); give a course to place them in that course alone. */
+  courseId?: number,
 ): Promise<EnrollmentResultResponse> {
-  const { data } = await apiClient.post<EnrollmentResultResponse>(`/api/batches/${batchId}/students`, { studentIds })
+  const { data } = await apiClient.post<EnrollmentResultResponse>(`/api/batches/${batchId}/students`, {
+    studentIds,
+    courseId,
+  })
+  return data
+}
+
+/** Puts a course into the batch; everyone placed in the whole batch is enrolled in it at no extra fee. */
+export async function addBatchCourse(batchId: number | string, input: { courseId: number; trainerId?: number }): Promise<BatchCourse[]> {
+  const { data } = await apiClient.post<BatchCourse[]>(`/api/batches/${batchId}/courses`, input)
+  return data
+}
+
+export async function changeBatchCourseTrainer(batchId: number | string, courseId: number, trainerId?: number): Promise<BatchCourse[]> {
+  const { data } = await apiClient.put<BatchCourse[]>(`/api/batches/${batchId}/courses/${courseId}`, { trainerId })
+  return data
+}
+
+/** Takes an added course out of the batch; the students' lessons for it are closed and their progress is kept. */
+export async function removeBatchCourse(batchId: number | string, courseId: number): Promise<BatchCourse[]> {
+  const { data } = await apiClient.delete<BatchCourse[]>(`/api/batches/${batchId}/courses/${courseId}`)
+  return data
+}
+
+/** Sets what the whole batch costs. The rest of the batch is sent back as it is. */
+export async function setBatchFee(batch: BatchResponse, fee: number | undefined): Promise<BatchResponse> {
+  const { data } = await apiClient.put<BatchResponse>(`/api/batches/${batch.id}`, {
+    name: batch.name,
+    trainerId: batch.trainerId ?? undefined,
+    startDate: batch.startDate,
+    endDate: batch.endDate,
+    startTime: batch.startTime,
+    endTime: batch.endTime,
+    classDays: batch.classDays,
+    mode: batch.mode,
+    capacity: batch.capacity,
+    classroom: batch.classroom ?? undefined,
+    meetingUrl: batch.meetingUrl ?? undefined,
+    status: batch.status,
+    coTrainerIds: batch.coTrainers.map((c) => c.trainerId),
+    fee,
+  })
   return data
 }
 

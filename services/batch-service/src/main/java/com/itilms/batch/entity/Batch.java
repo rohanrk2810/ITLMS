@@ -60,6 +60,10 @@ public class Batch extends AuditableEntity {
     @Column(name = "course_title", length = 160)
     private String courseTitle;
 
+    /** What the whole batch costs. Empty: the course fee applies. Courses added to the batch cost nothing more. */
+    @Column(precision = 12, scale = 2)
+    private java.math.BigDecimal fee;
+
     @Column(name = "trainer_id")
     private Long trainerId;
 

@@ -229,6 +229,17 @@ Owns batches, enrolment, the timetable and the attendance register. **Design dep
 | trainer_id, trainer_user_id, trainer_name | | *cross-svc* → admission/identity |
 | role | VARCHAR(20) | CHECK: PRIMARY, CO_TRAINER, GUEST; UNIQUE (batch_id, trainer_id) |
 
+### `batch_courses` — the courses a batch holds besides `batches.course_id` ([38](38-batch-courses.md))
+| Column | Type | Notes |
+|---|---|---|
+| id | BIGINT | **PK** |
+| batch_id | BIGINT | **FK →** batches.id, `ON DELETE CASCADE`; UNIQUE (batch_id, course_id) |
+| course_id, course_code, course_title | | *cross-svc* → course-service, denormalised |
+| trainer_id, trainer_user_id, trainer_name | | who teaches this course in this batch |
+| added_at | TIMESTAMPTZ | |
+
+`batches.fee` (NUMERIC, nullable) is the price of the whole batch; empty means the course fee applies. `class_sessions.course_id` says which course a lecture is for (empty: the batch's own).
+
 ### `enrollments`
 | Column | Type | Notes |
 |---|---|---|
@@ -237,6 +248,8 @@ Owns batches, enrolment, the timetable and the attendance register. **Design dep
 | course_id | BIGINT | *cross-svc* → course-service |
 | batch_id | BIGINT | **FK →** batches.id |
 | enrolled_at, completion_date, dropped_reason | | |
+| included | BOOLEAN | The course came with the batch: no fee, no seat, not on the roster ([38](38-batch-courses.md)) |
+| course_only | BOOLEAN | Placed in this one course alone, at its own fee, not in the whole batch |
 | status | VARCHAR(20) | CHECK: ACTIVE, COMPLETED, DROPPED, SUSPENDED, TRANSFERRED |
 | created_at, updated_at, created_by, updated_by | | Partial unique index: one ACTIVE row per (student_id, batch_id) — enforces "not enrolled twice in the same active batch" (Doc S14) |
 

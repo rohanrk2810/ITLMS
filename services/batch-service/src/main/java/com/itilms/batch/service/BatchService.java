@@ -82,4 +82,7 @@ public interface BatchService {
      * would leak the class list to whoever asked.
      */
     boolean isActivelyEnrolled(Long batchId, Long studentId);
+
+    /** The courses a student holds in a batch (bought or came with it); a certificate needs all of them finished. */
+    List<Long> courseIdsOfStudentInBatch(Long batchId, Long studentId);
 }

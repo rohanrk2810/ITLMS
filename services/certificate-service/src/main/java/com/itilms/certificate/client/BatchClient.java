@@ -22,10 +22,24 @@ public interface BatchClient {
     @GetMapping("/api/batches/{id}")
     BatchInfo batch(@PathVariable("id") Long id);
 
-    record BatchInfo(Long id, String batchCode, String name, java.time.LocalDate endDate) {
+    /** The courses a student holds in a batch, bought or came with it. Null when the batch could not be asked. */
+    @GetMapping("/api/batches/internal/{batchId}/students/{studentId}/courses")
+    java.util.List<Long> coursesOfStudent(@PathVariable("batchId") Long batchId,
+                                          @PathVariable("studentId") Long studentId);
+
+    record BatchInfo(Long id, String batchCode, String name, java.time.LocalDate endDate,
+                     java.util.List<BatchCourse> courses) {
         public BatchInfo(Long id, String batchCode, String name) {
-            this(id, batchCode, name, null);
+            this(id, batchCode, name, null, null);
         }
+
+        public BatchInfo(Long id, String batchCode, String name, java.time.LocalDate endDate) {
+            this(id, batchCode, name, endDate, null);
+        }
+    }
+
+    /** One course a batch holds. */
+    record BatchCourse(Long courseId, String courseTitle) {
     }
 
     record AttendanceSummary(Long studentId, Long batchId, int attendedSessions, int totalSessions,
@@ -42,6 +56,13 @@ public interface BatchClient {
                 @Override
                 public AttendanceSummary attendance(Long studentId, Long batchId) {
                     log.warn("batch-service unreachable reading attendance of student {}", studentId, cause);
+                    return null;
+                }
+
+                @Override
+                public java.util.List<Long> coursesOfStudent(Long batchId, Long studentId) {
+                    log.warn("batch-service unreachable reading the courses of student {} in batch {}",
+                            studentId, batchId, cause);
                     return null;
                 }
 

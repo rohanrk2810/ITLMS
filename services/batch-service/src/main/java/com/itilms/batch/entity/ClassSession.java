@@ -36,6 +36,10 @@ public class ClassSession extends AuditableEntity {
     @Column(name = "batch_id", nullable = false)
     private Long batchId;
 
+    /** Which of the batch's courses this lecture is for; empty means the course the batch was created for. */
+    @Column(name = "course_id")
+    private Long courseId;
+
     @Column(name = "trainer_id")
     private Long trainerId;
 

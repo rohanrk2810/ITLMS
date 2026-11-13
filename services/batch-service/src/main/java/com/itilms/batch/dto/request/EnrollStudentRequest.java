@@ -17,6 +17,14 @@ import jakarta.validation.constraints.NotEmpty;
 public record EnrollStudentRequest(
 
         @NotEmpty(message = "At least one student is required")
-        List<Long> studentIds
+        List<Long> studentIds,
+        @Schema(description = "Leave blank to place them in the whole batch (the batch fee, every course). Give one "
+                + "of the batch's courses to place them in that course alone, at its course fee.")
+        Long courseId
 ) {
+
+    /** The whole batch. */
+    public EnrollStudentRequest(List<Long> studentIds) {
+        this(studentIds, null);
+    }
 }

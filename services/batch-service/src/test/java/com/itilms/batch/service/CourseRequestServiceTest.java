@@ -184,7 +184,7 @@ class CourseRequestServiceTest {
         assertThat(response.enrollmentId()).isEqualTo(900L);
         assertThat(response.decidedBy()).isEqualTo(2L);
         assertThat(response.decisionNote()).isEqualTo("Welcome");
-        verify(batchService).enroll(eq(5L), eq(new EnrollStudentRequest(List.of(10L))));
+        verify(batchService).enroll(eq(5L), eq(new EnrollStudentRequest(List.of(10L), COURSE)));
     }
 
     @Test

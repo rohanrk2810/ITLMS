@@ -33,7 +33,8 @@ class BatchEnrollmentsOfTest {
         BatchRepository batches = mock(BatchRepository.class);
         EnrollmentRepository enrollments = mock(EnrollmentRepository.class);
         BatchServiceImpl service = new BatchServiceImpl(batches, mock(BatchTrainerRepository.class), enrollments,
-                mock(CourseClient.class), mock(AdmissionClient.class), mock(EventPublisher.class));
+                mock(com.itilms.batch.repository.BatchCourseRepository.class),
+                mock(com.itilms.batch.service.BatchCourseService.class), mock(CourseClient.class), mock(AdmissionClient.class), mock(EventPublisher.class));
 
         Enrollment old = Enrollment.builder().id(1L).studentId(10L).batchId(5L).courseId(3L)
                 .status(EnrollmentStatus.COMPLETED).enrolledAt(Instant.parse("2026-01-01T00:00:00Z")).build();
@@ -65,7 +66,8 @@ class BatchEnrollmentsOfTest {
         BatchRepository batches = mock(BatchRepository.class);
         EnrollmentRepository enrollments = mock(EnrollmentRepository.class);
         BatchServiceImpl service = new BatchServiceImpl(batches, mock(BatchTrainerRepository.class), enrollments,
-                mock(CourseClient.class), mock(AdmissionClient.class), mock(EventPublisher.class));
+                mock(com.itilms.batch.repository.BatchCourseRepository.class),
+                mock(com.itilms.batch.service.BatchCourseService.class), mock(CourseClient.class), mock(AdmissionClient.class), mock(EventPublisher.class));
         when(enrollments.findByStudentId(10L)).thenReturn(List.of(Enrollment.builder().id(1L).studentId(10L)
                 .batchId(99L).courseId(3L).status(EnrollmentStatus.ACTIVE).enrolledAt(Instant.now()).build()));
         when(batches.findAllById(any())).thenReturn(List.of());

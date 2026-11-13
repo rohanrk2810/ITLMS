@@ -197,7 +197,7 @@ public class CourseRequestService {
             throw new BusinessRuleException("That batch belongs to a different course.");
         }
 
-        EnrollmentResultResponse result = batchService.enroll(batchId, new EnrollStudentRequest(List.of(request.getStudentId())));
+        EnrollmentResultResponse result = batchService.enroll(batchId, new EnrollStudentRequest(List.of(request.getStudentId()), request.getCourseId()));
         if (result.enrolled() == 0) {
             String reason = result.outcomes().stream().findFirst().map(EnrollmentResultResponse.Outcome::message)
                     .orElse("The student could not be enrolled.");
@@ -288,7 +288,7 @@ public class CourseRequestService {
             throw new BusinessRuleException(
                     "Your payment is safe, but no batch has a free seat right now. The institute has been told and will place you.");
         }
-        EnrollmentResultResponse result = batchService.enroll(open.batchId(), new EnrollStudentRequest(List.of(studentId)));
+        EnrollmentResultResponse result = batchService.enroll(open.batchId(), new EnrollStudentRequest(List.of(studentId), request.courseId()));
         if (result.enrolled() == 0) {
             throw new BusinessRuleException(result.outcomes().stream().findFirst()
                     .map(EnrollmentResultResponse.Outcome::message).orElse("You could not be placed in the batch."));
