@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Circle, Download, Loader2, Square } from 'lucide-react'
+import { Circle, Download, Loader2, Square, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiErrorMessage } from '@/api/client'
 import {
   type LiveSessionResponse,
+  deleteRecording,
   downloadRecording,
   getLiveSession,
   startBrowserRecording,
@@ -83,6 +84,7 @@ export function RecordingControl({ liveSessionId }: { liveSessionId: number }) {
   const [session, setSession] = useState<LiveSessionResponse | null>(null)
   const [busy, setBusy] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [sending, setSending] = useState(false)
   const [warning, setWarning] = useState<string | null>(null)
 
@@ -269,6 +271,20 @@ export function RecordingControl({ liveSessionId }: { liveSessionId: number }) {
       })
   }
 
+  async function remove() {
+    if (!window.confirm('Delete this recording from the server? Download it first - this cannot be undone.')) return
+    setDeleting(true)
+    try {
+      await deleteRecording(liveSessionId)
+      toast.success('Recording deleted')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not delete the recording.'))
+    } finally {
+      setDeleting(false)
+      refresh()
+    }
+  }
+
   async function save() {
     setDownloading(true)
     try {
@@ -301,6 +317,12 @@ export function RecordingControl({ liveSessionId }: { liveSessionId: number }) {
           <Button size="sm" variant="outline" disabled={downloading} onClick={() => void save()}>
             {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
             Download recording{session.recordingBytes > 0 ? ` (${megabytes(session.recordingBytes)})` : ''}
+          </Button>
+        )}
+        {canDownload && (
+          <Button size="sm" variant="outline" disabled={deleting} onClick={() => void remove()}>
+            {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            Delete recording
           </Button>
         )}
         {active && (

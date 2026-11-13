@@ -225,6 +225,16 @@ public class LiveClassController {
         return response.body(resource);
     }
 
+    @Operation(summary = "Delete a class's recording",
+            description = "The class trainer or staff only, typically after downloading it. Removes the file from the "
+                    + "server for good; a recording still being made cannot be deleted.")
+    @PreAuthorize(Roles.ACADEMIC)
+    @DeleteMapping("/sessions/{id}/recording")
+    public ResponseEntity<Void> deleteRecording(@PathVariable Long id) {
+        recordingService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Start recording from the host's browser",
             description = "The class trainer or staff only; the class must be live. The browser then sends the "
                     + "recording in numbered pieces and closes it with stop.")

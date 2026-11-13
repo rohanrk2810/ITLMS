@@ -63,6 +63,15 @@ public class LiveKitProperties {
      */
     private String recordingStoragePath = "/recordings";
 
+    /** What a server-side (Egress) recording is encoded as: full HD at a low frame rate keeps a shared screen's text sharp. */
+    private int recordingWidth = 1920;
+
+    private int recordingHeight = 1080;
+
+    private int recordingFps = 15;
+
+    private int recordingVideoKbps = 3000;
+
     /** The biggest single piece the host's browser may send while recording (one piece is a few seconds of video). */
     private long browserRecordingMaxChunkBytes = 16L * 1024 * 1024;
 

@@ -192,8 +192,18 @@ public class LiveKitGateway {
         LivekitEgress.EncodedFileOutput output = LivekitEgress.EncodedFileOutput.newBuilder()
                 .setFilepath(filepath)
                 .build();
+        // "speaker" puts a shared screen (the lecture) large with the people small; a screen is mostly still, so a
+        // lower frame rate at a full-HD size keeps small text sharp for much less CPU than 30 fps would.
+        LivekitEgress.EncodingOptions encoding = LivekitEgress.EncodingOptions.newBuilder()
+                .setWidth(properties.getRecordingWidth())
+                .setHeight(properties.getRecordingHeight())
+                .setFramerate(properties.getRecordingFps())
+                .setVideoBitrate(properties.getRecordingVideoKbps())
+                .setAudioBitrate(128)
+                .setKeyFrameInterval(4)
+                .build();
         LivekitEgress.EgressInfo info = execute(
-                egressService.startRoomCompositeEgress(roomName, output),
+                egressService.startRoomCompositeEgress(roomName, output, "speaker", null, encoding),
                 "start recording of " + roomName);
         return info == null ? null : info.getEgressId();
     }
