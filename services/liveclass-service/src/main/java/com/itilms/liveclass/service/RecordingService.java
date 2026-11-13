@@ -199,6 +199,44 @@ public class RecordingService {
         return new RecordingFile(file, type, safe + "-" + session.getSessionDate() + extension);
     }
 
+    /**
+     * Deletes the finished recording from the server, for the class's trainer or staff - typically right after they
+     * have downloaded it, to free the disk. A recording still being made cannot be deleted.
+     */
+    @Transactional
+    public void delete(Long liveSessionId) {
+        LiveSession session = lockSession(liveSessionId);
+        hostAccess.requireHostOf(session);
+        if (session.isBeingRecorded()) {
+            throw new BusinessRuleException("RECORDING_IN_PROGRESS", "Stop the recording before deleting it.");
+        }
+        if (session.getRecordingUrl() == null && session.getRecordingFilePath() == null) {
+            throw new ResourceNotFoundException("This class has no recording");
+        }
+        long bytes = session.getRecordingBytes();
+        String path = session.getRecordingFilePath();
+        if (path != null) {
+            try {
+                Path file = Path.of(path);
+                Files.deleteIfExists(file);
+                Path dir = file.getParent();
+                if (dir != null && Files.isDirectory(dir)) {
+                    try (var rest = Files.list(dir)) {
+                        if (rest.findAny().isEmpty()) {
+                            Files.deleteIfExists(dir);
+                        }
+                    }
+                }
+            } catch (IOException ex) {
+                throw new UncheckedIOException("Could not delete the recording file", ex);
+            }
+        }
+        session.clearRecording();
+        sessions.save(session);
+        events.audit(SERVICE_NAME, "LIVE_RECORDING_DELETED", "LiveSession", liveSessionId, null,
+                Map.of("bytes", bytes));
+    }
+
     private LiveSession lockSession(Long id) {
         return sessions.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException("Live session", id));
     }

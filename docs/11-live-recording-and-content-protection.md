@@ -51,6 +51,7 @@ POST /api/liveclass/sessions/{id}/recording/browser/start        -> 202, class m
 PUT  /api/liveclass/sessions/{id}/recording/browser/chunks/{seq} -> raw bytes of piece {seq}; returns {nextChunk, bytes}
 POST /api/liveclass/sessions/{id}/recording/browser/stop         -> closes the recording; it can be watched at once
 GET  /api/liveclass/sessions/{id}/recording[?download=true]      -> the file; download=true adds Content-Disposition: attachment
+DELETE /api/liveclass/sessions/{id}/recording                   -> removes the file from the server (host only, not while recording)
 ```
 
 - The browser captures the class tab with `getDisplayMedia` (tab audio included) and mixes in the host's microphone,

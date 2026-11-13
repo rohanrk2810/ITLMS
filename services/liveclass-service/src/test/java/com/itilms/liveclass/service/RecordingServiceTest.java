@@ -198,6 +198,33 @@ class RecordingServiceTest {
     }
 
     @Test
+    void deleteRemovesTheFileAndForgetsTheRecording(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws Exception {
+        useTempStorage(dir, 1024);
+        service.startBrowser(1L);
+        service.appendChunk(1L, 0, new byte[] {1, 2, 3});
+        service.stopBrowser(1L);
+        java.nio.file.Path file = java.nio.file.Path.of(session.getRecordingFilePath());
+        assertThat(file).exists();
+
+        service.delete(1L);
+
+        assertThat(file).doesNotExist();
+        assertThat(file.getParent()).doesNotExist();
+        assertThat(session.getRecordingUrl()).isNull();
+        assertThat(session.getRecordingFilePath()).isNull();
+        assertThat(session.getRecordingBytes()).isZero();
+        assertThatThrownBy(() -> service.delete(1L)).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deleteIsRefusedWhileARecordingIsRunning(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        useTempStorage(dir, 1024);
+        service.startBrowser(1L);
+        assertThatThrownBy(() -> service.delete(1L)).hasFieldOrPropertyWithValue("code", "RECORDING_IN_PROGRESS");
+    }
+
+    @Test
     void fileForChecksHostOrEnrolledNotJustHost() {
         session.setRecordingUrl("/api/liveclass/sessions/1/recording");
         session.setRecordingFilePath("Z:/nope.mp4");

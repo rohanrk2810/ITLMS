@@ -250,6 +250,18 @@ public class LiveSession extends AuditableEntity {
         }
     }
 
+    /** Forgets a finished recording (its file has been deleted); the class then has none and can be recorded again. */
+    public void clearRecording() {
+        egressId = null;
+        browserRecordingActive = false;
+        recordingEnabled = false;
+        recordingUrl = null;
+        recordingFilePath = null;
+        recordingStartedAt = null;
+        recordingChunks = 0;
+        recordingBytes = 0;
+    }
+
     public void markEnded(Instant at) {
         if (endedAt == null) {
             endedAt = at;

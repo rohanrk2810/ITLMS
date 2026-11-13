@@ -291,6 +291,7 @@ recording never carries a question stuck "open" forever.
 | POST | /api/liveclass/sessions/{id}/recording/start | ACADEMIC, host | Start recording (LiveKit Egress); the class must be live |
 | POST | /api/liveclass/sessions/{id}/recording/stop | ACADEMIC, host | Stop recording; the file becomes available once Egress finishes writing it |
 | GET | /api/liveclass/sessions/{id}/recording | host or enrolled student | The finished recording (whole file, no byte-range support - see docs/11) |
+| DELETE | /api/liveclass/sessions/{id}/recording | ACADEMIC, host | Delete the finished recording from the server for good (after downloading it). Refused while one is being made |
 
 See `docs/11-live-recording-and-content-protection.md` for how recording is wired to LiveKit Egress, what running it
 actually costs, and what it fails as when no Egress worker is running.

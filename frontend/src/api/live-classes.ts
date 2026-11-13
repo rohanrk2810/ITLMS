@@ -182,7 +182,11 @@ export async function stopBrowserRecording(liveSessionId: number): Promise<Brows
   return data
 }
 
-/** Saves the recording to the person's computer. The request carries the login, so it goes through a blob. */
+/** Deletes the finished recording from the server for good (the class's trainer or staff). */
+export async function deleteRecording(liveSessionId: number): Promise<void> {
+  await apiClient.delete(`/api/liveclass/sessions/${liveSessionId}/recording`)
+}
+
 /** Closes the room for everyone and records attendance now. Only the class's trainer or staff. */
 export async function endLiveClass(liveSessionId: number): Promise<LiveSessionResponse> {
   const { data } = await apiClient.post<LiveSessionResponse>(`/api/liveclass/sessions/${liveSessionId}/end`)
