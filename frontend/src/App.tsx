@@ -145,9 +145,6 @@ const MyProgressPage = lazy(() =>
   import('@/pages/progress/my-progress-page').then((m) => ({ default: m.MyProgressPage })),
 )
 
-const CourseRequestsIndexPage = lazy(() =>
-  import('@/pages/course-requests/course-requests-index-page').then((m) => ({ default: m.CourseRequestsIndexPage })),
-)
 
 const MonitoringSettingsPage = lazy(() =>
   import('@/pages/monitoring-settings-page').then((m) => ({ default: m.MonitoringSettingsPage })),
@@ -329,7 +326,7 @@ export default function App() {
                   </Route>
 
                   <Route element={<ProtectedRoute roles={COURSE_REQUEST_ROLES} />}>
-                    <Route path="/app/course-requests" element={<CourseRequestsIndexPage />} />
+                    <Route path="/app/course-requests" element={<Navigate to="/app/courses?tab=requests" replace />} />
                   </Route>
 
                   <Route element={<ProtectedRoute roles={CERTIFICATE_ROLES} />}>

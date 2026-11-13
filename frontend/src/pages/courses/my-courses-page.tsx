@@ -95,7 +95,7 @@ function BrowseCourses({ enrolledIds }: { enrolledIds: number[] }) {
       <div>
         <h2 className="text-lg font-semibold">Browse courses</h2>
         <p className="text-sm text-muted-foreground">
-          Open a course to see what it covers, then ask to join. <Link to="/app/course-requests" className="text-primary hover:underline">Your requests</Link>
+          Open a course to see what it covers, then ask to join. <Link to="/app/courses?tab=requests" className="text-primary hover:underline">Your requests</Link>
         </p>
       </div>
       {query.isLoading && <Skeleton className="h-32" />}
