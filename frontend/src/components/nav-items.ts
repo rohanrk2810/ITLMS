@@ -7,7 +7,6 @@ import {
   ClipboardList,
   FileText,
   IdCard,
-  Inbox,
   LayoutDashboard,
   SlidersHorizontal,
   ScanFace,
@@ -45,13 +44,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   { label: 'My profile', to: '/app/my-profile', icon: UserRound, roles: ['STUDENT'] },
   { label: 'My progress', to: '/app/my-progress', icon: TrendingUp, roles: ['STUDENT'] },
-  {
-    label: 'Course requests',
-    to: '/app/course-requests',
-    icon: Inbox,
-    // A student's own requests, or the queue that administrators and coordinators decide.
-    roles: ['ADMIN', 'COORDINATOR', 'STUDENT'],
-  },
   { label: 'Batches', to: '/app/batches', icon: CalendarClock, roles: ['ADMIN', 'COORDINATOR', 'TRAINER'] },
   {
     label: 'Live classes',
